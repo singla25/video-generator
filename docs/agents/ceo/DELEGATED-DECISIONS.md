@@ -9,9 +9,12 @@
 | # | When | What | Options | Choice | Why |
 |---|------|------|---------|--------|-----|
 | DD-1 | 2026-10-19 | Placeholder product name + logo (M3 F2 needs them) | "VidGen Studio" · "Samvad Studio" · "VoiceFrame" | **VidGen Studio** + `docs/design/brand/logo.svg` (emerald square, play triangle, lime sound wave, Plus Jakarta Sans wordmark) | Neutral, matches the package name `vidgen`, no political or third-party connotation; colours come from DESIGN-NOTES; original artwork (not derived from TrustVest). Admin may replace it; only 2 files change. |
+| DD-3 | 2026-10-19 | M2 model stack (draft, provisional) | see ADR-010 table | faster-whisper · IndicXlit · Chatterbox-Multilingual (hi) · MuseTalk · Demucs | All MIT per official repos/cards; Hindi supported; F5-TTS-derived Hindi, XTTS-v2 and Wav2Lip excluded (non-commercial). Provisional: full sub-model audit (G1) + GPU spike (G2) before acceptance. |
 | DD-2 | 2026-10-19 | F0 (Node.js) for M3 | Install · use existing | **Use the existing Node v26.12.0** at /opt/homebrew/bin/node; no install needed | Already present; F0 counts as satisfied. If any approved npm package doesn't support Node 26, frontend-dev pins an LTS via `engines` and reports it. |
 
 ## Waiting for Admin
 
 | # | Since | Item | Why blocked | Prepared |
 |---|-------|------|-------------|----------|
+| W-1 | 2026-10-19 | M2 GPU provider + budget | Paid service (forbidden under delegation) | `docs/plans/m2-real-ai.md` draft, ADR-010 provisional model stack |
+| W-2 | 2026-10-19 | Using the real `samples/` on a GPU box for the M2 spike | Voter data handling decision | Plan says: our own server only, never a third party |

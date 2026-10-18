@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-10-18 — T7 round 2
+- Replaced filter-name checks (acrossfade, atempo) by behaviour: spoken part ends at slot start + plan.final_audio_s within crossfade + 20 ms, starts audible at slot start. Security test spies on Popen (any subprocess function). Label fixtures now need two fonts (NotoSansDevanagari-*.ttf, NotoSans-*.ttf); renderer signature PillowLabelRenderer(devanagari_font=, latin_font=, text=).
+
 ## 2026-10-18 — T7 (RED: FFmpeg video engine + label renderer)
 - Added tests/integration/ffmpeg/{conftest,test_output_format,test_audio_splice,test_label_overlay,test_metadata,test_encoder_errors}.py and tests/unit/infra/test_label_renderer.py; fixtures tests/fixtures/{templates,analysis,spies,assets}.py.
 - Contract modules: infrastructure.ffmpeg.encoder (FfmpegVideoEncoder), infrastructure.ffmpeg.label (PillowLabelRenderer, label_band_height, LABEL_TEXT). Fail on ModuleNotFoundError (RED); 478 earlier tests still pass.

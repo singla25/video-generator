@@ -158,7 +158,7 @@ def test_temp_files_are_removed_on_success_and_on_failure(
 def test_commands_are_argument_lists_without_a_shell(
     monkeypatch: pytest.MonkeyPatch, render_clip: RenderFn, ffmpeg_path: str
 ) -> None:
-    """ADR-004: no shell=True, no command strings, file names are single list items."""
+    """ADR-004: no shell, no command strings (spy on Popen, used by every subprocess call)."""
     calls = record_popen(monkeypatch)
     render_clip()
     assert calls
@@ -166,7 +166,7 @@ def test_commands_are_argument_lists_without_a_shell(
         assert isinstance(call.args, list)
         assert all(isinstance(item, str) for item in call.args)
         assert not call.kwargs.get("shell")
-        assert call.args[0] == ffmpeg_path
+    assert any(call.args[0] == ffmpeg_path for call in calls)
 
 
 def test_hostile_looking_file_and_metadata_text_cannot_inject_arguments(

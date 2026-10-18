@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from tests.fixtures.analysis import (
+    active_end,
     decode_pcm,
     diff_dbfs,
     frame_hashes,
@@ -16,7 +17,6 @@ from tests.fixtures.analysis import (
     rms_dbfs,
     window,
 )
-from tests.fixtures.spies import record_popen
 from tests.fixtures.templates import make_label_png, make_template, make_tone_wav
 from tests.integration.ffmpeg.conftest import Rendered, RenderFn
 from vidgen.domain.timing import TimingPlan, TimingRules, plan_timing
@@ -93,27 +93,38 @@ def test_crossfade_removes_clicks_at_both_slot_edges(render_clip: RenderFn) -> N
     assert max_step(window(out, end - 0.05, end + 0.05)) < 0.2
 
 
-def test_command_uses_a_crossfade_of_the_configured_length(
-    render_clip: RenderFn, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("case", ["equal", "shorter", "stretched", "absorbed"])
+def test_spoken_part_ends_where_the_plan_says_within_the_crossfade(
+    render_clip: RenderFn, case: str
 ) -> None:
-    """TT-AC9-P8: the filter graph carries the 30 ms crossfade."""
-    calls = record_popen(monkeypatch)
-    render_clip(new_audio_s=1.0)
-    text = " ".join(" ".join(str(x) for x in c.args) for c in calls)
-    assert "acrossfade" in text
-    assert "d=0.03" in text.replace(" ", "")
+    """TT-AC9-P2, P8: the name is stretched/padded to plan.final_audio_s (+/- crossfade + 20 ms)."""
+    r = render_clip(new_audio_s=CASES[case])
+    out = decode_pcm(r.out)
+    start = r.slot[0]
+    end = active_end(out, start + 0.3, start + 2.0)
+    expected = start + r.plan.final_audio_s
+    assert end == pytest.approx(expected, abs=CROSSFADE_S + 0.02)
 
 
-def test_stretch_is_applied_with_atempo_only_when_the_plan_asks_for_it(
-    render_clip: RenderFn, monkeypatch: pytest.MonkeyPatch
+def test_stretch_really_shortens_the_name_instead_of_letting_it_run_long(
+    render_clip: RenderFn,
 ) -> None:
-    """TT-AC9-P2: atempo appears for a stretched name and not for an equal one."""
-    calls = record_popen(monkeypatch)
-    render_clip(new_audio_s=1.0)
-    assert not any("atempo" in " ".join(str(x) for x in c.args) for c in calls)
-    calls.clear()
-    render_clip(new_audio_s=1.1)
-    assert any("atempo" in " ".join(str(x) for x in c.args) for c in calls)
+    """TT-AC9-P2, P3: without the stretch the 1.3 s name would end at 2.3 s."""
+    r = render_clip(new_audio_s=1.3)
+    out = decode_pcm(r.out)
+    end = active_end(out, 1.3, 3.0)
+    assert end < 1.0 + 1.3 - 0.1
+
+
+@pytest.mark.parametrize("case", ["equal", "shorter", "absorbed"])
+def test_spoken_part_starts_at_the_slot_start_within_the_crossfade(
+    render_clip: RenderFn, case: str
+) -> None:
+    """TT-AC9-P8: the template's own speech stops and the new name is audible at the slot start."""
+    r = render_clip(new_audio_s=CASES[case], cosine=True)
+    out = decode_pcm(r.out)
+    start = r.slot[0]
+    assert rms_dbfs(window(out, start + CROSSFADE_S + 0.02, start + 0.25)) > -20.0
 
 
 def test_shorter_name_keeps_the_following_speech_at_the_same_time(render_clip: RenderFn) -> None:

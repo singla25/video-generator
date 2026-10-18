@@ -9,12 +9,22 @@ import pytest
 FONT_DIR = Path(__file__).resolve().parents[2] / "backend" / "vidgen" / "assets" / "fonts"
 
 
-def devanagari_font() -> Path:
-    """Path of the Noto Sans Devanagari font, or fail the test with instructions."""
-    candidates = sorted(FONT_DIR.glob("*.ttf")) + sorted(FONT_DIR.glob("*.otf"))
-    if not candidates:
+def _find(pattern: str, what: str) -> Path:
+    """First font file in the assets folder matching ``pattern``, else fail the test."""
+    matches = sorted(FONT_DIR.glob(pattern))
+    if not matches:
         pytest.fail(
-            f"Devanagari font missing: place Noto Sans Devanagari (.ttf) in {FONT_DIR} "
-            "(Admin supplies it; see plan 'Font asset')."
+            f"{what} font missing: place a file matching '{pattern}' in {FONT_DIR} "
+            "(the Admin supplies the Noto fonts; see the plan, 'Font asset')."
         )
-    return candidates[0]
+    return matches[0]
+
+
+def devanagari_font() -> Path:
+    """Noto Sans Devanagari (``NotoSansDevanagari-*.ttf``)."""
+    return _find("NotoSansDevanagari*.ttf", "Devanagari")
+
+
+def latin_font() -> Path:
+    """Noto Sans for Latin text (``NotoSans-*.ttf``; does not match the Devanagari file)."""
+    return _find("NotoSans-*.ttf", "Latin")

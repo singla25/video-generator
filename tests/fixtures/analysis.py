@@ -166,3 +166,20 @@ def pixel_mean(image: Image.Image, xy: tuple[int, int]) -> float:
     assert isinstance(pixel, tuple)
     channels = pixel[:3]
     return sum(channels) / len(channels)
+
+
+def active_end(
+    samples: array.array[int], start_s: float, limit_s: float, threshold_dbfs: float = -35.0
+) -> float:
+    """Time where sound that is present at ``start_s`` first drops below the threshold.
+
+    Uses 10 ms windows; returns ``limit_s`` if the sound never stops before the limit.
+    """
+    step = 0.01
+    at = start_s
+    while at < limit_s:
+        chunk = window(samples, at, at + step)
+        if not chunk or rms_dbfs(chunk) < threshold_dbfs:
+            return at
+        at += step
+    return limit_s

@@ -47,6 +47,26 @@ class Env:
     probe: FakeVideoProbe
     stt: FakeSpeechToText
     csrf: dict[str, str]
+    deps: AppDeps | None = None
+
+    def new_instance(self) -> Env:
+        """A second app built from the same settings, clock and doubles (a 'restart' or peer node).
+
+        Nothing from this object is shared in memory; only the database and the injected doubles.
+        """
+        app = create_app(self.settings, deps=self.deps)
+        client = TestClient(app)
+        return Env(
+            app,
+            client,
+            self.settings,
+            self.clock,
+            self.storage,
+            self.probe,
+            self.stt,
+            {},
+            self.deps,
+        )
 
     def client_from(self, address: str) -> TestClient:
         """Another client of the same app whose direct peer address is ``address``."""
@@ -92,7 +112,7 @@ def make_env(db: Engine, test_db_url: str, tmp_path: Path) -> EnvFactory:
         deps = AppDeps(clock=clock, speech_to_text=stt, video_probe=probe, storage=storage)
         app = create_app(settings, deps=deps)
         client = TestClient(app, raise_server_exceptions=raise_server_exceptions)
-        env = Env(app, client, settings, clock, storage, probe, stt, csrf={})
+        env = Env(app, client, settings, clock, storage, probe, stt, csrf={}, deps=deps)
         if login:
             assert env.login().status_code == 200
         return env

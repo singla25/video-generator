@@ -314,7 +314,11 @@ def test_crossing_the_global_cap_writes_exactly_one_alert_per_window(make_env: E
     trip_global_cap(env, 49)
     alerts = env.client.get("/audit", params={"action": "SECURITY_LOGIN_THROTTLED"})
     assert alerts.json()["entries"] == []
-    trip_global_cap(env, 5, prefix="10.2.0")  # crosses the cap; later failures add nothing
+    # The 50th failure still answers 401; every attempt inside the 5 s gap is then 429, so
+    # the throttle cannot be used to tell right passwords from wrong ones.
+    assert fail_login(env.client_from("10.2.0.1")) == 401
+    for number in range(2, 6):
+        assert fail_login(env.client_from(f"10.2.0.{number}")) == 429
     entries = env.client.get("/audit", params={"action": "SECURITY_LOGIN_THROTTLED"}).json()[
         "entries"
     ]

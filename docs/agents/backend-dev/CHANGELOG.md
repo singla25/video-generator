@@ -2,6 +2,12 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T10 round 2 (D-17)
+- Login protection state moved to Postgres: new table `login_attempts` (campaign_id, client_key [resolved IP or `*` for the global row], window_started_at, failure_count, locked_until, last_allowed_at; PK campaign_id + client_key). `services/login_guard.py` is now pure decision functions plus a thin `LoginGuard` over a `LoginStateStore`; `infrastructure/db/login_state.py` implements it. Every attempt locks the global row (`SELECT ... FOR UPDATE`), so instances never lose updates; stale client rows are pruned on each write.
+- Partial unique index `uq_batch_rows_batch_id_voter_id_index_live` (status <> 'SKIPPED') and `ix_batches_finished_at`. Migration 0001 amended in place (create-only upgrade, reverse downgrade, no data); migration tests (schema diff empty, round trip) pass.
+- The repository does NOT map IntegrityError to DUPLICATE_ID: the T10b tests expect the raw IntegrityError. Window counting is now a fixed window from the first failure.
+- Open: `test_models::test_all_expected_tables_are_defined` expects exactly six tables; it needs `login_attempts` added (tester).
+
 ## 2026-10-19 — T10 (persistence, migration 0001, auth, templates, audit)
 - DB: `infrastructure/db/{models,repositories,uow}.py` (SQLAlchemy 2 typed models, naming convention, PII only as ciphertext + blind index). Ports gained `TemplateRepository`, `AuditRepository`, `UnitOfWork`, `TemplateRecord`, `AuditEntry`.
 - Migration `0001_initial` (hand-written, create-only; downgrade drops the six tables in reverse). `env.py` needs only a DB URL (`-x db_url`, `sqlalchemy.url`, or `VIDGEN_DATABASE_URL`), no Settings. Checked offline (`--sql`) against the models' DDL: same statements, only constraint order differs. Never run against a database.

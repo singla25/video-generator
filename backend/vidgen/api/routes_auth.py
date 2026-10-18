@@ -48,7 +48,7 @@ def login(body: LoginRequest, request: Request) -> JSONResponse:
         if throttled:
             app.audit.record(ACTOR_SYSTEM, "SECURITY_LOGIN_THROTTLED")
         raise ApiError(401, INVALID_CREDENTIALS)
-    app.guard.record_success(client)
+    app.guard.record_success(client, now)
     cookie, session = app.codec.issue(now)
     response = JSONResponse({"csrf_token": session.csrf_token})
     max_age = app.settings.session_ttl_minutes * 60

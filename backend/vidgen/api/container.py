@@ -11,6 +11,7 @@ from vidgen.api.client_address import Network, parse_networks
 from vidgen.api.security import SessionCodec
 from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.consent import detect_consent_type
+from vidgen.infrastructure.db.login_state import SqlLoginStateStore
 from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
 from vidgen.infrastructure.storage.local import LocalStorage
@@ -91,7 +92,7 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
             settings.session_version,
             timedelta(minutes=settings.session_ttl_minutes),
         ),
-        guard=LoginGuard(rules),
+        guard=LoginGuard(rules, SqlLoginStateStore(factory)),
         hasher=PasswordHasher(),
         trusted_proxies=parse_networks(settings.trusted_proxies),
         audit=AuditTrail(open_uow, clock),

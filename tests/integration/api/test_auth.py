@@ -236,40 +236,103 @@ def test_old_failures_age_out_of_the_fifteen_minute_window(anon: Env) -> None:
     assert anon.login(PASSWORD).status_code == 200
 
 
-def test_fifty_failures_from_many_clients_lock_every_login(anon: Env) -> None:
-    """D-15: global cap, 50 failures from 50 different addresses."""
-    for number in range(50):
-        client = anon.client_from(f"10.1.0.{number + 1}")
-        assert fail_login(client) == 401
-    fresh = anon.client_from("10.9.9.9")
-    response = fresh.post("/auth/login", json={"password": PASSWORD})
+def trip_global_cap(env: Env, count: int = 50, prefix: str = "10.1.0") -> None:
+    """Fail ``count`` logins, each from a different address."""
+    for number in range(count):
+        assert fail_login(env.client_from(f"{prefix}.{number + 1}")) == 401
+
+
+def login_from(env: Env, address: str, password: str = PASSWORD) -> int:
+    """Status of a login attempt from ``address``."""
+    client = env.client_from(address)
+    return client.post("/auth/login", json={"password": password}).status_code
+
+
+def test_fifty_failures_from_many_clients_throttle_every_login(anon: Env) -> None:
+    """D-15 (2): the global cap throttles, it does not lock."""
+    trip_global_cap(anon)
+    response = anon.client_from("10.9.9.9").post("/auth/login", json={"password": PASSWORD})
     assert response.status_code == 429
     assert response.json()["code"] == "RATE_LIMITED"
-    assert 800 <= int(response.headers["retry-after"]) <= 900
+    assert 1 <= int(response.headers["retry-after"]) <= 5
 
 
-def test_forty_nine_failures_do_not_trigger_the_global_cap(anon: Env) -> None:
+def test_forty_nine_failures_do_not_throttle(anon: Env) -> None:
     """D-15: boundary."""
-    for number in range(49):
-        assert fail_login(anon.client_from(f"10.1.0.{number + 1}")) == 401
-    fresh = anon.client_from("10.9.9.9")
-    assert fresh.post("/auth/login", json={"password": PASSWORD}).status_code == 200
+    trip_global_cap(anon, 49)
+    assert login_from(anon, "10.9.9.9") == 200
+    assert login_from(anon, "10.9.9.10") == 200  # no rate limit either
 
 
-def test_global_lockout_ends_after_fifteen_minutes(anon: Env) -> None:
-    """D-15."""
-    for number in range(50):
-        fail_login(anon.client_from(f"10.1.0.{number + 1}"))
+def test_correct_password_succeeds_once_the_gap_has_passed_during_the_throttle(
+    anon: Env,
+) -> None:
+    """D-15 (2): an attacker can slow the admin's login but never block it."""
+    trip_global_cap(anon)
+    anon.clock.advance(seconds=5)
+    assert login_from(anon, "10.9.9.9") == 200
+
+
+def test_a_second_attempt_within_the_gap_is_refused_even_with_the_right_password(
+    anon: Env,
+) -> None:
+    """D-15 (2): 1 attempt per 5 s globally."""
+    trip_global_cap(anon)
+    anon.clock.advance(seconds=5)
+    assert login_from(anon, "10.9.9.9") == 200
+    anon.clock.advance(seconds=4)
+    assert login_from(anon, "10.9.9.10") == 429
+    anon.clock.advance(seconds=1)
+    assert login_from(anon, "10.9.9.10") == 200
+
+
+def test_throttle_ends_after_fifteen_minutes(anon: Env) -> None:
+    """D-15 (2)."""
+    trip_global_cap(anon)
     anon.clock.advance(minutes=14)
-    assert (
-        anon.client_from("10.9.9.9").post("/auth/login", json={"password": PASSWORD}).status_code
-        == 429
-    )
+    assert login_from(anon, "10.9.9.9") == 200  # allowed (gap passed), still inside the window
+    assert login_from(anon, "10.9.9.10") == 429
     anon.clock.advance(minutes=2)
-    assert (
-        anon.client_from("10.9.9.9").post("/auth/login", json={"password": PASSWORD}).status_code
-        == 200
-    )
+    assert login_from(anon, "10.9.9.10") == 200
+    assert login_from(anon, "10.9.9.11") == 200  # no throttle any more
+
+
+def test_existing_sessions_are_not_affected_by_locks_or_throttling(make_env: EnvFactory) -> None:
+    """D-15 (3): a client logged in before the attack keeps working."""
+    env = make_env()  # logged in as "testclient"
+    trip_global_cap(env)
+    for _ in range(6):
+        fail_login(env.client_from("10.5.5.5"))
+    assert env.client.get("/templates").status_code == 200
+    assert env.client.get("/audit").status_code == 200
+    assert env.client.post("/auth/logout", headers=env.csrf).status_code in (200, 204)
+
+
+def test_crossing_the_global_cap_writes_exactly_one_alert_per_window(make_env: EnvFactory) -> None:
+    """D-15 (4): SECURITY_LOGIN_THROTTLED, once, without passwords or personal data."""
+    env = make_env()
+    trip_global_cap(env, 49)
+    alerts = env.client.get("/audit", params={"action": "SECURITY_LOGIN_THROTTLED"})
+    assert alerts.json()["entries"] == []
+    trip_global_cap(env, 5, prefix="10.2.0")  # crosses the cap; later failures add nothing
+    entries = env.client.get("/audit", params={"action": "SECURITY_LOGIN_THROTTLED"}).json()[
+        "entries"
+    ]
+    assert len(entries) == 1
+    assert entries[0]["actor"] == "system"
+    assert PASSWORD not in str(entries)
+
+
+def test_a_new_window_writes_a_new_alert(make_env: EnvFactory) -> None:
+    """D-15 (4): one event per window."""
+    env = make_env()
+    trip_global_cap(env)
+    env.clock.advance(minutes=16)
+    trip_global_cap(env, prefix="10.3.0")
+    entries = env.client.get("/audit", params={"action": "SECURITY_LOGIN_THROTTLED"}).json()[
+        "entries"
+    ]
+    assert len(entries) == 2
 
 
 def test_x_forwarded_for_cannot_split_the_per_client_count(anon: Env) -> None:
@@ -310,10 +373,16 @@ def test_per_client_threshold_comes_from_settings(make_env: EnvFactory) -> None:
 def test_global_threshold_comes_from_settings(make_env: EnvFactory) -> None:
     """D-15: login_max_failures_global is respected (3 instead of 50)."""
     env = make_env(login=False, login_max_failures_global=3)
-    for number in range(3):
-        assert fail_login(env.client_from(f"10.2.0.{number + 1}")) == 401
-    response = env.client_from("10.2.0.99").post("/auth/login", json={"password": PASSWORD})
-    assert response.status_code == 429
+    trip_global_cap(env, 3, prefix="10.2.0")
+    assert login_from(env, "10.2.0.99") == 429
+
+
+def test_throttle_gap_comes_from_settings(make_env: EnvFactory) -> None:
+    """D-15: login_throttle_seconds is respected (2 instead of 5)."""
+    env = make_env(login=False, login_max_failures_global=3, login_throttle_seconds=2)
+    trip_global_cap(env, 3, prefix="10.2.0")
+    env.clock.advance(seconds=2)
+    assert login_from(env, "10.2.0.99") == 200
 
 
 def test_lockout_duration_comes_from_settings(make_env: EnvFactory) -> None:
@@ -324,6 +393,80 @@ def test_lockout_duration_comes_from_settings(make_env: EnvFactory) -> None:
     assert env.login(PASSWORD).status_code == 429
     env.clock.advance(minutes=3)
     assert env.login(PASSWORD).status_code == 200
+
+
+# ---- trusted proxies (D-15 5) ---------------------------------------------------------
+
+
+def fail_via(env: Env, proxy: str, forwarded: str | None) -> int:
+    """A wrong-password login from peer ``proxy`` with an optional X-Forwarded-For header."""
+    headers = {} if forwarded is None else {"X-Forwarded-For": forwarded}
+    return fail_login(env.client_from(proxy), **headers)
+
+
+def test_trusted_proxy_forwarded_address_is_the_client(make_env: EnvFactory) -> None:
+    """D-15 (5b): counting uses the forwarded address; two addresses are two clients."""
+    env = make_env(login=False, trusted_proxies=["10.0.0.5"])
+    for _ in range(5):
+        assert fail_via(env, "10.0.0.5", "203.0.113.9") == 401
+    assert fail_via(env, "10.0.0.5", "203.0.113.9") == 429
+    assert fail_via(env, "10.0.0.5", "203.0.113.10") == 401  # a different client
+
+
+def test_the_proxy_itself_is_not_locked_by_its_users_failures(make_env: EnvFactory) -> None:
+    """D-15 (5b): the admin behind the same proxy can still log in."""
+    env = make_env(login=False, trusted_proxies=["10.0.0.5"])
+    for _ in range(6):
+        fail_via(env, "10.0.0.5", "203.0.113.9")
+    admin = env.client_from("10.0.0.5")
+    response = admin.post(
+        "/auth/login", json={"password": PASSWORD}, headers={"X-Forwarded-For": "198.51.100.1"}
+    )
+    assert response.status_code == 200
+
+
+def test_rightmost_untrusted_address_in_the_chain_is_used(make_env: EnvFactory) -> None:
+    """D-15 (5c)."""
+    env = make_env(login=False, trusted_proxies=["10.0.0.5", "10.0.0.6"])
+    for _ in range(5):
+        assert fail_via(env, "10.0.0.5", "1.1.1.1, 203.0.113.9") == 401
+    # same right-most client, different left part and an extra trusted hop on the right
+    assert fail_via(env, "10.0.0.5", "2.2.2.2, 203.0.113.9") == 429
+    assert fail_via(env, "10.0.0.5", "203.0.113.9, 10.0.0.6") == 429
+    assert fail_via(env, "10.0.0.5", "1.1.1.1, 203.0.113.10") == 401
+
+
+def test_cidr_entries_in_trusted_proxies_match_peers(make_env: EnvFactory) -> None:
+    """D-15 (5d): 10.0.0.0/8 trusts a peer like 10.1.2.3."""
+    env = make_env(login=False, trusted_proxies=["10.0.0.0/8"])
+    for _ in range(5):
+        assert fail_via(env, "10.1.2.3", "203.0.113.9") == 401
+    assert fail_via(env, "10.7.7.7", "203.0.113.9") == 429  # other proxy, same real client
+
+
+def test_untrusted_peer_outside_the_cidr_gets_no_forwarding(make_env: EnvFactory) -> None:
+    """D-15 (5a, 5d)."""
+    env = make_env(login=False, trusted_proxies=["10.0.0.0/8"])
+    for number in range(5):
+        assert fail_via(env, "192.0.2.1", f"203.0.113.{number}") == 401
+    assert fail_via(env, "192.0.2.1", "203.0.113.200") == 429
+
+
+@pytest.mark.parametrize("bad", ["not-an-ip", "", "999.1.1.1", "1.1.1.1, garbage", "::::"])
+def test_invalid_forwarded_value_falls_back_to_the_peer_address(
+    make_env: EnvFactory, bad: str
+) -> None:
+    """D-15 (5e): no crash; counted against the proxy's own address."""
+    env = make_env(login=False, trusted_proxies=["10.0.0.5"])
+    for _ in range(5):
+        assert fail_via(env, "10.0.0.5", bad) == 401
+    assert fail_via(env, "10.0.0.5", None) == 429
+
+
+def test_default_is_no_trusted_proxy(make_env: EnvFactory) -> None:
+    """D-15 (5a)."""
+    env = make_env(login=False)
+    assert env.settings.trusted_proxies == []
 
 
 # ---- edge -----------------------------------------------------------------------------

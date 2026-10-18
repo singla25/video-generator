@@ -8,6 +8,8 @@
 
 | # | When | What | Options | Choice | Why |
 |---|------|------|---------|--------|-----|
+| DD-1 | 2026-10-19 | Placeholder product name + logo (M3 F2 needs them) | "VidGen Studio" · "Samvad Studio" · "VoiceFrame" | **VidGen Studio** + `docs/design/brand/logo.svg` (emerald square, play triangle, lime sound wave, Plus Jakarta Sans wordmark) | Neutral, matches the package name `vidgen`, no political or third-party connotation; colours come from DESIGN-NOTES; original artwork (not derived from TrustVest). Admin may replace it; only 2 files change. |
+| DD-2 | 2026-10-19 | F0 (Node.js) for M3 | Install · use existing | **Use the existing Node v26.12.0** at /opt/homebrew/bin/node; no install needed | Already present; F0 counts as satisfied. If any approved npm package doesn't support Node 26, frontend-dev pins an LTS via `engines` and reports it. |
 
 ## Waiting for Admin
 

@@ -362,6 +362,26 @@ def test_an_existing_folder_name_gets_a_numeric_suffix(env: Env) -> None:
     assert start(env, third, key="k-third").json()["folder_name"] == "2026-10-18-3-3"
 
 
+def test_a_folder_that_already_exists_in_storage_gets_a_suffix_and_stays_untouched(
+    env: Env,
+) -> None:
+    """TT-AC11-P3 (R6.2): no batch owns the folder, but files are already there."""
+    env.storage.files["2026-10-18-3/stray.txt"] = b"do not touch"
+    batch_id = new_batch(env, people(3))
+    approve_preview(env, batch_id)
+    assert start(env, batch_id).json()["folder_name"] == "2026-10-18-3-2"
+    assert env.storage.files["2026-10-18-3/stray.txt"] == b"do not touch"
+
+
+def test_an_existing_custom_folder_in_storage_also_gets_a_suffix(env: Env) -> None:
+    """TT-AC11-P3 (R6.2)."""
+    env.storage.files["Ward 12/old.mp4"] = b"old"
+    batch_id = new_batch(env, people(2))
+    approve_preview(env, batch_id)
+    assert start(env, batch_id, folder="Ward 12").json()["folder_name"] == "Ward 12-2"
+    assert env.storage.files["Ward 12/old.mp4"] == b"old"
+
+
 def test_same_custom_folder_used_twice_gets_a_suffix(env: Env) -> None:
     """TT-AC11-P3."""
     names = []

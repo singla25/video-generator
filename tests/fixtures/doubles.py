@@ -79,6 +79,10 @@ class InMemoryStorage:
         """Return True if the key exists."""
         return key in self.files
 
+    def folder_exists(self, folder: str) -> bool:
+        """Return True if any stored file lives under ``folder`` (T12 adds this to the port)."""
+        return any(key.startswith(folder + "/") for key in self.files)
+
 
 class FakeJobQueue:
     """JobQueue double: records what would be handed to the workers."""

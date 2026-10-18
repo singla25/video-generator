@@ -34,7 +34,7 @@ def check(
 
 @pytest.mark.parametrize(
     "name",
-    [n.LATIN_NAME, n.DEVANAGARI_NAME, n.PUNCTUATED_NAME, n.TITLED_MIXED_NAME, n.ACCENTED_NAME],
+    [n.LATIN_NAME, n.DEVANAGARI_NAME, n.PUNCTUATED_NAME, n.TITLED_MIXED_NAME],
 )
 def test_valid_names_are_accepted(name: str) -> None:
     """TT-AC3-P1, P2, P3, P4."""
@@ -120,6 +120,12 @@ def test_duplicate_fault_is_listed_last_with_other_faults() -> None:
         FailureCode.INVALID_ROW_BAD_CHARACTERS,
         FailureCode.DUPLICATE_ID,
     )
+
+
+@pytest.mark.parametrize("name", [n.ACCENTED_NAME, "\u00fcber", "Mu\u00f1oz", "Se\u00e1n"])
+def test_accented_latin_letters_are_rejected_per_d9(name: str) -> None:
+    """TT-AC3-N5 (D9): only ASCII A-Z/a-z, Devanagari, space and . - ' are allowed."""
+    assert check(name).code is FailureCode.INVALID_ROW_BAD_CHARACTERS
 
 
 # ---- edge -----------------------------------------------------------------------------

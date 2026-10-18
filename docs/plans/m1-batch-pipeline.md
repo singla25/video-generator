@@ -169,6 +169,17 @@ These close the gaps the tester found while drafting the test tree. They are bin
 | C2 | NA-2 key reuse | Same `Idempotency-Key` on a different batch → HTTP 409 `IDEMPOTENCY_KEY_CONFLICT` |
 | C3 | NA-3 STT matches | Several matches → highest confidence, then earliest. Threshold is inclusive (`confidence >= threshold` counts as found). |
 
+## Addendum D — domain contract choices from T3 (CEO accepted 2026-10-18)
+
+| # | Rule |
+|---|------|
+| D-1 | A slot shorter than 2 × crossfade → `SlotTooShortError`. A zero-length manual slot is rejected. |
+| D-2 | `plan_timing` only compresses longer audio (≤ 15 %); it never slows speech down. Shorter audio pads the pause (D16). |
+| D-3 | Folder names are NFC-normalised; Windows reserved names (`CON`, `NUL`, …) are rejected as `INVALID_FOLDER_NAME`. |
+| D-4 | Output file names: spaces and other unsafe characters → `_` (R6.3); the name is capped at 255 bytes. |
+| D-5 | Accented Latin letters (é, ñ…) are **invalid** name characters (D9: ASCII A–Z/a–z only). Corrected in T3 round 2. |
+| D-6 | The public domain API (module + function names) is the one defined by the T3 tests (`vidgen.domain.{codes,headers,validation,naming,status,timing,retry,stats,slot_match}`). |
+
 ## Admin approval
 - [x] Plan approved (includes ADR-001 + ADR-008) — 2026-10-18
 - [x] Dependencies, system tools and font approved — 2026-10-18 (Admin downloads the font)

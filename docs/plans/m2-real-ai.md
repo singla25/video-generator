@@ -45,6 +45,10 @@ Add the automatic quality gate Q1–Q6. Everything runs on one GPU worker, and t
 | R4 | GPU cost | Admin decides provider and budget; batch-oriented spot instances |
 | R5 | Transliteration accuracy (~59 % top-1 on named entities) | Spoken-name override + mandatory preview; PRONUNCIATION_UNCERTAIN flag on low confidence |
 
+## Carried over from M1
+- **Per-template pause (DD-7):** measure the pause after the name from word timestamps at template analysis and store it on the template (migration **0002**: additive, created by backend-dev, run by the Admin). M1 uses the `pause_s` config fallback.
+- Speech stretch: try `rubberband` on the GPU image (M1 build only has `atempo`).
+
 ## Waiting for Admin
 - GPU provider and budget (paid). No GPU work starts without it.
 - Use of the real `samples/` files on the GPU box (voter data stays on our own server, never with a third party).

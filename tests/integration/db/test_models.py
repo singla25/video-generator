@@ -27,6 +27,7 @@ EXPECTED_TABLES = {
     "batches",
     "batch_rows",
     "audit_log",
+    "login_attempts",
 }
 
 

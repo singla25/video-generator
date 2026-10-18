@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T7b
+- Fixed float window arithmetic (window_n) and the three metadata tests (generated_on/batch_id required). Added unit tests for graph.py, loudness.py, facts.py (100 % line+branch). Added test_complex_text_shaping_is_active_for_devanagari (fails until Pillow has raqm).
+
 ## 2026-10-18 — T7 round 2
 - Replaced filter-name checks (acrossfade, atempo) by behaviour: spoken part ends at slot start + plan.final_audio_s within crossfade + 20 ms, starts audible at slot start. Security test spies on Popen (any subprocess function). Label fixtures now need two fonts (NotoSansDevanagari-*.ttf, NotoSans-*.ttf); renderer signature PillowLabelRenderer(devanagari_font=, latin_font=, text=).
 

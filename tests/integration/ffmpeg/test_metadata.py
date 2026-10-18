@@ -32,8 +32,12 @@ def test_creator_date_and_batch_id_are_in_the_format_tags(render_clip: RenderFn)
 
 def test_values_come_from_the_arguments_not_from_defaults(render_clip: RenderFn) -> None:
     """TT-AC10-P4: two renders with different arguments give different tags."""
-    first = render_clip(metadata={"creator_entity": "Org One", "batch_id": "one"})
-    second = render_clip(metadata={"creator_entity": "Org Two", "batch_id": "two"})
+    first = render_clip(
+        metadata={"creator_entity": "Org One", "generated_on": "2026-10-18", "batch_id": "one"}
+    )
+    second = render_clip(
+        metadata={"creator_entity": "Org Two", "generated_on": "2026-10-18", "batch_id": "two"}
+    )
     assert format_tags(first.out)["creator_entity"] == "Org One"
     assert format_tags(second.out)["creator_entity"] == "Org Two"
 
@@ -41,7 +45,9 @@ def test_values_come_from_the_arguments_not_from_defaults(render_clip: RenderFn)
 def test_unicode_creator_entity_round_trips(render_clip: RenderFn) -> None:
     """TT-AC10-E4: Devanagari, emoji, RTL and punctuation survive."""
     name = "\u0938\u0902\u0938\u094d\u0925\u093e \u062d\u0645\u0644\u0629 \U0001f680 a=b; c"
-    r = render_clip(metadata={"creator_entity": name, "batch_id": "b1"})
+    r = render_clip(
+        metadata={"creator_entity": name, "generated_on": "2026-10-18", "batch_id": "b1"}
+    )
     assert format_tags(r.out)["creator_entity"] == name
 
 
@@ -51,7 +57,9 @@ def test_very_long_creator_entity_never_leaves_a_broken_file(
     """TT-AC10-E5: either truncated/accepted with a valid file, or rejected with no output."""
     long_name = "x" * 5000
     try:
-        r = render_clip(metadata={"creator_entity": long_name, "batch_id": "b1"})
+        r = render_clip(
+            metadata={"creator_entity": long_name, "generated_on": "2026-10-18", "batch_id": "b1"}
+        )
     except DomainError:
         assert not list(tmp_path.glob("*/out.mp4"))
         return

@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageFont, features
 
 from tests.fixtures.analysis import pixel_mean
 from tests.fixtures.assets import devanagari_font, latin_font
@@ -176,3 +176,16 @@ def test_missing_latin_font_gives_a_clear_typed_error(tmp_path: Path) -> None:
             devanagari_font=devanagari_font(), latin_font=tmp_path / "no_latin.ttf"
         ).render_label(320, 24, tmp_path / "l.png")
     assert "font" in info.value.message.lower()
+
+
+def test_complex_text_shaping_is_active_for_devanagari() -> None:
+    """TT-AC10-P3 (risk R2): Pillow must have raqm, so conjuncts are shaped, not side by side.
+
+    Expected to FAIL on machines where Pillow was built without libraqm: unshaped Devanagari
+    shows broken conjuncts and misplaced vowel signs on the legal label.
+    """
+    assert features.check("raqm"), "Pillow has no raqm (libraqm); Devanagari would be unshaped"
+    font = ImageFont.truetype(str(devanagari_font()), 100)
+    conjunct = font.getlength("क्ष")  # KA + VIRAMA + SSA
+    parts = font.getlength("क") + font.getlength("ष")
+    assert conjunct < parts

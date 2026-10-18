@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from tests.fixtures.analysis import (
+    PCM_RATE,
     active_end,
     decode_pcm,
     diff_dbfs,
@@ -16,6 +17,7 @@ from tests.fixtures.analysis import (
     max_step,
     rms_dbfs,
     window,
+    window_n,
 )
 from tests.fixtures.templates import make_label_png, make_template, make_tone_wav
 from tests.integration.ffmpeg.conftest import Rendered, RenderFn
@@ -44,10 +46,8 @@ def outside_slot_diffs(r: Rendered) -> list[float]:
     tail_o = tail_t + r.plan.extension_s
     tail_end_t = r.template_seconds - 0.1
     if tail_end_t - tail_t > 0.15:
-        length = tail_end_t - tail_t
-        diffs.append(
-            diff_dbfs(window(template, tail_t, tail_end_t), window(out, tail_o, tail_o + length))
-        )
+        count = round((tail_end_t - tail_t) * PCM_RATE)
+        diffs.append(diff_dbfs(window_n(template, tail_t, count), window_n(out, tail_o, count)))
     return diffs
 
 

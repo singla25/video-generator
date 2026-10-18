@@ -183,3 +183,9 @@ def active_end(
             return at
         at += step
     return limit_s
+
+
+def window_n(samples: array.array[int], start_s: float, count: int) -> list[int]:
+    """Exactly ``count`` samples starting at ``start_s`` (index rounded, so lengths are exact)."""
+    first = round(start_s * PCM_RATE)
+    return list(samples[first : first + count])

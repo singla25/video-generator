@@ -2,6 +2,11 @@
 
 Newest first. One entry per task.
 
+## 2026-10-18 — T5 (RED: sheets, video probe, storage, cipher)
+- Added tests/integration/ingest/{test_sheet_reader,test_sheet_scale,test_video_probe}.py, tests/integration/storage/test_local_storage.py, tests/unit/infra/test_cipher.py; fixtures tests/fixtures/{media,sheets}.py (ffmpeg lavfi + openpyxl generators, code only).
+- Contract modules: infrastructure.sheets.reader, ffmpeg.probe, storage.local, crypto.aesgcm. All fail with ModuleNotFoundError (RED); slice-A domain tests still 334 passing.
+- Not covered here: odd-dimension video (ffmpeg lavfi rounds to even sizes) and sheet max-rows (rule not specified).
+
 ## 2026-10-18 — T3 (RED: domain unit tests)
 - Added tests/unit/domain (13 files, 166 test functions) + tests/fixtures/names.py. Branch feat/m1-domain.
 - Contract modules: headers, codes, validation, naming, status, timing, retry, stats, slot_match. All fail with ModuleNotFoundError (RED).

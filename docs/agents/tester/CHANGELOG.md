@@ -2,6 +2,13 @@
 
 Newest first. One entry per task.
 
+## 2026-10-18 — T7 (RED: FFmpeg video engine + label renderer)
+- Added tests/integration/ffmpeg/{conftest,test_output_format,test_audio_splice,test_label_overlay,test_metadata,test_encoder_errors}.py and tests/unit/infra/test_label_renderer.py; fixtures tests/fixtures/{templates,analysis,spies,assets}.py.
+- Contract modules: infrastructure.ffmpeg.encoder (FfmpegVideoEncoder), infrastructure.ffmpeg.label (PillowLabelRenderer, label_band_height, LABEL_TEXT). Fail on ModuleNotFoundError (RED); 478 earlier tests still pass.
+- Verified the test bodies run to the first adapter call using throw-away stub modules (not committed). Thresholds (loudness, click step, frame diffs) are not yet validated against a real implementation.
+- Font tests fail with a clear message until the Admin places the .ttf in backend/vidgen/assets/fonts/.
+- Also re-escaped non-ASCII literals in four T5 test files (cosmetic, tests unchanged).
+
 ## 2026-10-18 — T5 (RED: sheets, video probe, storage, cipher)
 - Added tests/integration/ingest/{test_sheet_reader,test_sheet_scale,test_video_probe}.py, tests/integration/storage/test_local_storage.py, tests/unit/infra/test_cipher.py; fixtures tests/fixtures/{media,sheets}.py (ffmpeg lavfi + openpyxl generators, code only).
 - Contract modules: infrastructure.sheets.reader, ffmpeg.probe, storage.local, crypto.aesgcm. All fail with ModuleNotFoundError (RED); slice-A domain tests still 334 passing.

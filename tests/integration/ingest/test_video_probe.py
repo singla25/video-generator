@@ -203,7 +203,7 @@ def test_instruction_like_metadata_is_treated_as_data(tmp_path: Path) -> None:
 
 def test_unicode_and_spaced_file_names_are_handled(good_mp4: Path, tmp_path: Path) -> None:
     """TT-AC1-E6: paths are passed as argument-list items, never through a shell."""
-    weird = tmp_path / "वीडियो $(x) ; 'q' \U0001f600.mp4"
+    weird = tmp_path / "\u0935\u0940\u0921\u093f\u092f\u094b $(x) ; 'q' \U0001f600.mp4"
     weird.write_bytes(good_mp4.read_bytes())
     assert probe_with().probe(weird).video_codec == "h264"
 

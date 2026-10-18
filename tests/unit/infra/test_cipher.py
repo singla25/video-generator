@@ -11,7 +11,7 @@ import pytest
 from vidgen.domain.naming import id_key
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher, DecryptionError
 
-DEV_NAME = "राजेश कुमार"
+DEV_NAME = "\u0930\u093e\u091c\u0947\u0936 \u0915\u0941\u092e\u093e\u0930"
 
 
 def new_key() -> bytes:
@@ -42,7 +42,15 @@ def cipher(keys: dict[str, bytes], index_key: bytes) -> AesGcmCipher:
 
 @pytest.mark.parametrize(
     "text",
-    ["Rajesh Kumar", DEV_NAME, "RJ/12/097/183866", "A" * 40, "x", "a\x00b", "Smt. सुनीता"],
+    [
+        "Rajesh Kumar",
+        DEV_NAME,
+        "RJ/12/097/183866",
+        "A" * 40,
+        "x",
+        "a\x00b",
+        "Smt. \u0938\u0941\u0928\u0940\u0924\u093e",
+    ],
 )
 def test_encrypt_decrypt_round_trip(cipher: AesGcmCipher, text: str) -> None:
     """TT-AC17-P1, E3."""

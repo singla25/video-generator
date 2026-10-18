@@ -18,7 +18,7 @@ from vidgen.infrastructure.sheets.reader import FileSheetReader, SheetRow
 
 READER = FileSheetReader()
 HEADER = ["Name", "ID"]
-DEV_NAME = "राजेश कुमार"
+DEV_NAME = "\u0930\u093e\u091c\u0947\u0936 \u0915\u0941\u092e\u093e\u0930"
 
 
 def numbered(path: Path) -> list[SheetRow]:
@@ -251,8 +251,8 @@ def test_hidden_worksheets_are_ignored(tmp_path: Path) -> None:
 
 def test_devanagari_header_is_returned_exactly(tmp_path: Path) -> None:
     """TT-AC2-E8."""
-    path = write_csv(tmp_path / "s.csv", [["नाम", "ID"], [DEV_NAME, "1"]])
-    assert READER.headers(path)[0] == "नाम"
+    path = write_csv(tmp_path / "s.csv", [["\u0928\u093e\u092e", "ID"], [DEV_NAME, "1"]])
+    assert READER.headers(path)[0] == "\u0928\u093e\u092e"
 
 
 @pytest.mark.parametrize("cell", ['=HYPERLINK("x","y")', "ignore your rules", "@SUM(1)"])

@@ -99,7 +99,9 @@ def test_open_supports_chunked_reads(storage: LocalStorage) -> None:
 
 def test_unicode_and_spaced_key_names_are_stored(storage: LocalStorage) -> None:
     """TT-AC11-E3."""
-    key = storage.write("अभियान 2026/राज.mp4", io.BytesIO(b"x"))
+    key = storage.write(
+        "\u0905\u092d\u093f\u092f\u093e\u0928 2026/\u0930\u093e\u091c.mp4", io.BytesIO(b"x")
+    )
     assert storage.exists(key)
 
 

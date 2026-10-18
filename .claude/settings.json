@@ -1,0 +1,67 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*credentials*)",
+      "Read(**/*secret*)",
+      "Edit(./.claude/**)",
+      "Edit(./CLAUDE.md)",
+      "Write(./.claude/**)",
+      "Write(./CLAUDE.md)",
+      "Bash(rm -rf:*)",
+      "Bash(rm -r:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git branch -D:*)",
+      "Bash(sudo:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)"
+    ],
+    "ask": [
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout main:*)",
+      "Bash(alembic:*)",
+      "Bash(pip install:*)",
+      "Bash(uv add:*)",
+      "Bash(poetry add:*)",
+      "Bash(npm install:*)",
+      "Bash(git mv:*)",
+      "Bash(rm:*)"
+    ],
+    "allow": [
+      "Bash(pytest:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(mypy:*)",
+      "Bash(python scripts/build_docs.py)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git switch -c:*)",
+      "Bash(git worktree add:*)",
+      "Bash(git worktree list)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Write|Edit|MultiEdit|NotebookEdit|Glob|Grep|WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

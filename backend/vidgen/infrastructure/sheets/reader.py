@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 from collections.abc import Callable, Generator
 from contextlib import closing
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from zipfile import BadZipFile
 
 from openpyxl import load_workbook
@@ -135,3 +135,10 @@ class FileSheetReader:
             raise _unsupported() from exc
         with closing(workbook):
             return str(_first_visible_sheet(workbook).title)
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from vidgen.ports import SheetReader
+
+    def _satisfies_port(adapter: FileSheetReader) -> SheetReader:
+        return adapter

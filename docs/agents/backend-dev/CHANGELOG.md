@@ -2,6 +2,16 @@
 
 Newest first. One entry per task.
 
+## 2026-10-18 — T8 (FFmpeg engine + label)
+- Added `infrastructure/ffmpeg/{encoder,graph,facts,loudness,runner,label}.py`. `graph.py` and `loudness.py` are pure builders (TimingPlan to filter graph). The engine executes the plan only.
+- Speech stretch uses `atempo` (this ffmpeg build has no `rubberband`). Crossfade uses `acrossfade` (qsin, configured ms) at both joints. Loudness: ebur128 on template slot and new audio, then `volume` gain (clamped to 24 dB).
+- Extension (D-11): the slot's video frames are slowed with `setpts`, then constant fps; label PNG overlaid on every frame; template metadata dropped, our keys written with `use_metadata_tags`.
+- Safety: argument lists, no pipes (temp files) so a killed tool cannot hang us, timeout gives RENDER_TIMEOUT, temp output beside the target then `os.link` (never overwrites).
+- Label: Latin and Devanagari runs use their own fonts. **Pillow here has no Raqm**, so Devanagari is NOT correctly shaped (conjuncts and vowel-sign order). Needs a Pillow build with libraqm before M2 or production use.
+- Ports: `VideoEncoder.render` follows the T7 contract. Adapter-to-port checks now live in `if TYPE_CHECKING` blocks in each adapter; `conformance.py` removed.
+- Tests: 596 pass, 4 fail (test problems, reported to CEO); slow 4 pass. Pure-helper gaps (need tester unit tests): graph.py lines 142 and branches 92, 110, 115; loudness.py lines 16, 24; facts.py error paths.
+- Open: the 4 failing tests; Raqm.
+
 ## 2026-10-18 — T6 (ingest adapters)
 - Added `infrastructure/sheets/reader.py` (FileSheetReader), `ffmpeg/probe.py` (FfprobeVideoProbe), `storage/local.py` (LocalStorage), `crypto/aesgcm.py` (AesGcmCipher), `conformance.py` (mypy port checks).
 - Ports: new `VideoProbe`; `probe` removed from `VideoEncoder`; `SheetReader` gained `numbered_rows` and `sheet_name`; data types `SheetRow`, `VideoInfo`, `VideoLimits` live in `ports/models.py` (adapters re-export them).

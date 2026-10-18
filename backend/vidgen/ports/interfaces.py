@@ -5,12 +5,13 @@ Signatures are sketches from the M1 plan; later slices may refine them.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import BinaryIO, Protocol
 from uuid import UUID
 
+from vidgen.domain.timing import TimingPlan
 from vidgen.domain.values import TextRegion, Word
 from vidgen.ports.models import SheetRow, VideoInfo
 
@@ -87,11 +88,12 @@ class VideoEncoder(Protocol):
         template: Path,
         new_slot_audio: Path,
         slot: tuple[float, float],
-        label: Path,
-        metadata: dict[str, str],
+        plan: TimingPlan,
+        label_png: Path,
+        metadata: Mapping[str, str],
         out: Path,
     ) -> None:
-        """Render the output video for one row."""
+        """Splice ``new_slot_audio`` into the slot following ``plan`` and write ``out``."""
         ...
 
 

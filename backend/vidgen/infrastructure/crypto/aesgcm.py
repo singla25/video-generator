@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import os
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -92,3 +93,10 @@ class AesGcmCipher:
         except UnicodeDecodeError as exc:
             raise DecryptionError from exc
         return key_id, blob[id_end : id_end + NONCE_BYTES], blob[id_end + NONCE_BYTES :]
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from vidgen.ports import Cipher
+
+    def _satisfies_port(adapter: AesGcmCipher) -> Cipher:
+        return adapter

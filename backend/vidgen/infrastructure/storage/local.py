@@ -7,7 +7,7 @@ import os
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
-from typing import BinaryIO
+from typing import TYPE_CHECKING, BinaryIO
 
 from vidgen.domain.codes import DomainError, FailureCode
 
@@ -110,3 +110,10 @@ class LocalStorage:
 def _suffixed(path: Path, number: int) -> Path:
     """``a.mp4`` -> ``a-<number>.mp4``."""
     return path.with_name(f"{path.stem}-{number}{path.suffix}")
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from vidgen.ports import Storage
+
+    def _satisfies_port(adapter: LocalStorage) -> Storage:
+        return adapter

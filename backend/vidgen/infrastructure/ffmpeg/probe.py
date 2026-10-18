@@ -10,7 +10,7 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.ports.models import VideoInfo, VideoLimits
@@ -141,3 +141,10 @@ class FfprobeVideoProbe:
             duration_s=duration,
             size_bytes=size,
         )
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from vidgen.ports import VideoProbe
+
+    def _satisfies_port(adapter: FfprobeVideoProbe) -> VideoProbe:
+        return adapter

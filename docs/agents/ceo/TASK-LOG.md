@@ -19,7 +19,7 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | — | Merge gate 2 (slices A + B) | CEO | — | ✅ Merged `c3aa763`, 649 pass on main | Yes, 2026-10-19 | ✅ |
 | T9 | RED: DB models/repos, auth, templates + consent + slot, audit | tester | sonnet | ✅ Done & CEO-reviewed after 2 rounds (target word per template D-13; lockout D-15 → per-client + global throttle + sessions unaffected + alert + trusted proxies) @ ab6bd94. Interrupted once by usage limit and resumed. Dev DB verified untouched | Yes, 2026-10-19 | — |
 | T10 | GREEN: models, migration 0001 (created, not run), repos, auth, template API, audit | backend-dev | sonnet | Round 1 done @ 2bda071 (837 pass / 1 tester defect; coverage 97 %); CEO review → D-17 fixes (DB-persisted login guard, partial unique index, finished_at index). TDD: T10b tests first, then backend fix | Yes, 2026-10-19 | — |
-| T10b | RED: fix alert test; login-guard persistence; DB duplicate guard; migration up/down/up test (D-14); clock coverage | tester | sonnet | In progress | Yes (within T10 scope; migration test approved 2026-10-19) | — |
+| T10b | RED: fix alert test; login-guard persistence; DB duplicate guard; migration up/down/up test (D-14); clock coverage | tester | sonnet | ✅ Done & CEO-reviewed @ a9a40af — 15 expected failures, 856 pass; migration test uses `vidgen_migration_test` with a `_test` name guard; dev DB verified empty | Yes (within T10 scope; migration test approved 2026-10-19) | — |
 | T11 | RED: batch API | tester | sonnet | Waiting for T10 | Yes, 2026-10-19 | — |
 | T12 | GREEN: batch services + endpoints | backend-dev | sonnet | Waiting for T11 | Yes, 2026-10-19 | — |
 | T13–T16 | See plan | tester / backend-dev / CEO | sonnet | Planned | — | — |

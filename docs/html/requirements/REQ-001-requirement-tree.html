@@ -1,0 +1,82 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>REQ-001 — Confirmed requirement tree</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>REQ-001 — Confirmed requirement tree</h1>
+<p><strong>Status:</strong> Confirmed by Admin · <strong>Date:</strong> 2026-10-18 · <strong>Source brief:</strong> <code>REQ-001-personalized-video-batch.md</code></p>
+<h2>Discovery decisions (Admin answers, 2026-10-18)</h2>
+<table><tr><th>#</th><th>Question</th><th>Decision</th></tr><tr><td>D1</td><td>Voice cloning + lip sync</td><td>Self-hosted open-source models; commercial-use licence verified per model</td></tr><tr><td>D2</td><td>Hardware</td><td>Develop on Mac with fake/CPU models; real renders on a rented CUDA cloud GPU</td></tr><tr><td>D3</td><td>Spoken name form</td><td>Full name as written; optional "Spoken name" column overrides per row</td></tr><tr><td>D4</td><td>Consent capture (C1)</td><td>Signed consent form upload (PDF/image) + confirmation tick</td></tr><tr><td>D5</td><td>Delivery slicing</td><td>3 milestones: M1 product flow on fake models · M2 real AI on GPU + quality gate · M3 dashboard UI</td></tr><tr><td>D6</td><td>Users</td><td>Single admin login; data model carries <code>campaign_id</code> for later multi-user</td></tr><tr><td>D7</td><td>Retention</td><td>Configurable auto-delete, default 30 days; audit log kept separately; manual batch delete any time</td></tr><tr><td>D8</td><td>Titles (Smt., Dr., Shri…)</td><td>Kept and spoken as written; change via "Spoken name" column</td></tr><tr><td>D9</td><td>Allowed name characters</td><td>Latin letters, Devanagari, space, <code>.</code> <code>-</code> <code>'</code>; max 40 chars (configurable)</td></tr><tr><td>D10</td><td>Preview approval</td><td>Required per batch before start; recorded in audit log</td></tr><tr><td>D11</td><td>Automatic retries</td><td>1 automatic retry for crash / timeout / storage errors only; quality failures need manual retry</td></tr><tr><td>D12</td><td>Audio AI disclosure</td><td>M1: visual label + metadata. M2: configurable spoken disclosure. Admin confirms legal need with counsel</td></tr><tr><td>D13</td><td>Creator entity (C3)</td><td>Configurable setting (later per campaign); real value supplied by Admin at configuration</td></tr><tr><td>D14</td><td>Python version</td><td>Pin Python 3.11 via ADR (approved together with the plan)</td></tr><tr><td>D15</td><td>Frontend</td><td>Planned now, scheduled after backend + tests (M3); design reference = TrustVest screenshots in <code>docs/design/reference/</code></td></tr><tr><td>D16</td><td>Name longer/shorter than slot</td><td>Time-stretch ±15 % + absorb in the pause after "ji" first; if still short, the video grows by the difference (max +1.5 s, configurable). Duration rule = template + delta ±50 ms. Beyond max → row fails <code>NAME_TOO_LONG_TO_SPEAK</code>. Shorter names pad the pause.</td></tr><tr><td>D17</td><td>Root project files</td><td><code>backend-dev</code> may edit exactly <code>pyproject.toml</code>, <code>uv.lock</code>, <code>.python-version</code>, <code>docker-compose.yml</code>, only when its task brief says so; CEO reviews every change</td></tr></table>
+<p><strong>Failure codes added to R8:</strong> <code>INVALID_ROW_NAME_TOO_LONG</code>, <code>INVALID_ROW_BAD_CHARACTERS</code> (validation), <code>NAME_TOO_LONG_TO_SPEAK</code> (D16). Row status <code>CANCELLED</code> added for cancelled batches.</p>
+<h2>Requirement tree</h2>
+<pre><code>Personalized Video Batch Generator
+├── Functional
+│   ├── R1 Upload &amp; validation                                  [M1]
+│   │   ├── R1.1 Video MP4/MOV, H.264/H.265, ≤500 MB, ≤5 min (configurable); real type check, not extension
+│   │   ├── R1.2 .xlsx + .csv; headers case-insensitive + trimmed
+│   │   ├── R1.3 Column mapping: Name, ID, optional &quot;Spoken name&quot;
+│   │   ├── R1.4 Row checks: empty name/ID, duplicate ID (first kept), &gt;40 chars,
+│   │   │        chars outside Latin/Devanagari/space . - &#x27;
+│   │   └── R1.5 Invalid rows → Skipped with reason, never rendered
+│   ├── R2 Template analysis
+│   │   ├── R2.1 STT with word timestamps → locate the name slot      [port M1 fake, real M2]
+│   │   ├── R2.3 Reusable Template profile (slot, timings, face region, consent)  [M1]
+│   │   └── R2.4 Manual slot marking when confidence is low      [API M1, timeline UI M3]
+│   ├── R3 Voice
+│   │   ├── R3.1 Cloned voice of the speaker                    [port M1 fake, real M2]
+│   │   ├── R3.2 Transliteration to Hindi; &quot;Spoken name&quot; column overrides it
+│   │   ├── R3.3 Full name as written, titles kept; ID never spoken
+│   │   ├── R3.4 Splice only the slot; 20–50 ms crossfade; loudness ±1 LU
+│   │   └── R3.5 Time-stretch ±15 %, then pause adjustment; music continuous
+│   ├── R4 Lip sync: mouth region of the slot only, 3–5 frame blend,
+│   │        low quality → LIPSYNC_LOW_QUALITY                  [port M1 fake, real M2]
+│   ├── R5 On-screen text: TextRenderer port only (no implementation)
+│   ├── R6 Output                                               [M1]
+│   │   ├── R6.1 Same resolution / fps / codecs / duration = template + name delta ±50 ms (D16)
+│   │   ├── R6.2 Folder: custom or YYYY-MM-DD-&lt;valid rows&gt;; &quot;-2&quot; suffix; never overwrite;
+│   │   │        path traversal rejected
+│   │   ├── R6.3 &lt;ID&gt;.mp4, unsafe chars → &quot;_&quot;
+│   │   └── R6.4 manifest.csv (one line per input row)
+│   ├── R7 Dashboard                                            [API M1, UI M3]
+│   │   ├── R7.1–7.6 KPI cards, live progress/ETA (polling 2 s), failure chart,
+│   │   │            rows table, history, charts
+│   │   └── R7.7 Pause / resume / cancel / retry failed / ZIP / failures CSV
+│   ├── R8 Fixed failure codes with plain-language messages
+│   └── Flow: upload → validate → confirm slot → preview row 1 (approval REQUIRED
+│            per batch, audited) → folder → render → review
+├── Compliance (on by default, fixed)
+│   ├── C1 Consent: signed-form upload (PDF/image) + confirmation tick; else CONSENT_MISSING
+│   ├── C2 &quot;AI-Generated / एआई-जनित&quot; label, top ≥10 %, every frame [M1];
+│   │      configurable spoken disclosure [M2]
+│   ├── C3 MP4 metadata: creator entity (setting), date, batch ID
+│   ├── C4 Audit log (uploads, approvals, generations)
+│   ├── C5 Names/IDs encrypted at rest; never in logs; single admin login;
+│   │      auto-delete after N days (default 30); delete a batch on demand
+│   └── C6 Content lock: only the name slot can change
+├── Non-functional
+│   ├── Rendering never in a web request; queue + workers; idempotent row jobs
+│   ├── Retries: 1 automatic retry for crash / timeout / storage errors only;
+│   │            quality failures → manual retry
+│   ├── Streaming I/O; temp files cleaned on success and failure
+│   ├── Upload validation &lt; 3 s; first preview &lt; 2 min (GPU); ≥ 100 videos/h per GPU (M2)
+│   ├── 1–1,000 rows now, designed for 100k+ (campaign_id in the data model)
+│   ├── Full pipeline runs on Mac CPU with fake models (M1); CUDA cloud GPU for real renders
+│   ├── Structured logs without personal data; per-stage timings; queue-depth metric
+│   └── Coverage ≥ 85 % on new code, 100 % on pipeline logic; synthetic test data only
+├── Constraints
+│   ├── Python 3.11 (ADR), self-hosted models only, commercial-use licences verified
+│   ├── Voter data never sent to third parties
+│   └── Frontend matches the TrustVest reference; built after backend + tests (M3)
+├── Out of scope
+│   ├── WhatsApp/SMS, payments, mobile app, multi-language templates
+│   ├── Editing any word other than the voter name
+│   ├── R2.2 OCR detection + R5 text replacement (ports only)
+│   └── Multi-user roles (data model ready, not built)
+└── Open questions
+    └── (none)</code></pre></div></body></html>

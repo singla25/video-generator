@@ -1,0 +1,22 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>ADR-003 — Database: PostgreSQL everywhere, SQLAlchemy 2 + Alembic</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>ADR-003 — Database: PostgreSQL everywhere, SQLAlchemy 2 + Alembic</h1>
+<h2>Status</h2>
+<p>Accepted (Admin, 2026-10-18)</p>
+<h2>Context</h2>
+<p>Batches, rows, templates, audit log and retention data need a durable store that is safe under many concurrent workers. Dev, tests and prod should behave the same way.</p>
+<h2>Options</h2>
+<table><tr><th>Option</th><th>Pros</th><th>Cons</th><th>Cost</th><th>Scales?</th></tr><tr><td><strong>Postgres in dev/tests/prod (Docker), SQLAlchemy 2 + Alembic</strong></td><td>Identical behaviour everywhere; row locking (<code>SELECT … FOR UPDATE SKIP LOCKED</code>)</td><td>Needs Docker on the Mac</td><td>Low–medium</td><td>Yes</td></tr><tr><td>SQLite dev/tests, Postgres prod</td><td>Nothing to install</td><td>Dialect and concurrency differences show up only in prod</td><td>Low</td><td>Prod only</td></tr></table>
+<h2>Decision</h2>
+<p><strong>PostgreSQL 16</strong> via <code>docker-compose.yml</code> for dev and tests, <strong>SQLAlchemy 2.0</strong> (typed ORM) with <strong>psycopg 3</strong>, and <strong>Alembic</strong> migrations in <code>backend/migrations/</code>. Tests use a separate throwaway database and build the schema from the models. Migration files are reviewed by the CEO and <strong>run only by the Admin</strong> (<code>CLAUDE.md §2.3</code>).</p>
+<h2>Consequences</h2>
+<ul><li>Every table carries <code>campaign_id</code>, ready for multi-user (D6).</li><li>Docker Desktop becomes a dev prerequisite.</li><li>Schema changes always go through an Alembic migration plus Admin approval.</li></ul></div></body></html>

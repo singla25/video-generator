@@ -1,0 +1,34 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>ADR-008 — M1 architecture: ports-and-adapters with fake AI adapters</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>ADR-008 — M1 architecture: ports-and-adapters with fake AI adapters</h1>
+<h2>Status</h2>
+<p>Accepted (Admin, 2026-10-18, with plan <code>m1-batch-pipeline</code>)</p>
+<h2>Context</h2>
+<p>The real AI models (speech-to-text, transliteration, voice cloning, lip sync) need a GPU and a licence review (M2). The whole product flow must still be built and fully tested now, on a Mac CPU (D2, D5).</p>
+<h2>Options</h2>
+<table><tr><th>Option</th><th>Pros</th><th>Cons</th><th>Cost</th><th>Scales?</th></tr><tr><td><strong>Ports + deterministic fake adapters in M1, real adapters in M2</strong></td><td>Full flow testable on CPU today; M2 only swaps adapters</td><td>Fakes say nothing about real quality</td><td>Low</td><td>Yes</td></tr><tr><td>Wait for real models before building the product</td><td>Real quality from day one</td><td>Blocks everything on GPU and licence work</td><td>High</td><td>—</td></tr></table>
+<h2>Decision</h2>
+<p>Layering <code>api → services → domain ← infrastructure</code> (<code>CLAUDE.md §4</code>):</p>
+<pre><code>backend/vidgen/
+  domain/          pure rules: validation, naming, statuses, failure codes, timing math (no I/O)
+  ports/           Protocols: SpeechToText, Transliterator, VoiceCloner, LipSyncer, TextDetector,
+                   TextRenderer, VideoEncoder, QualityChecker, Storage, SheetReader, Cipher,
+                   repositories, Clock
+  services/        use cases: templates, batches, preview, render_row, analytics, retention, audit
+  infrastructure/  ffmpeg/, storage/ (local; S3 in M2), db/, crypto/, queue/ (Dramatiq), fakes/
+  api/             FastAPI routers, schemas, auth, error mapping
+  settings.py      pydantic-settings
+backend/migrations/  Alembic
+tests/  unit/ · integration/ · e2e/ · fixtures/ (synthetic media generated with ffmpeg)</code></pre>
+<p>Fakes are deterministic. The fake STT returns configured words and timestamps, the fake voice produces a tone whose length scales with the name, and the fake lip sync passes frames through unchanged. Adapters are chosen by a setting (<code>ai_backend = fake | real</code>).</p>
+<h2>Consequences</h2>
+<ul><li>M1 output videos are structurally correct (format, timing, label, metadata, manifest) but carry a placeholder voice.</li><li>M2 = new adapters + quality checks Q1–Q6, with no changes to services or API.</li></ul></div></body></html>

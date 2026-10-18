@@ -1,0 +1,22 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>ADR-007 — Excel/CSV parsing: openpyxl (read-only) + csv</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>ADR-007 — Excel/CSV parsing: openpyxl (read-only) + csv</h1>
+<h2>Status</h2>
+<p>Accepted (Admin, 2026-10-18)</p>
+<h2>Context</h2>
+<p>Sheets range from 10 to 100k+ rows. Validation must answer in &lt; 3 s for MVP sizes without loading everything into memory.</p>
+<h2>Options</h2>
+<table><tr><th>Option</th><th>Pros</th><th>Cons</th><th>Cost</th></tr><tr><td><strong>openpyxl read-only + stdlib csv</strong></td><td>Streams rows; light</td><td>A bit more code</td><td>Low</td></tr><tr><td>pandas</td><td>One-liners</td><td>Heavy; whole sheet in memory</td><td>Low</td></tr><tr><td>python-calamine</td><td>Fastest</td><td>Newer; Rust binary wheel</td><td>Low</td></tr></table>
+<h2>Decision</h2>
+<p><strong>openpyxl in <code>read_only</code> mode</strong> for <code>.xlsx</code> and <strong>stdlib <code>csv</code></strong> (UTF-8 with BOM handling) for <code>.csv</code>, both behind a single <code>SheetReader</code> port that yields normalised rows.</p>
+<h2>Consequences</h2>
+<ul><li><code>.xls</code> (old Excel) is not supported; users export to <code>.xlsx</code> or <code>.csv</code>.</li><li>Formulas are read as cached values only.</li></ul></div></body></html>

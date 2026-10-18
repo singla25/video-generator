@@ -1,0 +1,22 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>ADR-004 — Video engine: FFmpeg CLI behind the VideoEncoder port</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>ADR-004 — Video engine: FFmpeg CLI behind the VideoEncoder port</h1>
+<h2>Status</h2>
+<p>Accepted (Admin, 2026-10-18)</p>
+<h2>Context</h2>
+<p>M1 needs to probe uploads, splice audio with crossfades, normalise loudness, overlay the AI label, write metadata and re-encode, all while preserving resolution, fps and codecs, and without loading whole videos into memory.</p>
+<h2>Options</h2>
+<table><tr><th>Option</th><th>Pros</th><th>Cons</th><th>Cost</th><th>Scales?</th></tr><tr><td><strong>FFmpeg CLI via subprocess</strong></td><td>Streams; <code>ffprobe</code>, <code>acrossfade</code>, <code>loudnorm</code>, <code>overlay</code>, metadata all built in</td><td>Needs <code>ffmpeg</code> installed; we build argument lists</td><td>Low</td><td>Yes</td></tr><tr><td>PyAV</td><td>Frame-level control</td><td>More code for simple operations</td><td>Medium</td><td>Yes</td></tr><tr><td>MoviePy</td><td>Easy API</td><td>Slow, decodes frames in Python, high memory</td><td>Low</td><td>No</td></tr></table>
+<h2>Decision</h2>
+<p><strong>FFmpeg / ffprobe CLI</strong>, called with argument lists (never <code>shell=True</code>), behind the <code>VideoEncoder</code> port. The bilingual label "AI-Generated / एआई-जनित" is rendered once per batch to a PNG with Pillow and a Devanagari font (Noto Sans Devanagari, OFL-1.1), then overlaid by FFmpeg. This avoids depending on how a given FFmpeg build shapes Devanagari text. If M2 lip sync needs frame access, PyAV is added through a new ADR.</p>
+<h2>Consequences</h2>
+<ul><li><code>ffmpeg</code> is a system prerequisite on dev machines and worker images.</li><li>Homebrew's FFmpeg is a GPL build (x264). That's fine for internal use; check its licence before shipping the worker image to a client.</li><li>Every FFmpeg call has a timeout, and its failures map to <code>RENDER_TIMEOUT</code> / typed errors.</li></ul></div></body></html>

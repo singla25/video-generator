@@ -16,5 +16,10 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T7 | RED: FFmpeg engine | tester | sonnet | ✅ Done & CEO-reviewed after 1 fix round (behavioural checks instead of filter names) — 115 fast + 1 slow tests @ a91cf27 | Yes, 2026-10-18 | — |
 | T8 | GREEN: FFmpeg engine + label renderer | backend-dev | sonnet | ✅ Done & CEO-reviewed after 1 fix round (invisible joiners → reuse domain constants) @ 3f8c08f. With raqm: 649/649 pass; label visually verified (correct Devanagari shaping, 130 px band on 1080×1300). Fonts committed by CEO at Admin request @ 08c247d | Yes, 2026-10-18 | Waits for gate 2 |
 | T7b | Fix 4 test defects, cover ffmpeg helpers to 100 %, require Devanagari shaping | tester | sonnet | ✅ Done & CEO-reviewed @ 7d3cfb3 — 644 pass; only the shaping test fails until Admin installs libraqm (D-12) | Yes (within T7/T8 scope) | — |
-| T9–T16 | See plan | tester / backend-dev / CEO | sonnet | Planned | — | — |
+| — | Merge gate 2 (slices A + B) | CEO | — | ✅ Merged `c3aa763`, 649 pass on main | Yes, 2026-10-19 | ✅ |
+| T9 | RED: DB models/repos, auth, templates + consent + slot, audit | tester | sonnet | Waiting for Admin: Docker daemon + compose | Yes, 2026-10-19 | — |
+| T10 | GREEN: models, migration 0001 (created, not run), repos, auth, template API, audit | backend-dev | sonnet | Waiting for T9 | Yes, 2026-10-19 | — |
+| T11 | RED: batch API | tester | sonnet | Waiting for T10 | Yes, 2026-10-19 | — |
+| T12 | GREEN: batch services + endpoints | backend-dev | sonnet | Waiting for T11 | Yes, 2026-10-19 | — |
+| T13–T16 | See plan | tester / backend-dev / CEO | sonnet | Planned | — | — |
 | F1–F6 | M3 frontend | tester / frontend-dev | sonnet | Blocked (screenshots, ADR-009) | — | — |

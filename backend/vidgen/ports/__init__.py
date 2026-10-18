@@ -15,8 +15,10 @@ from vidgen.ports.interfaces import (
     TextRenderer,
     Transliterator,
     VideoEncoder,
+    VideoProbe,
     VoiceCloner,
 )
+from vidgen.ports.models import SheetRow, VideoInfo, VideoLimits
 
 __all__ = [
     "BatchRepository",
@@ -26,6 +28,7 @@ __all__ = [
     "LipSyncer",
     "QualityChecker",
     "SheetReader",
+    "SheetRow",
     "SpeechToText",
     "Storage",
     "TemplateRepository",
@@ -33,5 +36,8 @@ __all__ = [
     "TextRenderer",
     "Transliterator",
     "VideoEncoder",
+    "VideoInfo",
+    "VideoLimits",
+    "VideoProbe",
     "VoiceCloner",
 ]

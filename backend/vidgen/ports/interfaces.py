@@ -5,13 +5,15 @@ Signatures are sketches from the M1 plan; later slices may refine them.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import BinaryIO, Protocol
 from uuid import UUID
 
+from vidgen.domain.timing import TimingPlan
 from vidgen.domain.values import TextRegion, Word
+from vidgen.ports.models import SheetRow, VideoInfo
 
 
 class SpeechToText(Protocol):
@@ -70,23 +72,28 @@ class LabelRenderer(Protocol):
         ...
 
 
+class VideoProbe(Protocol):
+    """Checks an uploaded video from its content and describes it."""
+
+    def probe(self, path: Path) -> VideoInfo:
+        """Return facts about ``path`` or raise a coded DomainError if it is not acceptable."""
+        ...
+
+
 class VideoEncoder(Protocol):
     """Splices audio, overlays the label and writes the final video."""
-
-    def probe(self, video: Path) -> dict[str, object]:
-        """Return stream and format facts for ``video`` (via ffprobe)."""
-        ...
 
     def render(
         self,
         template: Path,
         new_slot_audio: Path,
         slot: tuple[float, float],
-        label: Path,
-        metadata: dict[str, str],
+        plan: TimingPlan,
+        label_png: Path,
+        metadata: Mapping[str, str],
         out: Path,
     ) -> None:
-        """Render the output video for one row."""
+        """Splice ``new_slot_audio`` into the slot following ``plan`` and write ``out``."""
         ...
 
 
@@ -126,7 +133,15 @@ class SheetReader(Protocol):
         ...
 
     def rows(self, path: Path) -> Iterator[list[str]]:
-        """Yield data rows one at a time."""
+        """Yield non-blank data rows one at a time."""
+        ...
+
+    def numbered_rows(self, path: Path) -> Iterator[SheetRow]:
+        """Yield non-blank data rows with their true sheet row numbers."""
+        ...
+
+    def sheet_name(self, path: Path) -> str | None:
+        """Return the worksheet name used, or None for CSV."""
         ...
 
 

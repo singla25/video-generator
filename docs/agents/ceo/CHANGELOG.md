@@ -2,6 +2,12 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — Slices A + B reviewed (T3–T8, T7b); gate 2 prepared
+- Reviewed T3/T4 (domain) and T5–T8 (sheets, probe, storage, cipher, FFmpeg engine, label). Fix rounds: accented names (D9), invisible joiners twice, filter-name-coupled tests, 4 tester defects (T7b).
+- Decisions recorded: D-1…D-12 (label style, M1 extension, libraqm). ADR-001 now documents the macOS libraqm setup (symlinks into /usr/local/lib; DYLD vars are stripped by SIP).
+- Committed the Admin's fonts (08c247d) at the Admin's request. Visually verified the Devanagari label.
+- Process lessons: commit CEO docs before handing the shared folder to an agent; explicit `git add` paths in every brief; scan for invisible/bidi characters on every review.
+
 ## 2026-10-18 — M1 discovery, plan, T1 + T2 review
 - Phase 1–2 for REQ-001: requirement tree (`docs/requirements/REQ-001-requirement-tree.md`, D1–D17), ADR-001…008.
 - Phase 3: plan `docs/plans/m1-batch-pipeline.md` approved, with addenda A (T1 gaps), B (test-tree open issues), C (CEO clarifications). Added the `regex` dependency (Admin approved).

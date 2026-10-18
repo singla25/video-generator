@@ -169,6 +169,23 @@ These close the gaps the tester found while drafting the test tree. They are bin
 | C2 | NA-2 key reuse | Same `Idempotency-Key` on a different batch → HTTP 409 `IDEMPOTENCY_KEY_CONFLICT` |
 | C3 | NA-3 STT matches | Several matches → highest confidence, then earliest. Threshold is inclusive (`confidence >= threshold` counts as found). |
 
+## Addendum D — domain contract choices from T3 (CEO accepted 2026-10-18)
+
+| # | Rule |
+|---|------|
+| D-1 | A slot shorter than 2 × crossfade → `SlotTooShortError`. A zero-length manual slot is rejected. |
+| D-2 | `plan_timing` only compresses longer audio (≤ 15 %); it never slows speech down. Shorter audio pads the pause (D16). |
+| D-3 | Folder names are NFC-normalised; Windows reserved names (`CON`, `NUL`, …) are rejected as `INVALID_FOLDER_NAME`. |
+| D-4 | Output file names: spaces and other unsafe characters → `_` (R6.3); the name is capped at 255 bytes. |
+| D-5 | Accented Latin letters (é, ñ…) are **invalid** name characters (D9: ASCII A–Z/a–z only). Corrected in T3 round 2. |
+| D-7 | T4 gap-fillers (CEO accepted): ZWJ/ZWNJ only between Devanagari characters · Devanagari digits and dandas are not name characters · only valid rows register their ID for duplicate detection (an invalid earlier row never blocks a later valid one) · header ambiguity → `UNSUPPORTED_SHEET`, duplicate mapping → `COLUMN_NOT_FOUND` · too-short slot → `SLOT_NOT_FOUND` · state-machine errors are plain exceptions (programming errors, not user-facing) · a quality failure without a specific code → `OUTPUT_CHECK_FAILED`. |
+| D-8 | T5 infrastructure contracts (CEO accepted): separate `VideoProbe` port (`FfprobeVideoProbe`, `VideoLimits`, `VideoInfo`) instead of `VideoEncoder.probe` · unreadable media → `CORRUPT_VIDEO`; wrong container/codec, no audio, too short/long/big → `UNSUPPORTED_VIDEO`; ffprobe timeout or missing binary → `INTERNAL_ERROR` · storage key collision → `name-2.ext`… (never overwrite); `OSError` → `STORAGE_ERROR`; delete is idempotent · cipher: 32-byte AES keys, index key ≥ 32 bytes, empty string allowed, blind index = hex HMAC-SHA256 over `id_key(value)`, `repr` never shows keys · reader: missing/empty/non-UTF-8/undetectable-delimiter → `UNSUPPORTED_SHEET`. **Max-rows check moves to the batch service (T11).** Odd-dimension video not tested (ffmpeg cannot produce it). |
+| D-9 | T6 accepted: `ports/models.py` (SheetRow, VideoInfo, VideoLimits) · first *visible* xlsx sheet · rows padded to header width · mp4/mov told apart by `major_brand` · storage publishes via `os.link` (cannot overwrite; needs a hard-link-capable filesystem; the S3 adapter in M2 uses conditional put instead). |
+| D-10 | **AI label style (Admin 2026-10-18):** opaque solid band across the full width at the top, height ≥ 10 % of frame height (e.g. 130 px on 1080×1300), light text on a dark band, bilingual "AI-Generated / एआई-जनित", on every frame. It covers the top of the template; the resolution never changes (R6.1). |
+| D-11 | **Video extension in M1 (Admin 2026-10-18):** when the timing plan extends the video (D16), the video frames under the slot are retimed (played slower) to cover slot + extension; no frozen frame. M2 lip sync replaces these frames. |
+| D-12 | **Devanagari text shaping (Admin 2026-10-19):** the label renderer requires Pillow's complex-text layout (raqm). New **system dependency `libraqm`** (dev: `brew install libraqm` + symlink the dylibs into `/usr/local/lib`, see ADR-001 "Devanagari text shaping"; GPU worker image in M2: the distro's libraqm package). A test asserts shaping is active, so the label never ships unshaped. Speech stretch uses `atempo` in M1 (this FFmpeg build has no rubberband); revisit in M2 with the real voice. |
+| D-6 | The public domain API (module + function names) is the one defined by the T3 tests (`vidgen.domain.{codes,headers,validation,naming,status,timing,retry,stats,slot_match}`). |
+
 ## Admin approval
 - [x] Plan approved (includes ADR-001 + ADR-008) — 2026-10-18
 - [x] Dependencies, system tools and font approved — 2026-10-18 (Admin downloads the font)

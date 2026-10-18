@@ -34,5 +34,16 @@ uv sync                              # creates .venv (3.11) from uv.lock
 docker compose up -d                 # Postgres + Redis for dev/tests
 uv run pytest -q &amp;&amp; uv run ruff check . &amp;&amp; uv run mypy backend</code></pre>
 <p>Every agent runs tools through <code>uv run …</code>.</p>
+<h3>Devanagari text shaping (libraqm) — macOS dev machines (added 2026-10-19, D-12)</h3>
+<p>Pillow loads libraqm and fribidi <strong>at runtime</strong>, looking for the <em>unversioned</em> library names (<code>libraqm.dylib</code>, <code>libfribidi.dylib</code>). Homebrew on Apple Silicon installs them under <code>/opt/homebrew/lib</code>, which is not on the default search path.</p>
+<p>Don't use <code>DYLD_FALLBACK_LIBRARY_PATH</code>: macOS System Integrity Protection strips <code>DYLD_*</code> variables whenever <code>/bin/sh</code> or <code>/bin/zsh</code> starts a program, so tools, scripts and workers silently lose it. <code>~/lib</code> was not searched on the Admin's macOS either. Working fix (verified by the Admin and CEO):</p>
+<pre><code>brew install libraqm                     # pulls in fribidi + harfbuzz
+sudo mkdir -p /usr/local/lib
+for f in /opt/homebrew/lib/libraqm*.dylib /opt/homebrew/lib/libfribidi*.dylib; do
+  sudo ln -sf &quot;$f&quot; /usr/local/lib/
+done
+# verify in a clean environment (must print True):
+env -u DYLD_FALLBACK_LIBRARY_PATH uv run python -c &quot;from PIL import features; print(&#x27;raqm:&#x27;, features.check(&#x27;raqm&#x27;))&quot;</code></pre>
+<p><code>tests/unit/infra/test_label_renderer.py::test_complex_text_shaping_is_active_for_devanagari</code> fails if shaping is not active, so a misconfigured machine is caught immediately. <strong>Linux worker images (M2):</strong> install the distro package (e.g. <code>libraqm0</code> + <code>libfribidi0</code> on Debian/Ubuntu); no symlinks are needed there.</p>
 <h2>Consequences</h2>
 <ul><li>Same interpreter and package versions everywhere; GPU images in M2 use the same lockfile.</li><li>Upgrading to 3.12 later is a new ADR plus a <code>uv lock</code> refresh.</li><li>Adding a dependency becomes <code>uv add &lt;pkg&gt;</code>, and it still needs Admin approval.</li></ul></div></body></html>

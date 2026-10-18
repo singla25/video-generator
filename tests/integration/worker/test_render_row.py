@@ -27,10 +27,10 @@ def render(world: World, number: int = 2):  # type: ignore[no-untyped-def]
 
 
 def test_happy_path_runs_the_stages_in_order_and_publishes_the_output(world: World) -> None:
-    """TT-AC12-P1: tts -> encode -> lipsync -> check, then the file is stored as <ID>.mp4."""
+    """TT-AC12-P1 (DD-6): tts -> lipsync -> encode -> check, then stored as <ID>.mp4."""
     outcome = render(world)
     assert outcome.kind is RowOutcomeKind.COMPLETED
-    assert world.order == ["tts", "encode", "lipsync", "check"]
+    assert world.order == ["tts", "lipsync", "encode", "check"]
     key = world.expected_key("A1")
     assert world.storage.files[key] == b"ENC"
     row = world.row(2)
@@ -70,6 +70,17 @@ def test_devanagari_names_are_passed_through_unchanged(make_world: WorldFactory)
     world = make_world([(name, "D1")])
     render(world)
     assert world.voice.texts == [name]
+
+
+def test_lip_sync_works_on_the_original_template_and_feeds_the_final_encode(world: World) -> None:
+    """DD-6: lip sync sees the unlabelled template and the new audio; one encode follows."""
+    world.lipsync.marker = b"+LIP"
+    render(world)
+    assert world.lipsync.video_bytes == [b"TEMPLATE-VIDEO"]
+    assert world.lipsync.audio_existed == [True]
+    assert world.encoder.calls[0].template_bytes == b"TEMPLATE-VIDEO+LIP"
+    assert len(world.encoder.calls) == 1
+    assert world.labels.sizes  # the label is only used by the final encode
 
 
 def test_inputs_exist_on_disk_when_the_engine_runs(world: World) -> None:
@@ -206,6 +217,7 @@ def test_lip_sync_failure_is_lipsync_low_quality(world: World) -> None:
     world.lipsync.errors = [DomainError(FailureCode.LIPSYNC_LOW_QUALITY)]
     outcome = render(world)
     assert outcome.code is FailureCode.LIPSYNC_LOW_QUALITY
+    assert world.encoder.calls == []  # DD-6: lip sync runs before the single final encode
     assert world.storage.exists(world.expected_key("A1")) is False
     assert world.row(2)["attempts"] == 1
 

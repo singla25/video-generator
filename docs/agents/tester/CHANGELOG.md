@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T13 round 2 (DD-6)
+- Stage order is now tts, lipsync, encode, check, publish. Lip sync sees the original template plus the new audio; its output feeds the single final encode. Added a chain test; FakeLipSync records inputs and can append a marker.
+
 ## 2026-10-19 — T13 (RED: worker pipeline)
 - Added tests/integration/worker/{world,conftest,test_render_row,test_row_states,test_completion,test_preview_job,test_worker,test_render_row_real_engine}.py, tests/unit/services/test_manifest.py, tests/integration/storage/test_stale_temp.py; fakes in tests/fixtures/pipeline_fakes.py; InMemoryStorage.fail_next.
 - Contract modules: vidgen.services.render_row (RowRenderer, RenderConfig, RowOutcomeKind), vidgen.services.manifest, vidgen.worker.actors (WorkerConfig, register_actors), vidgen.infrastructure.queue.dramatiq_queue (DramatiqJobQueue), LocalStorage.remove_stale_temp.

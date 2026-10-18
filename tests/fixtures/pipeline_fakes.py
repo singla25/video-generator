@@ -29,6 +29,7 @@ class EncoderCall:
     """What the video engine was asked to do."""
 
     template_existed: bool
+    template_bytes: bytes
     audio_existed: bool
     label_existed: bool
     slot: tuple[float, float]
@@ -63,6 +64,7 @@ class FakeEncoder:
             self.calls.append(
                 EncoderCall(
                     template.exists(),
+                    template.read_bytes() if template.exists() else b"",
                     new_slot_audio.exists(),
                     label_png.exists(),
                     slot,
@@ -112,21 +114,29 @@ class FakeVoice:
 
 
 class FakeLipSync:
-    """LipSyncer double: copies the video unchanged unless told to fail."""
+    """LipSyncer double: passes the video through (plus an optional marker) unless it fails."""
 
     def __init__(self, calls: list[str] | None = None) -> None:
         self.errors: list[BaseException | None] = []
         self.count = 0
+        self.marker = b""  # appended to the output so tests can see the chain
+        self.video_bytes: list[bytes] = []
+        self.audio_existed: list[bool] = []
         self.order = calls if calls is not None else []
 
     def sync(self, video: Path, audio: Path, out: Path) -> None:
         """Pass the video through."""
         self.order.append("lipsync")
         self.count += 1
+        self.video_bytes.append(video.read_bytes())
+        self.audio_existed.append(audio.exists())
         error = _next_error(self.errors)
         if error is not None:
             raise error
         shutil.copyfile(video, out)
+        if self.marker:
+            with out.open("ab") as handle:
+                handle.write(self.marker)
 
 
 class FakeQuality:

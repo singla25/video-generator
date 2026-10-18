@@ -25,7 +25,7 @@ def test_preview_is_rendered_into_a_preview_location_and_reported(world: World) 
 def test_preview_runs_the_same_stages_as_a_real_row(world: World) -> None:
     """TT-AC7-P1."""
     preview(world)
-    assert world.order == ["tts", "encode", "lipsync", "check"]
+    assert world.order == ["tts", "lipsync", "encode", "check"]
 
 
 def test_preview_does_not_touch_the_row_or_the_batch_folder(world: World) -> None:

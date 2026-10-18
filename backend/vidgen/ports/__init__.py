@@ -1,6 +1,7 @@
 """Port interfaces (Protocols) that services depend on."""
 
 from vidgen.ports.interfaces import (
+    AuditRepository,
     BatchRepository,
     Cipher,
     Clock,
@@ -14,13 +15,22 @@ from vidgen.ports.interfaces import (
     TextDetector,
     TextRenderer,
     Transliterator,
+    UnitOfWork,
     VideoEncoder,
     VideoProbe,
     VoiceCloner,
 )
-from vidgen.ports.models import SheetRow, VideoInfo, VideoLimits
+from vidgen.ports.models import (
+    AuditEntry,
+    SheetRow,
+    TemplateRecord,
+    VideoInfo,
+    VideoLimits,
+)
 
 __all__ = [
+    "AuditEntry",
+    "AuditRepository",
     "BatchRepository",
     "Cipher",
     "Clock",
@@ -31,10 +41,12 @@ __all__ = [
     "SheetRow",
     "SpeechToText",
     "Storage",
+    "TemplateRecord",
     "TemplateRepository",
     "TextDetector",
     "TextRenderer",
     "Transliterator",
+    "UnitOfWork",
     "VideoEncoder",
     "VideoInfo",
     "VideoLimits",

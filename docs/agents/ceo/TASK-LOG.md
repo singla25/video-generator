@@ -12,8 +12,8 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T3 | RED: domain unit tests | tester | sonnet | ✅ Done & CEO-reviewed after 1 fix round (accented names invalid per D9) — 166 tests / 13 files, fail only on missing modules. Note: commit a12967b also swept in the CEO's uncommitted Addendum D (content verified identical; cause: shared folder + non-explicit staging) | Yes, 2026-10-18 | — |
 | T4 | GREEN+REFACTOR: domain/ | backend-dev | sonnet | ✅ Done & CEO-reviewed after 1 fix round (escape invisible joiners) — 334/334 pass, 100 % line+branch coverage, branch `feat/m1-domain` @ 1bf4b64 | Yes, 2026-10-18 | Waits for gate 2 |
 | T5 | RED: ingestion, probe, storage, cipher | tester | sonnet | ✅ Done & CEO-reviewed (105 tests + 3 slow; fail only on missing modules; 1 guard block on URL text in a heredoc, benign) @ 935d0c0 | Yes, 2026-10-18 | — |
-| T6 | GREEN: SheetReader, VideoProbe, LocalStorage, Cipher | backend-dev | sonnet | In progress on `feat/m1-ingest` | Yes, 2026-10-18 | — |
-| T7 | RED: FFmpeg engine | tester | sonnet | Waiting for T6 | Yes, 2026-10-18 | — |
+| T6 | GREEN: SheetReader, VideoProbe, LocalStorage, Cipher | backend-dev | sonnet | ✅ Done & CEO-reviewed — 478 pass + 3 slow pass, infra coverage 93 % @ cf7b81a (nit: conformance.py 0 % → tidy in T8) | Yes, 2026-10-18 | — |
+| T7 | RED: FFmpeg engine | tester | sonnet | In progress on `feat/m1-ingest` | Yes, 2026-10-18 | — |
 | T8 | GREEN: FFmpeg engine + label renderer | backend-dev | sonnet | Waiting for T7 + Admin font | Yes, 2026-10-18 | — |
 | T9–T16 | See plan | tester / backend-dev / CEO | sonnet | Planned | — | — |
 | F1–F6 | M3 frontend | tester / frontend-dev | sonnet | Blocked (screenshots, ADR-009) | — | — |

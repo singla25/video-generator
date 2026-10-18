@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi.routing import APIRoute
+from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from tests.integration.api.conftest import PASSWORD, Env, EnvFactory
@@ -173,14 +174,18 @@ def test_password_is_not_stored_or_returned_in_plaintext(env: Env) -> None:
     assert PASSWORD not in repr(env.settings)
 
 
-# ---- lockout (A9) ---------------------------------------------------------------------
+# ---- lockout (A9, D-15) ---------------------------------------------------------------
 
 
-def test_five_failures_lock_the_login_with_429_and_retry_after(anon: Env) -> None:
-    """TT-AC16-N4, E1."""
-    for _ in range(4):
-        assert anon.login("bad").status_code == 401
-    assert anon.login("bad").status_code == 401  # the 5th failure is still a 401
+def fail_login(client: TestClient, **headers: str) -> int:
+    """POST a wrong-password login from ``client`` and return the status code."""
+    return client.post("/auth/login", json={"password": "bad"}, headers=headers).status_code
+
+
+def test_five_failures_from_one_client_lock_it_with_429_and_retry_after(anon: Env) -> None:
+    """TT-AC16-N4, E1 (D-15): per-client lockout."""
+    for _ in range(5):
+        assert anon.login("bad").status_code == 401  # the 5th failure is still a 401
     locked = anon.login("bad")
     assert locked.status_code == 429
     assert locked.json()["code"] == "RATE_LIMITED"
@@ -192,6 +197,16 @@ def test_the_correct_password_is_also_refused_during_the_lockout(anon: Env) -> N
     for _ in range(5):
         anon.login("bad")
     assert anon.login(PASSWORD).status_code == 429
+
+
+def test_a_locked_client_does_not_lock_out_other_clients(anon: Env) -> None:
+    """D-15: an attacker cannot lock the admin out from another address."""
+    for _ in range(6):
+        anon.login("bad")
+    assert anon.login(PASSWORD).status_code == 429
+    admin = anon.client_from("10.0.0.2")
+    response = admin.post("/auth/login", json={"password": PASSWORD})
+    assert response.status_code == 200
 
 
 def test_lockout_ends_after_fifteen_minutes(anon: Env) -> None:
@@ -219,6 +234,96 @@ def test_old_failures_age_out_of_the_fifteen_minute_window(anon: Env) -> None:
     for _ in range(3):
         assert anon.login("bad").status_code == 401
     assert anon.login(PASSWORD).status_code == 200
+
+
+def test_fifty_failures_from_many_clients_lock_every_login(anon: Env) -> None:
+    """D-15: global cap, 50 failures from 50 different addresses."""
+    for number in range(50):
+        client = anon.client_from(f"10.1.0.{number + 1}")
+        assert fail_login(client) == 401
+    fresh = anon.client_from("10.9.9.9")
+    response = fresh.post("/auth/login", json={"password": PASSWORD})
+    assert response.status_code == 429
+    assert response.json()["code"] == "RATE_LIMITED"
+    assert 800 <= int(response.headers["retry-after"]) <= 900
+
+
+def test_forty_nine_failures_do_not_trigger_the_global_cap(anon: Env) -> None:
+    """D-15: boundary."""
+    for number in range(49):
+        assert fail_login(anon.client_from(f"10.1.0.{number + 1}")) == 401
+    fresh = anon.client_from("10.9.9.9")
+    assert fresh.post("/auth/login", json={"password": PASSWORD}).status_code == 200
+
+
+def test_global_lockout_ends_after_fifteen_minutes(anon: Env) -> None:
+    """D-15."""
+    for number in range(50):
+        fail_login(anon.client_from(f"10.1.0.{number + 1}"))
+    anon.clock.advance(minutes=14)
+    assert (
+        anon.client_from("10.9.9.9").post("/auth/login", json={"password": PASSWORD}).status_code
+        == 429
+    )
+    anon.clock.advance(minutes=2)
+    assert (
+        anon.client_from("10.9.9.9").post("/auth/login", json={"password": PASSWORD}).status_code
+        == 200
+    )
+
+
+def test_x_forwarded_for_cannot_split_the_per_client_count(anon: Env) -> None:
+    """D-15: the direct peer is the client; spoofed headers change nothing."""
+    for number in range(5):
+        assert fail_login(anon.client, **{"X-Forwarded-For": f"203.0.113.{number}"}) == 401
+    assert fail_login(anon.client, **{"X-Forwarded-For": "198.51.100.7"}) == 429
+
+
+def test_x_forwarded_for_cannot_be_used_to_escape_a_lockout(anon: Env) -> None:
+    """D-15."""
+    for _ in range(5):
+        anon.login("bad")
+    response = anon.client.post(
+        "/auth/login",
+        json={"password": PASSWORD},
+        headers={"X-Forwarded-For": "198.51.100.99", "X-Real-IP": "198.51.100.99"},
+    )
+    assert response.status_code == 429
+
+
+def test_x_forwarded_for_does_not_lock_an_innocent_peer(anon: Env) -> None:
+    """D-15: pretending to be the admin's address from elsewhere does not lock the admin."""
+    for _ in range(6):
+        fail_login(anon.client, **{"X-Forwarded-For": "10.0.0.2"})
+    admin = anon.client_from("10.0.0.2")
+    assert admin.post("/auth/login", json={"password": PASSWORD}).status_code == 200
+
+
+def test_per_client_threshold_comes_from_settings(make_env: EnvFactory) -> None:
+    """D-15: login_max_failures is respected (2 instead of 5)."""
+    env = make_env(login=False, login_max_failures=2)
+    assert env.login("bad").status_code == 401
+    assert env.login("bad").status_code == 401
+    assert env.login("bad").status_code == 429
+
+
+def test_global_threshold_comes_from_settings(make_env: EnvFactory) -> None:
+    """D-15: login_max_failures_global is respected (3 instead of 50)."""
+    env = make_env(login=False, login_max_failures_global=3)
+    for number in range(3):
+        assert fail_login(env.client_from(f"10.2.0.{number + 1}")) == 401
+    response = env.client_from("10.2.0.99").post("/auth/login", json={"password": PASSWORD})
+    assert response.status_code == 429
+
+
+def test_lockout_duration_comes_from_settings(make_env: EnvFactory) -> None:
+    """A9/D-15: login_lockout_minutes is respected."""
+    env = make_env(login=False, login_lockout_minutes=2)
+    for _ in range(5):
+        env.login("bad")
+    assert env.login(PASSWORD).status_code == 429
+    env.clock.advance(minutes=3)
+    assert env.login(PASSWORD).status_code == 200
 
 
 # ---- edge -----------------------------------------------------------------------------

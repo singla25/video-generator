@@ -48,6 +48,10 @@ class Env:
     stt: FakeSpeechToText
     csrf: dict[str, str]
 
+    def client_from(self, address: str) -> TestClient:
+        """Another client of the same app whose direct peer address is ``address``."""
+        return TestClient(self.app, client=(address, 50000))
+
     def login(self, password: str = PASSWORD) -> Any:
         """POST /auth/login and remember the CSRF header on success."""
         response = self.client.post("/auth/login", json={"password": password})

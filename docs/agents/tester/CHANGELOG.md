@@ -2,6 +2,11 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T13 (RED: worker pipeline)
+- Added tests/integration/worker/{world,conftest,test_render_row,test_row_states,test_completion,test_preview_job,test_worker,test_render_row_real_engine}.py, tests/unit/services/test_manifest.py, tests/integration/storage/test_stale_temp.py; fakes in tests/fixtures/pipeline_fakes.py; InMemoryStorage.fail_next.
+- Contract modules: vidgen.services.render_row (RowRenderer, RenderConfig, RowOutcomeKind), vidgen.services.manifest, vidgen.worker.actors (WorkerConfig, register_actors), vidgen.infrastructure.queue.dramatiq_queue (DramatiqJobQueue), LocalStorage.remove_stale_temp.
+- 123 tests (1 slow). Verified the bodies run with throw-away stubs (not committed).
+
 ## 2026-10-19 — T11 (RED: batch API)
 - Added tests/integration/api/test_batches_{create,start,control,status,downloads,delete_retention}.py, batch_helpers.py; doubles FakeJobQueue and ChunkSpyStorage; Env.queue. The auth route sweep now fills any path parameter.
 - Contract: AppDeps.job_queue (enqueue_preview, enqueue_rows), Container.batches (preview_rendered, preview_failed, run_retention), batch routes plus the daily stats route. API codes added: PREVIEW_NOT_READY, PREVIEW_NOT_APPROVED, INVALID_STATE.

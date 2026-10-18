@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import BinaryIO
@@ -47,23 +48,27 @@ class InMemoryStorage:
         self.files: dict[str, bytes] = {}
         self.bytes_consumed = 0
         self.fail_writes = False
+        self.fail_next = 0  # fail this many writes, then recover
+        self._lock = threading.Lock()
 
     def write(self, key: str, data: BinaryIO) -> str:
         """Store a stream; a taken key gets a ``-2``, ``-3`` suffix."""
-        if self.fail_writes:
-            raise StorageError
-        final = key
-        number = 1
-        while final in self.files:
-            number += 1
-            stem, dot, ext = key.rpartition(".")
-            final = f"{stem}-{number}.{ext}" if dot else f"{key}-{number}"
-        buffer = io.BytesIO()
-        while chunk := data.read(CHUNK):
-            self.bytes_consumed += len(chunk)
-            buffer.write(chunk)
-        self.files[final] = buffer.getvalue()
-        return final
+        with self._lock:
+            if self.fail_writes or self.fail_next > 0:
+                self.fail_next = max(0, self.fail_next - 1)
+                raise StorageError
+            final = key
+            number = 1
+            while final in self.files:
+                number += 1
+                stem, dot, ext = key.rpartition(".")
+                final = f"{stem}-{number}.{ext}" if dot else f"{key}-{number}"
+            buffer = io.BytesIO()
+            while chunk := data.read(CHUNK):
+                self.bytes_consumed += len(chunk)
+                buffer.write(chunk)
+            self.files[final] = buffer.getvalue()
+            return final
 
     def open(self, key: str) -> BinaryIO:
         """Open a stored file."""

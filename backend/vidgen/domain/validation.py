@@ -11,8 +11,8 @@ import regex
 from vidgen.domain.codes import FailureCode, plain_message
 from vidgen.domain.naming import id_key
 
-ZWNJ = "‌"
-ZWJ = "‍"
+ZWNJ = "\u200c"
+ZWJ = "\u200d"
 _JOINERS = frozenset({ZWJ, ZWNJ})
 _ALLOWED_PUNCTUATION = frozenset(" .-'")
 _ASCII_LETTERS = frozenset(string.ascii_letters)

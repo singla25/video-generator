@@ -126,6 +126,22 @@ T0 → (T1 ∥ T2) → Gate 1 → T3 → T4 (∥ T5) → T6 → T7 → T8 → Ga
 | pillow | Label PNG rendering | MIT-CMU |
 | **dev:** pytest, pytest-cov, httpx, ruff, mypy, types-openpyxl | Tests, lint, types | MIT / BSD / Apache |
 
+## Addendum A — clarifications from T1 review (Admin approved 2026-10-18)
+These close the gaps the tester found while drafting the test tree. They are binding for all M1 tests and code.
+
+| # | Topic | Rule |
+|---|-------|------|
+| A1 | Name length (AC3) | 40 = **grapheme clusters** (user-perceived characters), not code points. ZWJ (U+200D) and ZWNJ (U+200C) are allowed inside Devanagari. |
+| A2 | Duplicate ID (AC3, AC11) | Compare IDs after trim → case-fold → **file-name sanitising** (R6.3). `RJ/12/097` and `rj_12_097` are duplicates, because they would produce the same file. The first row is kept. |
+| A3 | Existing codes | Empty name / empty ID / duplicate → `INVALID_ROW_EMPTY_NAME`, `INVALID_ROW_EMPTY_ID`, `DUPLICATE_ID` (already in R8). |
+| A4 | New codes | Upload errors: `UNSUPPORTED_VIDEO`, `CORRUPT_VIDEO`, `UNSUPPORTED_SHEET`, `COLUMN_NOT_FOUND`. Template errors: `SLOT_NOT_FOUND`, `STT_FAILED`. Row errors: `CONTENT_LOCK_VIOLATION`, `INTERNAL_ERROR` (catch-all; never retried automatically unless it is a crash). |
+| A5 | Preview approval (AC7) | Changing the slot, template or column mapping after a preview **invalidates the approval**; a new preview + approval is required. |
+| A6 | Cancel (AC13) | Rows already `PROCESSING` finish and are delivered. Only `QUEUED` rows become `CANCELLED`. |
+| A7 | Manifest (AC11) | `manifest.csv` contains row number, name, ID, status, file name, failure code + message, render time. It is personal data: covered by retention and batch deletion. |
+| A8 | Retention (AC17) | The retention job skips batches that are not finished (queued / running / paused). |
+| A9 | Thresholds | AC4: peak memory for 100k-row validation ≤ 200 MB above baseline. AC9: outside the slot (excluding crossfade zones) the audio difference vs. template ≤ −40 dB RMS. AC10: label is a full-width band, height ≥ 10 % of frame height, at the top, in every sampled frame. AC16: 5 failed logins within 15 min → locked (HTTP 429) for 15 min. |
+| A10 | Worktrees | The guard blocks writes under `.claude/worktrees/`. Until the Admin changes that, tasks run **sequentially in the main project folder**, one branch at a time. T1 runs on `feat/tester/m1-tree`. |
+
 ## Admin approval
 - [x] Plan approved (includes ADR-001 + ADR-008) — 2026-10-18
 - [x] Dependencies, system tools and font approved — 2026-10-18 (Admin downloads the font)

@@ -178,6 +178,7 @@ These close the gaps the tester found while drafting the test tree. They are bin
 | D-3 | Folder names are NFC-normalised; Windows reserved names (`CON`, `NUL`, …) are rejected as `INVALID_FOLDER_NAME`. |
 | D-4 | Output file names: spaces and other unsafe characters → `_` (R6.3); the name is capped at 255 bytes. |
 | D-5 | Accented Latin letters (é, ñ…) are **invalid** name characters (D9: ASCII A–Z/a–z only). Corrected in T3 round 2. |
+| D-7 | T4 gap-fillers (CEO accepted): ZWJ/ZWNJ only between Devanagari characters · Devanagari digits and dandas are not name characters · only valid rows register their ID for duplicate detection (an invalid earlier row never blocks a later valid one) · header ambiguity → `UNSUPPORTED_SHEET`, duplicate mapping → `COLUMN_NOT_FOUND` · too-short slot → `SLOT_NOT_FOUND` · state-machine errors are plain exceptions (programming errors, not user-facing) · a quality failure without a specific code → `OUTPUT_CHECK_FAILED`. |
 | D-6 | The public domain API (module + function names) is the one defined by the T3 tests (`vidgen.domain.{codes,headers,validation,naming,status,timing,retry,stats,slot_match}`). |
 
 ## Admin approval

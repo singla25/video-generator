@@ -196,5 +196,5 @@ These close the gaps the tester found while drafting the test tree. They are bin
 - [x] Plan approved (includes ADR-001 + ADR-008) — 2026-10-18
 - [x] Dependencies, system tools and font approved — 2026-10-18 (Admin downloads the font)
 - [ ] Task assignment approved
-- [ ] Migration 0001 run approved (later, after T10)
+- [x] Migration 0001 run approved — 2026-10-19 (Admin runs it; final file reviewed: 7 tables, create-only, reverse downgrade, encrypted PII, migration test 9/9)
 - [ ] Merge gates 1 / 2 / 3 approved

@@ -2,6 +2,15 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T10 (persistence, migration 0001, auth, templates, audit)
+- DB: `infrastructure/db/{models,repositories,uow}.py` (SQLAlchemy 2 typed models, naming convention, PII only as ciphertext + blind index). Ports gained `TemplateRepository`, `AuditRepository`, `UnitOfWork`, `TemplateRecord`, `AuditEntry`.
+- Migration `0001_initial` (hand-written, create-only; downgrade drops the six tables in reverse). `env.py` needs only a DB URL (`-x db_url`, `sqlalchemy.url`, or `VIDGEN_DATABASE_URL`), no Settings. Checked offline (`--sql`) against the models' DDL: same statements, only constraint order differs. Never run against a database.
+- API: `create_app(settings, deps=AppDeps(...))`, signed session cookie + CSRF header, login guard (D-15), client-address resolution, streaming uploads with size limits (413 before storing), consent type by content, template/slot/audit endpoints, uniform `{code, message}` errors.
+- Services: `login_guard`, `templates`, `audit` (no FastAPI imports). Settings gained cookie/session/login/trusted_proxies/encryption_key_id and hex key helpers.
+- Choices: routers are mounted flat (FastAPI 0.146 `include_router` hides routes from `app.routes`); login-guard state is in-process (a multi-instance deployment needs Redis); sessions are stateless signed cookies (logout clears cookies, no server-side revocation; bump `session_version` to revoke all); `batch_rows.voter_id_index` index is NOT unique (duplicate IDs are stored as skipped rows); no `unique` on campaign names (tests create several), default campaign has a fixed id; default speech-to-text is a placeholder that fails with STT_FAILED until T14.
+- Tests: 837 pass, 1 fails (see report: `test_crossing_the_global_cap_writes_exactly_one_alert_per_window` conflicts with D-15 item 2); slow 4 pass.
+- Open: that one test; the migration round-trip test is for the tester.
+
 ## 2026-10-18 — T8 (FFmpeg engine + label)
 - Added `infrastructure/ffmpeg/{encoder,graph,facts,loudness,runner,label}.py`. `graph.py` and `loudness.py` are pure builders (TimingPlan to filter graph). The engine executes the plan only.
 - Speech stretch uses `atempo` (this ffmpeg build has no `rubberband`). Crossfade uses `acrossfade` (qsin, configured ms) at both joints. Loudness: ebur128 on template slot and new audio, then `volume` gain (clamped to 24 dB).

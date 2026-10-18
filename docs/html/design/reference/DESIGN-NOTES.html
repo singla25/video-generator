@@ -1,0 +1,37 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Dashboard design notes (for frontend-dev)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Dashboard design notes (for frontend-dev)</h1>
+<p><strong>Reference:</strong> <code>trustvest-dashboard.png</code> (Dribbble, "TrustVest FinTech Dashboard Animation" by Alamin Hossen). <strong>Use it for style and layout only.</strong> Do NOT copy the TrustVest name, logo, illustrations or any finance-specific content. Our product has its own name and data.</p>
+<hr>
+<h2>1. Visual style to match</h2>
+<table><tr><th>Element</th><th>What the reference does</th><th>Our rule</th></tr><tr><td>Theme</td><td>Light. White cards on a very light grey page</td><td>Page <code>#F6F7F9</code>-ish, cards <code>#FFFFFF</code></td></tr><tr><td>Cards</td><td>Thin 1px light-grey border, ~12–14px rounded corners, almost no shadow, generous padding (~20–24px)</td><td>Same</td></tr><tr><td>Primary colour</td><td>Deep emerald green for charts</td><td>Emerald (~<code>#1E7A5A</code>) as the main data colour</td></tr><tr><td>Call-to-action</td><td>Bright lime-green button ("Send Money")</td><td>Lime (~<code>#A6E07A</code>) for the main action, e.g. <strong>Start batch</strong></td></tr><tr><td>Soft accent</td><td>Pale mint fill behind highlighted chart column and pill buttons</td><td>Mint (~<code>#E6F6EE</code>) for highlights and selected states</td></tr><tr><td>Status chips</td><td>Small pill with a coloured dot: green "Active", red "Inactive"</td><td>Same pattern for row statuses (see §3)</td></tr><tr><td>Big numbers</td><td>Large bold figure with the decimals in faded grey (<code>$34,680.05</code>)</td><td>Large KPI numbers; secondary part (like "/ 1,000") in faded grey</td></tr><tr><td>Typography</td><td>Clean geometric sans-serif, medium weights, small grey labels</td><td>A geometric Google font (e.g. Outfit, Urbanist or Plus Jakarta Sans) + <strong>Noto Sans Devanagari</strong> for Hindi names</td></tr><tr><td>Icons</td><td>Thin outline icons (1.5px stroke)</td><td>Same style (e.g. Lucide icons)</td></tr><tr><td>Chart</td><td>Stepped area/bar chart, emerald bars with a fine diagonal hatch pattern, value labels above each column, dashed vertical separators, one highlighted column</td><td>Same look for "Videos generated"</td></tr><tr><td>Dividers</td><td>Hairline separators, lots of white space</td><td>Same</td></tr><tr><td>Motion (from the Dribbble animation)</td><td>Numbers count up, bars grow in, smooth hovers</td><td>Same, but respect "reduce motion" settings</td></tr></table>
+<h2>2. Layout</h2>
+<pre><code>┌──────────────┬──────────────────────────────────────────────────────┐
+│ Logo  [≡]    │ Page title                      [+ New batch] (avatar)│
+│ Search  ⌘K   ├──────────────────────────────────────────────────────┤
+│ MENU         │ [KPI] [KPI] [KPI] [KPI] [KPI] [KPI]                  │
+│  Overview    ├───────────────────────────────────┬──────────────────┤
+│  Batches     │ Videos generated (chart)          │ Current batch    │
+│   ├ Running  │  This week ▾       +12% vs last   │ progress ring    │
+│   ├ Completed│  ▇▇ stepped hatched bars          │ ETA, counts      │
+│   └ Failed   │                                   │ [Pause][Retry]   │
+│  Templates   │                                   │ [ Start batch ]  │
+│  History     ├───────────────────────────────────┴──────────────────┤
+│  Security    │ Rows table: search · status filter                   │
+│ GENERAL      │ Name | ID | Status | Reason | Time | ⋮               │
+│  Settings    │                                                      │
+│  Help        │                                                      │
+└──────────────┴──────────────────────────────────────────────────────┘</code></pre>
+<h2>3. Mapping the reference to our screens</h2>
+<table><tr><th>Reference element</th><th>Our version</th></tr><tr><td>Currency cards (USD, EUR, BDT, GBP) + dashed "+" card</td><td><strong>KPI cards</strong>: Total rows · Completed · Processing · Queued · Failed · Skipped. Each has a status chip. The dashed "+" card becomes <strong>New batch</strong></td></tr><tr><td>"Payment Overview" chart + "Total Balance"</td><td><strong>Videos generated</strong> over time (day / week), total count as the big number, "+X% vs last week" pill</td></tr><tr><td>Column labels ("Payment Initiatives $10,120")</td><td>Per-period counts ("Mon · 1,240 videos")</td></tr><tr><td>"Transfer Calculator" side panel</td><td><strong>Current batch</strong> panel: progress ring, ETA, completed/failed counts, Pause / Resume / Retry failed, main lime button</td></tr><tr><td>"Transactions History" table</td><td><strong>Rows table</strong>: Name (Devanagari OK), ID, Status chip, Failure reason in plain words, render time, actions (preview, download, retry)</td></tr><tr><td>Received / Send chips</td><td>Completed (green) · Processing (blue) · Queued (grey) · Failed (red) · Skipped (amber)</td></tr><tr><td>"This Month ▾" dropdowns</td><td>Period filter and status filter</td></tr><tr><td>"Try ai Agent" / "Earn $50" pills</td><td>Not needed. Use one <strong>+ New batch</strong> pill instead</td></tr><tr><td>Sidebar MENU / GENERAL</td><td>MENU: Overview, Batches (Running, Completed, Failed), Templates, History, Security (audit log). GENERAL: Settings, Help</td></tr></table>
+<h2>4. Our-product additions (not in the reference)</h2>
+<ul><li>The <strong>AI-label / consent status</strong> badge on each template card (consent ✓ / missing).</li><li>A <strong>security alert</strong> banner when the audit log has a <code>SECURITY_LOGIN_THROTTLED</code> event.</li><li>The <strong>4-step New batch wizard</strong> (upload → map columns &amp; validate → mark slot &amp; preview → output folder &amp; start), in the same card style.</li><li>Every screen has loading, empty and error states in the same visual language.</li><li>Hindi text must render correctly anywhere a name appears.</li></ul></div></body></html>

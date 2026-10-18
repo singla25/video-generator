@@ -11,6 +11,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Tester — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-10-19 — T9 (RED: db, auth, templates, audit)</h2>
+<ul><li>Added tests/integration/{conftest.py,db/<em>,api/</em>}, fixtures tests/fixtures/doubles.py. Test DB fixture uses VIDGEN_TEST_DATABASE_URL (default vidgen_test, name must end in _test), create_all from models, tables emptied per test; no Alembic.</li><li>126 test functions. Contract modules: vidgen.api.app, vidgen.api.deps, vidgen.infrastructure.db.models, vidgen.infrastructure.db.repositories. Template carries original_name (the spoken name to replace); Settings gains cookie_secure, session_ttl_minutes, session_version.</li><li>649 earlier tests pass; new ones fail on ModuleNotFoundError.</li></ul>
 <h2>2026-10-19 — T7b</h2>
 <ul><li>Fixed float window arithmetic (window_n) and the three metadata tests (generated_on/batch_id required). Added unit tests for graph.py, loudness.py, facts.py (100 % line+branch). Added test_complex_text_shaping_is_active_for_devanagari (fails until Pillow has raqm).</li></ul>
 <h2>2026-10-18 — T7 round 2</h2>

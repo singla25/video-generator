@@ -31,6 +31,6 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | — | Migration 0001 on dev DB `vidgen` | Admin | — | ✅ Run by Admin 2026-10-19 (after a rehearsal on `vidgen_rehearsal_test`, since dropped). CEO verified read-only: 7 tables + alembic_version @ 0001, all empty, batch_rows PII only `*_enc` bytea + `voter_id_index`, duplicate-guard and finished_at indexes present | Yes, 2026-10-19 | n/a |
 | T11 | RED: batch API | tester | sonnet | ✅ Done & CEO-reviewed (+1 follow-up: on-disk folder collision) @ a83e3e9 — 195 new tests, 184 fail on missing routes, 882 pass | Yes, 2026-10-19 | — |
 | T12 | GREEN: batch services + endpoints | backend-dev | sonnet | In progress on `feat/m1-api` | Yes, 2026-10-19 | — |
-| T13 | RED: worker pipeline | tester | sonnet | In progress (parallel with T12, DD-5) | Delegated (CEO), 2026-10-19 | — |
+| T13 | RED: worker pipeline | tester | sonnet | ✅ Done & CEO-reviewed after 1 round (stage order DD-6) @ fdb25d2 — 123+ tests; bodies verified with throwaway stubs | Delegated (CEO), 2026-10-19 | — |
 | T14–T16 | See plan | tester / backend-dev / CEO | sonnet | Planned | — | — |
 | F0–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | Admin / tester / frontend-dev / CEO | sonnet | Plan + deps approved 2026-10-19; design reference committed (b557ff0). Waits for M1 gate 3, Node.js install and product name/logo | Plan: yes; assignment: pending | — |

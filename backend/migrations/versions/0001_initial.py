@@ -1,4 +1,4 @@
-"""Initial schema: campaigns, templates, consent, batches, rows, audit log.
+"""Initial schema: campaigns, templates, consent, batches, rows, login state, audit log.
 
 Revision ID: 0001
 Revises:
@@ -114,6 +114,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_batches_campaign_id_status", "batches", ["campaign_id", "status"])
     op.create_index("ix_batches_template_id", "batches", ["template_id"])
+    op.create_index("ix_batches_finished_at", "batches", ["finished_at"])
 
     op.create_table(
         "batch_rows",
@@ -145,6 +146,26 @@ def upgrade() -> None:
         "ix_batch_rows_batch_id_voter_id_index", "batch_rows", ["batch_id", "voter_id_index"]
     )
 
+    op.create_index(
+        "uq_batch_rows_batch_id_voter_id_index_live",
+        "batch_rows",
+        ["batch_id", "voter_id_index"],
+        unique=True,
+        postgresql_where=sa.text("status <> 'SKIPPED'"),
+    )
+
+    op.create_table(
+        "login_attempts",
+        _campaign_id(),
+        sa.Column("client_key", sa.String(length=64), nullable=False),
+        sa.Column("window_started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("failure_count", sa.Integer(), server_default=sa.text("0"), nullable=False),
+        sa.Column("locked_until", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("last_allowed_at", sa.DateTime(timezone=True), nullable=True),
+        _campaign_fk("login_attempts"),
+        sa.PrimaryKeyConstraint("campaign_id", "client_key", name="pk_login_attempts"),
+    )
+
     op.create_table(
         "audit_log",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
@@ -162,6 +183,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop exactly the tables created above, in reverse order (indexes go with them)."""
     op.drop_table("audit_log")
+    op.drop_table("login_attempts")
     op.drop_table("batch_rows")
     op.drop_table("batches")
     op.drop_table("consent_records")

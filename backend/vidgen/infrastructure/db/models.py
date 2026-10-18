@@ -123,6 +123,7 @@ class Batch(Base):
         UniqueConstraint("idempotency_key", name="uq_batches_idempotency_key"),
         Index("ix_batches_campaign_id_status", "campaign_id", "status"),
         Index("ix_batches_template_id", "template_id"),
+        Index("ix_batches_finished_at", "finished_at"),  # retention job (D-17)
     )
 
     id: Mapped[uuid.UUID] = _id()
@@ -146,6 +147,15 @@ class BatchRow(Base):
         UniqueConstraint("batch_id", "row_number", name="uq_batch_rows_batch_id_row_number"),
         Index("ix_batch_rows_batch_id_status", "batch_id", "status"),
         Index("ix_batch_rows_batch_id_voter_id_index", "batch_id", "voter_id_index"),
+        # Two renderable rows may never share an ID; SKIPPED rows (invalid or duplicate rows
+        # kept for the manifest) are exempt (D-17).
+        Index(
+            "uq_batch_rows_batch_id_voter_id_index_live",
+            "batch_id",
+            "voter_id_index",
+            unique=True,
+            postgresql_where=text("status <> 'SKIPPED'"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = _id()
@@ -180,6 +190,25 @@ class AuditLog(Base):
     details: Mapped[dict[str, Any]] = mapped_column(JsonDict, default=dict)
 
 
+class LoginAttempt(Base):
+    """Shared login-protection state (D-15, D-17): one row per client plus one global row.
+
+    ``client_key`` is the resolved IP address or the GLOBAL_KEY sentinel; ``locked_until`` is a
+    lock for a client and the throttle end for the global row. No passwords or personal data.
+    """
+
+    __tablename__ = "login_attempts"
+
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("campaigns.id"), primary_key=True
+    )
+    client_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window_started_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
+    failure_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    locked_until: Mapped[datetime | None] = mapped_column(TIMESTAMP)
+    last_allowed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
+
+
 __all__ = [
     "AuditLog",
     "Base",
@@ -187,5 +216,6 @@ __all__ = [
     "BatchRow",
     "Campaign",
     "ConsentRecord",
+    "LoginAttempt",
     "Template",
 ]

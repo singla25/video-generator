@@ -7,7 +7,7 @@
 - **ID format:** `TT-AC<n>-<P|N|E><k>` (Positive / Negative / Edge).
 - **Level:** U = unit (fakes, seconds), I = integration (real FFmpeg / DB / StubBroker / FastAPI TestClient), E = e2e (docker compose, `@pytest.mark.slow`).
 - **File:** planned path under `tests/`. Several cases may share a file.
-- Failure codes come from R8 + Addendum A3/A4. Codes marked `(code?)` are still unnamed (see Open Issues).
+- Failure codes come from R8 + Addendum A3/A4 + Addendum B2. Rules cited as A# / B# are in `docs/plans/m1-batch-pipeline.md`.
 - All data is synthetic (see "Fixtures"). No `samples/` files. Names are fake.
 - Fakes: `FakeVideoEngine`, `FakeStorage`, `FakeSTT`, `FakeTTS`, `FakeClock`, Dramatiq `StubBroker`.
 
@@ -32,16 +32,19 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC1-N6 | ❌ | file over max-size setting (lowered to a few KB) → rejected, no partial file | I | same |
 | TT-AC1-N7 | ❌ | video longer than max-duration setting (2 s limit, 3 s clip) → rejected | I | integration/ingest/test_video_probe.py |
 | TT-AC1-N8 | ❌ | request with no file / empty multipart → 4xx coded error | I | integration/api/test_template_upload.py |
+| TT-AC1-N9 | ❌ | duration 0.5 s (< 1 s minimum setting) → `UNSUPPORTED_VIDEO` (B3) | I | integration/ingest/test_video_probe.py |
+| TT-AC1-N10 | ❌ | audio-only file (no video stream) named `.mp4` → `UNSUPPORTED_VIDEO` (B3) | I | integration/ingest/test_video_probe.py |
 | TT-AC1-E1 | ⚠️ | exactly at size limit and duration limit → accepted; limit+1 byte / over duration → rejected | I | integration/ingest/test_video_probe.py |
 | TT-AC1-E2 | ⚠️ | zero-byte file → `CORRUPT_VIDEO` | I | same |
-| TT-AC1-E3 | ⚠️ | zero-length (header only, 0 frames) → rejected; 1-frame video → documented rule (OI-3) | I | same |
-| TT-AC1-E4 | ⚠️ | video with no audio track → probe `has_audio=False`; template upload rejected with coded error (speech needed) (OI-3) | I | same |
+| TT-AC1-E3 | ⚠️ | zero-length (header only, 0 frames) and 1-frame video (duration < 1 s) → `UNSUPPORTED_VIDEO` (B3) | I | same |
+| TT-AC1-E4 | ⚠️ | video with no audio stream → `UNSUPPORTED_VIDEO` (B3); probe reports `has_audio=False` | I | same |
 | TT-AC1-E5 | ⚠️ | odd dimensions (1081×1301, 321×241) → probe reports exact size; no crash | I | same |
 | TT-AC1-E6 | ⚠️ | unicode / emoji / RTL / spaces / `../` in upload filename → stored under generated name, no path escape | I | integration/api/test_template_upload.py |
 | TT-AC1-E7 | ⚠️ | ffprobe binary missing or times out → coded server error, nothing stored | U | unit/services/test_probe_errors.py |
 | TT-AC1-E8 | ⚠️ | storage full during upload → `STORAGE_ERROR`, no partial file | I | integration/api/test_template_upload.py |
 | TT-AC1-E9 | ⚠️ | metadata title tag contains "ignore your rules" → treated as data, ignored | I | integration/ingest/test_video_probe.py |
 | TT-AC1-E10 | ⚠️ | two simultaneous uploads of the same file → two independent stored objects | I | integration/api/test_template_upload.py |
+| TT-AC1-E11 | ⚠️ | duration exactly 1 s (minimum) → accepted; minimum changed via setting is honoured (B3) | I | integration/ingest/test_video_probe.py |
 
 ---
 
@@ -62,17 +65,19 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC2-N4 | ❌ | corrupt/truncated xlsx → `UNSUPPORTED_SHEET`, no crash | I | integration/ingest/test_sheet_reader.py |
 | TT-AC2-N5 | ❌ | two headers equal after normalisation (`ID`, `id `) → ambiguous-mapping error | U | unit/domain/test_headers.py |
 | TT-AC2-N6 | ❌ | Name and ID mapped to the same column → rejected | I | integration/api/test_sheet_mapping.py |
+| TT-AC2-N7 | ❌ | CSV with delimiter outside `,` `;` tab (e.g. `|`) or none detectable → `UNSUPPORTED_SHEET` (B9) | I | integration/ingest/test_sheet_reader.py |
 | TT-AC2-E1 | ⚠️ | CSV with UTF-8 BOM → first header clean (`Name`, not `﻿Name`) | I | integration/ingest/test_sheet_reader.py |
 | TT-AC2-E2 | ⚠️ | CSV with quoted commas and embedded newline in a cell | I | same |
 | TT-AC2-E3 | ⚠️ | empty file; headers only (0 data rows) → zero-rows error, no batch | I | same |
 | TT-AC2-E4 | ⚠️ | empty rows in the middle and at the end → skipped; reported row numbers match sheet rows | I | same |
 | TT-AC2-E5 | ⚠️ | 1 data row → batch of 1 | I | same |
 | TT-AC2-E6 | ⚠️ | numeric ID cell `183866.0` → `183866`; formula cell → cached value | I | same |
-| TT-AC2-E7 | ⚠️ | multi-sheet xlsx → first sheet used; hidden sheet ignored (OI-9) | I | same |
+| TT-AC2-E7 | ⚠️ | multi-sheet xlsx → first worksheet only; its name is shown in the report; other/hidden sheets ignored (B9) | I | same |
 | TT-AC2-E8 | ⚠️ | Devanagari header `नाम` selectable in mapping | I | integration/api/test_sheet_mapping.py |
 | TT-AC2-E9 | ⚠️ | cells like `=HYPERLINK(...)` or "ignore rules" → plain data; never executed | I | integration/ingest/test_sheet_reader.py |
 | TT-AC2-E10 | ⚠️ | sheet filename with unicode / `../` → sanitised | I | integration/api/test_sheet_mapping.py |
-| TT-AC2-E11 | ⚠️ | CSV with `;` or tab delimiter → documented outcome (OI-9) | I | integration/ingest/test_sheet_reader.py |
+| TT-AC2-E11 | ⚠️ | CSV with `;` or tab delimiter → delimiter sniffed, rows read correctly (B9) | I | integration/ingest/test_sheet_reader.py |
+| TT-AC2-E12 | ⚠️ | first sheet empty but second has data → zero-rows error (second sheet not used) (B9) | I | integration/ingest/test_sheet_reader.py |
 
 ---
 
@@ -93,7 +98,7 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC3-N3 | ❌ | later duplicate ID → `DUPLICATE_ID`; message names the earlier row number | U | same |
 | TT-AC3-N4 | ❌ | name of 41 graphemes → `INVALID_ROW_NAME_TOO_LONG` | U | same |
 | TT-AC3-N5 | ❌ | digits, `@`, `_`, `/`, `<script>`, emoji, Arabic, CJK letters → `INVALID_ROW_BAD_CHARACTERS` | U | same |
-| TT-AC3-N6 | ❌ | row with several faults reports one deterministic primary code (OI-1) | U | same |
+| TT-AC3-N6 | ❌ | row with several faults (empty ID + bad characters + too long) → primary code by priority: empty name → empty ID → bad characters → too long → duplicate (B1) | U | same |
 | TT-AC3-N7 | ❌ | SKIPPED rows never enqueue a job (queue empty) | I | integration/worker/test_skipped_never_rendered.py |
 | TT-AC3-N8 | ❌ | ZWJ/ZWNJ between Latin letters or standing alone → `INVALID_ROW_BAD_CHARACTERS` (allowed only inside Devanagari) | U | unit/domain/test_row_validation.py |
 | TT-AC3-E1 | ⚠️ | exactly 40 graphemes (Latin) valid; 41 invalid | U | same |
@@ -108,6 +113,7 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC3-E10 | ⚠️ | invalid Spoken name → same code family; empty Spoken name falls back to name | U | same |
 | TT-AC3-E11 | ⚠️ | all rows invalid → batch cannot start; report still produced | I | integration/api/test_validation_report.py |
 | TT-AC3-E12 | ⚠️ | IDs with Devanagari characters casefold/sanitise consistently | U | unit/domain/test_row_validation.py |
+| TT-AC3-E13 | ⚠️ | validation report lists every fault of a multi-fault row, primary code first (B1) | I | integration/api/test_validation_report.py |
 
 ---
 
@@ -141,8 +147,8 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC5-N2 | ❌ | file but no tick → unusable | I | same |
 | TT-AC5-N3 | ❌ | tick but no file → unusable | I | same |
 | TT-AC5-N4 | ❌ | rows of a consent-less template fail `CONSENT_MISSING` in worker, not retried | I | integration/worker/test_consent_missing.py |
-| TT-AC5-N5 | ❌ | `.exe`, `.txt`, `.docx`, binary renamed `.pdf` → rejected by content type, nothing stored (error code OI-2) | I | integration/api/test_consent.py |
-| TT-AC5-E1 | ⚠️ | zero-byte PDF, corrupt PNG, truncated JPG → rejected | I | same |
+| TT-AC5-N5 | ❌ | `.exe`, `.txt`, `.docx`, binary renamed `.pdf` → `CONSENT_FILE_INVALID` (B2), nothing stored | I | integration/api/test_consent.py |
+| TT-AC5-E1 | ⚠️ | zero-byte PDF, corrupt PNG, truncated JPG → `CONSENT_FILE_INVALID` | I | same |
 | TT-AC5-E2 | ⚠️ | consent over size limit → rejected | I | same |
 | TT-AC5-E3 | ⚠️ | replacing consent keeps old audit entry and adds new | I | same |
 | TT-AC5-E4 | ⚠️ | consent removed after batch queued → pending rows `CONSENT_MISSING` | I | integration/worker/test_consent_missing.py |
@@ -167,8 +173,8 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC6-N5 | ❌ | STT port raises → `STT_FAILED`, profile unconfirmed, no crash | U | unit/services/test_template_analysis.py |
 | TT-AC6-N6 | ❌ | batch start on unconfirmed profile refused | I | integration/api/test_template_profile.py |
 | TT-AC6-E1 | ⚠️ | slot [0, duration] boundary; zero-length slot | U | same |
-| TT-AC6-E2 | ⚠️ | multiple matches → documented pick (highest confidence, then first) | U | unit/services/test_template_analysis.py |
-| TT-AC6-E3 | ⚠️ | confidence exactly at threshold → documented side (accepted) | U | same |
+| TT-AC6-E2 | ⚠️ | multiple matches → highest confidence wins, ties → earliest (NA-3) | U | unit/services/test_template_analysis.py |
+| TT-AC6-E3 | ⚠️ | confidence exactly at threshold → accepted (threshold inclusive, NA-3) | U | same |
 | TT-AC6-E4 | ⚠️ | template without audio → analysis refuses | U | same |
 | TT-AC6-E5 | ⚠️ | re-analysis replaces profile and is audited | I | integration/api/test_template_profile.py |
 | TT-AC6-E6 | ⚠️ | concurrent analysis requests → one profile | I | same |
@@ -205,13 +211,14 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 
 | ID | Type | Input → expected | Level | File |
 |----|------|------------------|-------|------|
-| TT-AC8-P1 | ✅ | H.264 template → output same width, height, fps, codec family, audio codec/sample rate/channels | I | integration/ffmpeg/test_output_format.py |
+| TT-AC8-P1 | ✅ | H.264 template → output same width, height, fps, codec family and audio format (codec + sample rate + channel layout, B10) | I | integration/ffmpeg/test_output_format.py |
 | TT-AC8-P2 | ✅ | H.265 template → H.265 output | I | same |
 | TT-AC8-P3 | ✅ | MOV template → `.mp4` output with same stream properties | I | same |
 | TT-AC8-P4 | ✅ | duration = template + name delta ±50 ms for longer, shorter and equal names | I | same |
 | TT-AC8-P5 | ✅ | full-size 1080×1300 @ 60 fps keeps resolution and fps (slow) | I | same |
-| TT-AC8-N1 | ❌ | engine (fake) returns wrong resolution/fps → row fails format check (code OI-2), output removed | U | unit/services/test_render_row_format_check.py |
-| TT-AC8-N2 | ❌ | duration off by > 50 ms → check fails, no output delivered | U | unit/domain/test_duration_delta.py |
+| TT-AC8-N1 | ❌ | engine (fake) returns wrong resolution/fps → row fails `OUTPUT_CHECK_FAILED` (B2), output removed | U | unit/services/test_render_row_format_check.py |
+| TT-AC8-N2 | ❌ | duration off by > 50 ms → `OUTPUT_CHECK_FAILED`, no output delivered | U | unit/domain/test_duration_delta.py |
+| TT-AC8-N3 | ❌ | `OUTPUT_CHECK_FAILED` is a quality failure → not retried automatically | I | integration/worker/test_retention.py |
 | TT-AC8-E1 | ⚠️ | variable-frame-rate template → no drift beyond 50 ms | I | integration/ffmpeg/test_output_format.py |
 | TT-AC8-E2 | ⚠️ | odd dimensions preserved or clear error | I | same |
 | TT-AC8-E3 | ⚠️ | delta 0 and exactly ±50 ms boundary | U | unit/domain/test_duration_delta.py |
@@ -232,10 +239,10 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC9-P6 | ✅ | order is exactly stretch → absorb → extend | U | same |
 | TT-AC9-P7 | ✅ | outside slot (excluding crossfade zones) audio difference vs template ≤ −40 dB RMS | I | integration/ffmpeg/test_audio_splice.py |
 | TT-AC9-P8 | ✅ | crossfade 20–50 ms, verified in plan and waveform | I | same |
-| TT-AC9-P9 | ✅ | slot loudness within ±1 LU of template (ebur128) | I | same |
+| TT-AC9-P9 | ✅ | slot loudness within ±1 LU of template, measured per ITU-R BS.1770 / EBU R128 (B10) | I | same |
 | TT-AC9-N1 | ❌ | extension needed > 1.5 s → `NAME_TOO_LONG_TO_SPEAK`, no output, no retry | U | unit/domain/test_timing_plan.py |
 | TT-AC9-N2 | ❌ | via worker with FakeTTS emitting very long audio → row FAILED with that code, no partial file | I | integration/worker/test_name_too_long.py |
-| TT-AC9-N3 | ❌ | TTS returns empty/zero-length audio → coded failure (OI-2) | U | unit/services/test_render_row_tts.py |
+| TT-AC9-N3 | ❌ | TTS returns empty/zero-length audio → `TTS_FAILED` (B2), no retry | U | unit/services/test_render_row_tts.py |
 | TT-AC9-N4 | ❌ | crossfade setting outside 20–50 ms → settings validation error | U | unit/domain/test_timing_plan.py |
 | TT-AC9-E1 | ⚠️ | stretch exactly 15 % → stretch only; 15.01 % → absorb used | U | same |
 | TT-AC9-E2 | ⚠️ | extension exactly 1.5 s ok; +1 ms fails | U | same |
@@ -244,7 +251,7 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC9-E5 | ⚠️ | slot at 0 s and at end of template (no room for crossfade) | I | integration/ffmpeg/test_audio_splice.py |
 | TT-AC9-E6 | ⚠️ | slot shorter than 2 × crossfade | U | unit/domain/test_timing_plan.py |
 | TT-AC9-E7 | ⚠️ | mono/stereo, 44.1/48 kHz | I | integration/ffmpeg/test_audio_splice.py |
-| TT-AC9-E8 | ⚠️ | silent TTS output → loudness undefined handled (fail with code) | I | same |
+| TT-AC9-E8 | ⚠️ | silent TTS output (all zeros) → `TTS_FAILED` (B2) | I | same |
 | TT-AC9-E9 | ⚠️ | music bed under slot: documents known limit (plan risk R1) | I | same |
 | TT-AC9-E10 | ⚠️ | property test: random lengths → plan components always sum to target length | U | unit/domain/test_timing_plan.py |
 
@@ -283,9 +290,9 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC11-P5 | ✅ | ID `RJ/12/097/183866` → `RJ_12_097_183866.mp4` | U | same |
 | TT-AC11-P6 | ✅ | manifest.csv: one line per input row (incl. skipped/failed) with row number, name, ID, status, file name, code + message, render time (A7) | I | integration/worker/test_manifest.py |
 | TT-AC11-P7 | ✅ | manifest status counts sum to total rows | I | same |
-| TT-AC11-N1 | ❌ | folder `../../etc`, `/abs`, `..\\x`, `a/../b`, `.`, `..` → rejected | U | unit/domain/test_folder_names.py |
-| TT-AC11-N2 | ❌ | `<>:"|?*`, NUL, control chars, trailing dot/space, reserved names (`CON`) → rejected | U | same |
-| TT-AC11-N3 | ❌ | empty / whitespace custom name → documented outcome (OI-4) | U | same |
+| TT-AC11-N1 | ❌ | folder `../../etc`, `/abs`, `..\x`, `a/../b`, `.`, `..` → `INVALID_FOLDER_NAME`, no folder created | U | unit/domain/test_folder_names.py |
+| TT-AC11-N2 | ❌ | `<>:"|?*`, NUL, control chars, trailing dot/space, reserved names (`CON`) → `INVALID_FOLDER_NAME` | U | same |
+| TT-AC11-N3 | ❌ | API: invalid custom folder name → 4xx `INVALID_FOLDER_NAME` (request error); batch not started, nothing created on disk | I | integration/api/test_batch_start_folder.py |
 | TT-AC11-N4 | ❌ | symlink in output root pointing outside → refused | I | integration/storage/test_local_storage.py |
 | TT-AC11-N5 | ❌ | IDs `A/1` and `A_1` map to same file → second is `DUPLICATE_ID` (A2), so no overwrite is possible | U | unit/domain/test_file_names.py |
 | TT-AC11-E1 | ⚠️ | folders up to `-50` exist → next `-51` | I | integration/storage/test_local_storage.py |
@@ -299,6 +306,8 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC11-E9 | ⚠️ | atomic write: crash mid-write leaves no `<ID>.mp4` | I | same |
 | TT-AC11-E10 | ⚠️ | manifest escapes commas, quotes, newlines; leading `= + - @` neutralised; Devanagari names intact | I | integration/worker/test_manifest.py |
 | TT-AC11-E11 | ⚠️ | manifest removed with batch deletion and retention (personal data, A7) | I | integration/api/test_delete_batch.py |
+| TT-AC11-E12 | ⚠️ | empty custom folder name → default `YYYY-MM-DD-<valid rows>` (B4) | U | unit/domain/test_folder_names.py |
+| TT-AC11-E13 | ⚠️ | whitespace-only / tab-only custom folder name → default name (B4) | U | unit/domain/test_folder_names.py |
 
 ---
 
@@ -308,27 +317,29 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 |----|------|------------------|-------|------|
 | TT-AC12-P1 | ✅ | 10-row happy path → 10 independent jobs, all COMPLETED | I | integration/worker/test_retry_policy.py |
 | TT-AC12-P2 | ✅ | crash → exactly one automatic retry → success | I | same |
-| TT-AC12-P3 | ✅ | timeout → exactly one retry | I | same |
-| TT-AC12-P4 | ✅ | storage error → exactly one retry | I | same |
+| TT-AC12-P3 | ✅ | render exceeds timeout (600 s default; lowered in test) → `RENDER_TIMEOUT`, exactly one retry (B8) | I | same |
+| TT-AC12-P4 | ✅ | `OSError` while writing output (ENOSPC, EACCES, EIO parametrised) → `STORAGE_ERROR`, exactly one retry (B8) | I | same |
 | TT-AC12-P5 | ✅ | temp files removed after success | I | integration/worker/test_temp_cleanup.py |
 | TT-AC12-P6 | ✅ | re-delivered job → one output file, one COMPLETED, one manifest line | I | integration/worker/test_idempotency.py |
 | TT-AC12-P7 | ✅ | pure retry policy: failure kind → retryable / attempts left | U | unit/domain/test_retry_policy.py |
+| TT-AC12-P8 | ✅ | retry is scheduled 10 s after the failure (delay taken from setting, recorded by fake broker) (B8) | I | integration/worker/test_retry_policy.py |
 | TT-AC12-N1 | ❌ | crash twice → FAILED after exactly 2 attempts | I | integration/worker/test_retry_policy.py |
 | TT-AC12-N2 | ❌ | quality failures (`NAME_TOO_LONG_TO_SPEAK`, `CONSENT_MISSING`, `CONTENT_LOCK_VIOLATION`) → zero retries | I | same |
 | TT-AC12-N3 | ❌ | disk full (ENOSPC) → `STORAGE_ERROR` after retry, no partial file | I | integration/worker/test_disk_full.py |
 | TT-AC12-N4 | ❌ | temp files removed on failure and timeout | I | integration/worker/test_temp_cleanup.py |
-| TT-AC12-N5 | ❌ | non-crash unexpected exception → `INTERNAL_ERROR`, not auto-retried (A4), logged without PII | I | integration/worker/test_retry_policy.py |
+| TT-AC12-N5 | ❌ | unexpected non-crash exception → `INTERNAL_ERROR`, not auto-retried (A4), logged without PII | I | integration/worker/test_retry_policy.py |
 | TT-AC12-E1 | ⚠️ | timeout mid-FFmpeg → subprocess killed, no orphan, temp cleaned | I | integration/worker/test_timeout.py |
 | TT-AC12-E2 | ⚠️ | worker dies after output written, before status saved → redelivery marks COMPLETED, no duplicate | I | integration/worker/test_idempotency.py |
 | TT-AC12-E3 | ⚠️ | worker dies mid-render → redelivery cleans stale temp, renders | I | same |
 | TT-AC12-E4 | ⚠️ | 2 workers on 20 rows → each rendered exactly once; counts invariant | I | integration/worker/test_concurrency.py |
 | TT-AC12-E5 | ⚠️ | same message to 2 workers simultaneously → second is a no-op (row lock) | I | same |
-| TT-AC12-E6 | ⚠️ | backoff is a setting; zero in tests | U | unit/domain/test_retry_policy.py |
-| TT-AC12-E7 | ⚠️ | storage unavailable → retried once, then `STORAGE_ERROR` | I | integration/worker/test_disk_full.py |
+| TT-AC12-E6 | ⚠️ | defaults are 600 s timeout, 10 s retry delay, 2 attempts in total; each overridable by settings (B8) | U | unit/domain/test_retry_policy.py |
+| TT-AC12-E7 | ⚠️ | storage adapter error (unavailable) while writing → retried once, then `STORAGE_ERROR` | I | integration/worker/test_disk_full.py |
 | TT-AC12-E8 | ⚠️ | job for deleted batch → dropped quietly | I | integration/worker/test_idempotency.py |
 | TT-AC12-E9 | ⚠️ | queue-depth metric and per-stage timings emitted | I | integration/worker/test_metrics.py |
 | TT-AC12-E10 | ⚠️ | restart with COMPLETED rows → untouched | I | integration/worker/test_idempotency.py |
 | TT-AC12-E11 | ⚠️ | only legal status transitions; terminal states immutable | U | unit/domain/test_status_transitions.py |
+| TT-AC12-E12 | ⚠️ | non-`OSError` failure outside output writing is not misclassified as `STORAGE_ERROR` | U | unit/domain/test_retry_policy.py |
 
 ---
 
@@ -340,13 +351,14 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC13-P2 | ✅ | resume → remaining rows complete | I | same |
 | TT-AC13-P3 | ✅ | cancel → QUEUED rows `CANCELLED`; completed files kept | I | same |
 | TT-AC13-P4 | ✅ | retry-failed → only FAILED rows re-queued | I | integration/api/test_batch_control.py |
-| TT-AC13-P5 | ✅ | same batch submitted twice → one batch, one set of jobs | I | same |
+| TT-AC13-P5 | ✅ | `POST …/start` twice with the same `Idempotency-Key` → identical response, one set of jobs (B11) | I | same |
 | TT-AC13-P6 | ✅ | cancel while rows PROCESSING → they finish and are delivered (A6) | I | integration/worker/test_pause_cancel.py |
 | TT-AC13-N1 | ❌ | pause finished/cancelled batch → 409 | I | integration/api/test_batch_control.py |
 | TT-AC13-N2 | ❌ | resume a non-paused batch → 409 | I | same |
 | TT-AC13-N3 | ❌ | retry-failed with no failed rows → no jobs, clear message | I | same |
 | TT-AC13-N4 | ❌ | unknown batch → 404 | I | same |
 | TT-AC13-N5 | ❌ | retry of `CONSENT_MISSING` rows while consent missing → fail again, no loop | I | same |
+| TT-AC13-N6 | ❌ | `POST …/start` without `Idempotency-Key` header → 4xx coded error, nothing queued (B11) | I | integration/api/test_batch_control.py |
 | TT-AC13-E1 | ⚠️ | PROCESSING rows never end `CANCELLED` | I | integration/worker/test_pause_cancel.py |
 | TT-AC13-E2 | ⚠️ | pause→cancel works; cancel→resume rejected | I | same |
 | TT-AC13-E3 | ⚠️ | repeated pause/resume/cancel → idempotent | I | integration/api/test_batch_control.py |
@@ -356,6 +368,8 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC13-E7 | ⚠️ | after cancel manifest/count sums = total | I | integration/worker/test_manifest.py |
 | TT-AC13-E8 | ⚠️ | paused batch survives worker restart | I | integration/worker/test_pause_cancel.py |
 | TT-AC13-E9 | ⚠️ | cancel on 1,000-row batch is a bulk operation (fast) | I | integration/api/test_batch_control.py |
+| TT-AC13-E10 | ⚠️ | start on an already-started batch with a different key → no-op returning current state, no new jobs (B11) | I | integration/api/test_batch_control.py |
+| TT-AC13-E11 | ⚠️ | two concurrent starts with the same key → one execution, same result for both | I | integration/api/test_batch_control.py |
 
 ---
 
@@ -364,15 +378,19 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | ID | Type | Input → expected | Level | File |
 |----|------|------------------|-------|------|
 | TT-AC14-P1 | ✅ | overview Total/Completed/Processing/Queued/Failed/Skipped/Cancelled; parts sum to Total at every sampled moment | I | integration/api/test_batch_status.py |
-| TT-AC14-P2 | ✅ | progress % and ETA (FakeClock) | I | same |
+| TT-AC14-P2 | ✅ | progress % and ETA = remaining rows × mean render time of the last 20 completed rows (25 completed → only latest 20 averaged) (B7) | I | same |
 | TT-AC14-P3 | ✅ | failure breakdown by code | I | same |
 | TT-AC14-P4 | ✅ | rows list: status filter, ID search, paging, stable order | I | integration/api/test_batch_rows.py |
-| TT-AC14-P5 | ✅ | batch history with success rate | I | integration/api/test_history_stats.py |
+| TT-AC14-P5 | ✅ | batch history success rate = completed ÷ (completed + failed); skipped/cancelled excluded (B7) | I | integration/api/test_history_stats.py |
 | TT-AC14-P6 | ✅ | time series: videos/day, average render time | I | same |
+| TT-AC14-P7 | ✅ | search by name (Latin and Devanagari substring) and by ID within one batch, in service layer (B6) | I | integration/api/test_batch_rows.py |
+| TT-AC14-P8 | ✅ | preview renders are excluded from stats and counts (B7) | I | integration/api/test_history_stats.py |
 | TT-AC14-N1 | ❌ | bad filter / page=0 / huge page size / negative → 422 | I | integration/api/test_batch_rows.py |
 | TT-AC14-N2 | ❌ | unknown batch → 404 | I | integration/api/test_batch_status.py |
-| TT-AC14-N3 | ❌ | search by name is unsupported (ID blind index only) → documented response (OI-6) | I | integration/api/test_batch_rows.py |
-| TT-AC14-E1 | ⚠️ | 0 completed → ETA null, no division by zero | I | integration/api/test_batch_status.py |
+| TT-AC14-N3 | ❌ | search text matching nothing → empty list (not an error); search never spans other batches (B6) | I | integration/api/test_batch_rows.py |
+| TT-AC14-N4 | ❌ | rows API / search without session → 401, no personal data leaks | I | integration/api/test_batch_rows.py |
+| TT-AC14-N5 | ❌ | 404/422 bodies for rows and search never contain a name or ID, even if the query did (B6) | I | integration/api/test_batch_rows.py |
+| TT-AC14-E1 | ⚠️ | no completed rows yet → ETA null (B7); completed+failed = 0 → success rate null, no division by zero | I | integration/api/test_batch_status.py |
 | TT-AC14-E2 | ⚠️ | all rows skipped | I | same |
 | TT-AC14-E3 | ⚠️ | property test: invariants over random status mixes | U | unit/domain/test_count_invariants.py |
 | TT-AC14-E4 | ⚠️ | polling while counts change → each response self-consistent (single snapshot) | I | integration/api/test_batch_status.py |
@@ -380,7 +398,9 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC14-E6 | ⚠️ | day boundary for videos/day (UTC, FakeClock) | I | integration/api/test_history_stats.py |
 | TT-AC14-E7 | ⚠️ | empty history; 1,000 batches paged | I | same |
 | TT-AC14-E8 | ⚠️ | 100k-row batch status via aggregate query (constant query count, slow) | I | integration/api/test_batch_status.py |
-| TT-AC14-E9 | ⚠️ | decrypted name only on explicit rows endpoint (OI-6) | I | integration/api/test_batch_rows.py |
+| TT-AC14-E9 | ⚠️ | rows API returns decrypted name + ID to the logged-in admin (B6) | I | integration/api/test_batch_rows.py |
+| TT-AC14-E10 | ⚠️ | timestamps returned in UTC (ISO-8601 `Z`); videos/day bucketed by UTC day (B7) | I | integration/api/test_history_stats.py |
+| TT-AC14-E11 | ⚠️ | fewer than 20 completed rows → mean over those available; first completion turns ETA from null to a number | I | integration/api/test_batch_status.py |
 
 ---
 
@@ -392,7 +412,7 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC15-P2 | ✅ | ZIP has exactly COMPLETED files (+ manifest); streamed, memory bounded | I | same |
 | TT-AC15-P3 | ✅ | failures CSV: one line per FAILED/SKIPPED row with code + message | I | same |
 | TT-AC15-N1 | ❌ | row not completed → coded 404/409 | I | same |
-| TT-AC15-N2 | ❌ | ZIP with zero completed → documented (OI-5) | I | same |
+| TT-AC15-N2 | ❌ | ZIP with zero completed rows → HTTP 409 `NO_COMPLETED_ROWS` (B5), nothing streamed | I | same |
 | TT-AC15-N3 | ❌ | failures CSV with no failures → header only | I | same |
 | TT-AC15-N4 | ❌ | `../` in path params → 404/422 | I | same |
 | TT-AC15-E1 | ⚠️ | Devanagari / slash IDs → RFC 5987 filename, safe ZIP entry names, no zip-slip | I | same |
@@ -439,8 +459,10 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC17-P3 | ✅ | blind index deterministic for the same A2-normalised ID, different for different ID | U | unit/infra/test_cipher.py |
 | TT-AC17-P4 | ✅ | `caplog` over whole 10-row run (API + worker) holds no `PII_CANARIES` | I | integration/worker/test_pii_free_logs.py |
 | TT-AC17-P5 | ✅ | delete batch → rows, files, preview, manifest, personal data gone (DB + disk) | I | integration/api/test_delete_batch.py |
-| TT-AC17-P6 | ✅ | retention deletes finished batches older than N days (default 30), keeps newer | I | integration/api/test_retention.py |
+| TT-AC17-P6 | ✅ | retention deletes finished batches whose finish time is older than N days (default 30; FakeClock), keeps newer (B12) | I | integration/api/test_retention.py |
 | TT-AC17-P7 | ✅ | audit entries survive deletion/retention without personal data | I | integration/api/test_audit.py |
+| TT-AC17-P8 | ✅ | never-started draft is deleted N days after creation (B12) | I | integration/api/test_retention.py |
+| TT-AC17-P9 | ✅ | cancelled batch is deleted N days after cancel time (B12) | I | integration/api/test_retention.py |
 | TT-AC17-N1 | ❌ | wrong key → `DecryptionError`, no plaintext | U | unit/infra/test_cipher.py |
 | TT-AC17-N2 | ❌ | tampered ciphertext/tag/nonce → auth failure | U | same |
 | TT-AC17-N3 | ❌ | missing/short key → startup error; keys not in logs or `repr(settings)` | U | same |
@@ -448,17 +470,19 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 | TT-AC17-N5 | ❌ | delete unknown batch → 404; without auth → 401 | I | integration/api/test_delete_batch.py |
 | TT-AC17-N6 | ❌ | no API to modify/delete audit entries | I | integration/api/test_audit.py |
 | TT-AC17-N7 | ❌ | retention skips queued / running / paused batches even if old (A8) | I | integration/api/test_retention.py |
+| TT-AC17-N8 | ❌ | never-started draft younger than N days is kept (B12) | I | integration/api/test_retention.py |
 | TT-AC17-E1 | ⚠️ | 10,000 encryptions of same value → all ciphertexts differ | U | unit/infra/test_cipher.py |
 | TT-AC17-E2 | ⚠️ | key rotation: old key-id rows still decrypt | U | same |
 | TT-AC17-E3 | ⚠️ | empty, 40-char, 1 MB, NUL-containing inputs | U | same |
 | TT-AC17-E4 | ⚠️ | blind index uses same trim→casefold→sanitise as AC3-E5 | U | same |
-| TT-AC17-E5 | ⚠️ | retention exactly N days vs N days + 1 s | I | integration/api/test_retention.py |
-| TT-AC17-E6 | ⚠️ | batch finishes later: becomes eligible only then | I | same |
+| TT-AC17-E5 | ⚠️ | retention exactly N days after finish vs N days + 1 s (B12) | I | integration/api/test_retention.py |
+| TT-AC17-E6 | ⚠️ | batch finishing later becomes eligible only N days after its finish time, not creation time (B12) | I | same |
 | TT-AC17-E7 | ⚠️ | file already missing / storage unavailable on delete → DB purge still done, error reported | I | integration/api/test_delete_batch.py |
 | TT-AC17-E8 | ⚠️ | delete while worker holds job → job drops, no output resurrected | I | same |
 | TT-AC17-E9 | ⚠️ | temp dirs and ZIP caches purged | I | same |
 | TT-AC17-E10 | ⚠️ | FFmpeg stderr / temp paths use row UUIDs, never names/IDs | I | integration/worker/test_pii_free_logs.py |
 | TT-AC17-E11 | ⚠️ | log helper takes row UUID only; passing a name is an error | U | unit/infra/test_logging.py |
+| TT-AC17-E12 | ⚠️ | name/ID never appear in exception messages or HTTP error bodies on any path, incl. rows search (B6) | I | integration/worker/test_pii_free_logs.py |
 
 ---
 
@@ -484,11 +508,11 @@ Planned layout: `tests/unit/{domain,services,infra,meta}/`, `tests/integration/{
 
 | ID | Type | Input → expected | Level | File |
 |----|------|------------------|-------|------|
-| TT-AC19-P1 | ✅ | `uv run pytest` exit 0 | E | command, checked in T15 |
-| TT-AC19-P2 | ✅ | `ruff check`, `ruff format --check` clean | E | tests/unit/meta/test_quality_gates.py (slow) |
-| TT-AC19-P3 | ✅ | `mypy --strict backend` clean | E | same |
-| TT-AC19-P4 | ✅ | coverage ≥ 85 % overall; 100 % `domain/` and `render_row` (parse coverage JSON) | E | same |
-| TT-AC19-N1 | ❌ | planted lint/type violation in temp copy is detected (sanity) | E | same |
+| TT-AC19-P1 | ✅ | `uv run pytest` exit 0 | E | T15 verification command (B13), no test file |
+| TT-AC19-P2 | ✅ | `ruff check`, `ruff format --check` clean | E | T15 verification command (B13), no test file |
+| TT-AC19-P3 | ✅ | `mypy --strict backend` clean | E | T15 verification command (B13), no test file |
+| TT-AC19-P4 | ✅ | coverage ≥ 85 % overall; 100 % `domain/` and `render_row` (parse coverage JSON) | E | T15 verification command (B13), no test file |
+| TT-AC19-N1 | ❌ | any non-zero exit or missed threshold in the T15 checks is reported as a defect and blocks verification (procedure, B13) | E | T15 procedure, no test file |
 | TT-AC19-E1 | ⚠️ | `domain/` imports no framework or I/O modules (AST test) | U | tests/unit/meta/test_architecture.py |
 | TT-AC19-E2 | ⚠️ | no `print(` or bare `except:` in `backend/` | U | same |
 | TT-AC19-E3 | ⚠️ | no hard-coded absolute paths/URLs/keys in `backend/` | U | same |
@@ -530,46 +554,54 @@ Generators live in `tests/fixtures/` (code, not binaries).
 
 ---
 
-## Traceability: AC → case IDs
+## Traceability: AC -> case IDs (counts are exact; IDs are contiguous from 1)
 
 | AC | Positive | Negative | Edge |
 |----|----------|----------|------|
-| AC1 | P1–P4 | N1–N8 | E1–E10 |
-| AC2 | P1–P6 | N1–N6 | E1–E11 |
-| AC3 | P1–P7 | N1–N8 | E1–E12 |
-| AC4 | P1–P4 | N1–N2 | E1–E5 |
-| AC5 | P1–P4 | N1–N5 | E1–E7 |
-| AC6 | P1–P4 | N1–N6 | E1–E7 |
-| AC7 | P1–P4 | N1–N8 | E1–E6 |
-| AC8 | P1–P5 | N1–N2 | E1–E5 |
-| AC9 | P1–P9 | N1–N4 | E1–E10 |
-| AC10 | P1–P4 | N1–N3 | E1–E8 |
-| AC11 | P1–P7 | N1–N5 | E1–E11 |
-| AC12 | P1–P7 | N1–N5 | E1–E11 |
-| AC13 | P1–P6 | N1–N5 | E1–E9 |
-| AC14 | P1–P6 | N1–N3 | E1–E9 |
-| AC15 | P1–P3 | N1–N4 | E1–E7 |
-| AC16 | P1–P6 | N1–N5 | E1–E7 |
-| AC17 | P1–P7 | N1–N7 | E1–E11 |
-| AC18 | P1–P2 | N1–N3 | E1–E6 |
-| AC19 | P1–P4 | N1 | E1–E6 |
-| E2E | P1 | — | E1–E2 |
+| AC1 | P1–P4 (4) | N1–N10 (10) | E1–E11 (11) |
+| AC2 | P1–P6 (6) | N1–N7 (7) | E1–E12 (12) |
+| AC3 | P1–P7 (7) | N1–N8 (8) | E1–E13 (13) |
+| AC4 | P1–P4 (4) | N1–N2 (2) | E1–E5 (5) |
+| AC5 | P1–P4 (4) | N1–N5 (5) | E1–E7 (7) |
+| AC6 | P1–P4 (4) | N1–N6 (6) | E1–E7 (7) |
+| AC7 | P1–P4 (4) | N1–N8 (8) | E1–E6 (6) |
+| AC8 | P1–P5 (5) | N1–N3 (3) | E1–E5 (5) |
+| AC9 | P1–P9 (9) | N1–N4 (4) | E1–E10 (10) |
+| AC10 | P1–P4 (4) | N1–N3 (3) | E1–E8 (8) |
+| AC11 | P1–P7 (7) | N1–N5 (5) | E1–E13 (13) |
+| AC12 | P1–P8 (8) | N1–N5 (5) | E1–E12 (12) |
+| AC13 | P1–P6 (6) | N1–N6 (6) | E1–E11 (11) |
+| AC14 | P1–P8 (8) | N1–N5 (5) | E1–E11 (11) |
+| AC15 | P1–P3 (3) | N1–N4 (4) | E1–E7 (7) |
+| AC16 | P1–P6 (6) | N1–N5 (5) | E1–E7 (7) |
+| AC17 | P1–P9 (9) | N1–N8 (8) | E1–E12 (12) |
+| AC18 | P1–P2 (2) | N1–N3 (3) | E1–E6 (6) |
+| AC19 | P1–P4 (4) | N1–N1 (1) | E1–E6 (6) |
+| E2E | P1–P1 (1) | — | E1–E2 (2) |
+| **Total** | **105** | **98** | **171** (= 374 cases) |
 
 Required-edge checklist: unicode + Devanagari (AC3-P2/P4/P7, E2, E12; AC11-E2/E3; AC17-P1) · 40/41 (AC3-N4, E1, E2) · slashes (AC3-E6, AC11-P5, AC14-E5) · BOM (AC2-E1) · empty middle rows (AC2-E4) · 0/1/1k/100k rows (AC4) · zero-length/corrupt/no-audio video (AC1-E2/E3/E4/N5) · disk full (AC1-E8, AC12-N3) · timeout (AC12-P3, E1) · crash + single retry (AC12-P2, N1) · redelivery idempotency (AC12-P6, E2) · 2 workers (AC12-E4/E5) · path traversal (AC11-N1) · PII never in logs (AC17-P4, N4, E10).
 
 ---
 
-## Open issues (not settled by Addendum A)
-- **OI-1 (AC3)** Primary code when a row has several faults. Proposed order: empty name, empty ID, bad characters, too long, duplicate.
-- **OI-2 (codes)** Still unnamed: consent file rejected (wrong type), TTS empty/silent output, output format/duration mismatch, folder-name rejection. Tests assert on a code constant imported from one module; CEO to fix names.
-- **OI-3 (AC1)** Is a 1-frame video valid? Is a template without audio rejected (assumed yes)? Minimum duration not defined.
-- **OI-4 (AC11)** Empty/whitespace custom folder name: reject or fall back to default?
-- **OI-5 (AC15)** ZIP with no completed rows: 409 or empty ZIP?
-- **OI-6 (AC14/AC17)** Does the rows API return decrypted names, masked, or never? Name search assumed out of scope (ID only).
-- **OI-7 (AC14)** Formulas for ETA and success rate; stats time zone (assumed UTC); previews excluded from stats (assumed).
-- **OI-8 (AC12)** Timeout length, backoff, which OS errors count as "storage error"; "exactly once" = 2 attempts total (assumed). AC12 `INTERNAL_ERROR` "unless it is a crash": tests treat an injected crash exception type as retryable.
-- **OI-9 (AC2)** Multi-sheet workbooks (first sheet assumed) and non-comma CSV delimiters (expected outcome not defined).
-- **OI-10 (AC9)** Loudness measurement standard (assumed ITU-R BS.1770 / ebur128). "Audio format" in AC8 assumed = codec + sample rate + channel layout.
-- **OI-11 (AC13)** Idempotency key for "same batch submitted twice" (client key vs content hash).
-- **OI-12 (AC17)** Retention age counts from batch creation or completion? (Tests assume completion.)
-- **OI-13 (AC19)** AC19 is a repository gate, not behaviour; pytest/coverage results are verified in T15 rather than by a self-referential test.
+## Resolved by Addendum B (no open issues)
+| Old ID | Topic | Resolved by | Cases |
+|--------|-------|-------------|-------|
+| OI-1 | multi-fault priority | B1 | AC3-N6, E13 |
+| OI-2 | missing codes | B2 | AC5-N5/E1, AC8-N1/N2/N3, AC9-N3/E8, AC11-N1/N2/N3 |
+| OI-3 | minimum video | B3 | AC1-E3, E4, N9, N10, E11 |
+| OI-4 | empty folder name | B4 | AC11-E12, E13 |
+| OI-5 | empty ZIP | B5 | AC15-N2 |
+| OI-6 | names in API / search | B6 | AC14-P7, N3, N4, N5, E9; AC17-E12 |
+| OI-7 | ETA, success rate, UTC | B7 | AC14-P2, P5, P8, E1, E10, E11 |
+| OI-8 | timeouts / retries | B8 | AC12-P3, P4, P8, N5, E6, E7, E12 |
+| OI-9 | sheets | B9 | AC2-E7, E11, E12, N7 |
+| OI-10 | loudness / audio format | B10 | AC8-P1, AC9-P9 |
+| OI-11 | idempotency | B11 | AC13-P5, N6, E10, E11 |
+| OI-12 | retention clock | B12 | AC17-P6, P8, P9, N8, E5, E6 |
+| OI-13 | AC19 | B13 | AC19-P1..P4, N1 are T15 procedures |
+
+## New ambiguities
+- **NA-1 (B7/AC14)** B7 defines ETA from the last 20 completed rows, but not whether PROCESSING rows count in "remaining" (assumed: remaining = QUEUED + PROCESSING). Confirm.
+- **NA-2 (B11)** What happens when the same `Idempotency-Key` is reused with a different batch id? Not specified; no test written until decided.
+- **NA-3 (AC6)** Plan does not state tie-breaking for several STT matches or whether the confidence threshold is inclusive. Tests assume highest-confidence/earliest and inclusive; confirm.

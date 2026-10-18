@@ -11,6 +11,10 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Tester — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-10-19 — T11 (RED: batch API)</h2>
+<ul><li>Added tests/integration/api/test_batches_{create,start,control,status,downloads,delete_retention}.py, batch_helpers.py; doubles FakeJobQueue and ChunkSpyStorage; Env.queue. The auth route sweep now fills any path parameter.</li><li>Contract: AppDeps.job_queue (enqueue_preview, enqueue_rows), Container.batches (preview_rendered, preview_failed, run_retention), batch routes plus the daily stats route. API codes added: PREVIEW_NOT_READY, PREVIEW_NOT_APPROVED, INVALID_STATE.</li><li>193 new tests; 182 fail on missing routes, 11 pass trivially (404 cases); the 871 earlier tests pass.</li></ul>
+<h2>2026-10-19 — T10b</h2>
+<ul><li>Fixed the global-cap alert test (429 inside the gap). Added tests/integration/api/test_login_persistence.py (two app instances, restart), tests/integration/db/test_duplicate_guard.py (partial unique index), tests/integration/db/test_migrations.py (own DB vidgen_migration_test), tests/unit/infra/test_system_clock.py.</li></ul>
 <h2>2026-10-19 — T9 (RED: db, auth, templates, audit)</h2>
 <ul><li>Added tests/integration/{conftest.py,db/<em>,api/</em>}, fixtures tests/fixtures/doubles.py. Test DB fixture uses VIDGEN_TEST_DATABASE_URL (default vidgen_test, name must end in _test), create_all from models, tables emptied per test; no Alembic.</li><li>126 test functions. Contract modules: vidgen.api.app, vidgen.api.deps, vidgen.infrastructure.db.models, vidgen.infrastructure.db.repositories. Template carries original_name (the spoken name to replace); Settings gains cookie_secure, session_ttl_minutes, session_version.</li><li>649 earlier tests pass; new ones fail on ModuleNotFoundError.</li></ul>
 <h2>2026-10-19 — T7b</h2>

@@ -22,4 +22,4 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T11 | RED: batch API | tester | sonnet | Waiting for T10 | Yes, 2026-10-19 | — |
 | T12 | GREEN: batch services + endpoints | backend-dev | sonnet | Waiting for T11 | Yes, 2026-10-19 | — |
 | T13–T16 | See plan | tester / backend-dev / CEO | sonnet | Planned | — | — |
-| F1–F6 | M3 frontend | tester / frontend-dev | sonnet | Blocked (screenshots, ADR-009) | — | — |
+| F0–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | Admin / tester / frontend-dev / CEO | sonnet | Plan + deps approved 2026-10-19; design reference committed (b557ff0). Waits for M1 gate 3, Node.js install and product name/logo | Plan: yes; assignment: pending | — |

@@ -1,6 +1,6 @@
 # Plan — M3: Operator dashboard (F1–F6)
 
-**Status:** Draft — needs Admin approval · **Date:** 2026-10-19
+**Status:** Approved (Admin, 2026-10-19). Assignment waits for M1 gate 3 · **Date:** 2026-10-19
 **Inputs:** REQ-001 §7 (R7), §10 · `docs/design/reference/DESIGN-NOTES.md` + `trustvest-dashboard.png` · ADR-006 (auth), ADR-009 (stack) · M1 API (T10–T14)
 **Schedule:** starts after M1 **merge gate 3** (backend + tests verified, as the Admin asked). Can run in parallel with M2 backend work (worktrees, if the guard allows; otherwise interleaved).
 
@@ -111,8 +111,8 @@ Order (TDD): F0 → F1 → F2 → (F3, F4, F5 in sequence or parallel) → F6 �
 **Open questions:** none blocking. The product name and logo for the sidebar are needed before F2: the Admin supplies them, or we use a plain text name.
 
 ## Admin approval
-- [ ] Plan approved
-- [ ] Node.js + npm dependencies approved
-- [ ] Product name / logo supplied (before F2)
+- [x] Plan approved — 2026-10-19
+- [x] Node.js + npm dependencies approved as listed — 2026-10-19
+- [ ] Product name / logo supplied by the Admin (before F2)
 - [ ] Task assignment approved (after M1 gate 3)
 - [ ] Visual sign-off (F7) and merge

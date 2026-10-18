@@ -186,6 +186,6 @@ def test_complex_text_shaping_is_active_for_devanagari() -> None:
     """
     assert features.check("raqm"), "Pillow has no raqm (libraqm); Devanagari would be unshaped"
     font = ImageFont.truetype(str(devanagari_font()), 100)
-    conjunct = font.getlength("क्ष")  # KA + VIRAMA + SSA
-    parts = font.getlength("क") + font.getlength("ष")
+    conjunct = font.getlength("\u0915\u094d\u0937")  # KA + VIRAMA + SSA
+    parts = font.getlength("\u0915") + font.getlength("\u0937")
     assert conjunct < parts

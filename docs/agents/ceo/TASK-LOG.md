@@ -1,5 +1,13 @@
 # CEO — Task log
 
+## Process rules (Admin, 2026-10-19)
+- The Admin does not run `git add` or `git commit` in the project while agents are working. If something needs committing, the Admin asks the CEO.
+- Every brief requires: stage explicit paths only; every commit carries the standard Co-Authored-By/Claude-Session trailer and a task-related Conventional Commit message (approved by the Admin).
+
+## Incident notes
+- 2026-10-19 01:01: commit `8f575e9` "chore: agent team setup" (deletion of the duplicate `video-generator-agents/CLAUDE.md`) was made by the Admin by accident: a queued setup command ran when a 6-hour-old `rm` finished. The tester was not involved. Kept as is (Admin decision).
+- 2026-10-19 01:04: an accidental `git init && git add .` by the Admin staged 6 of backend-dev's in-progress T10-round-2 files (no commit made, file contents unchanged). The CEO handles the index when backend-dev reports; CEO commits use `git commit --only <paths>` meanwhile.
+
 Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 
 | ID | Task | Agent | Model | Status | Approved by Admin | Merged |

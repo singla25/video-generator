@@ -11,12 +11,14 @@ from pathlib import Path
 from typing import BinaryIO, Protocol
 from uuid import UUID
 
+from vidgen.domain.values import TextRegion, Word
+
 
 class SpeechToText(Protocol):
     """Transcribes audio into words with timestamps."""
 
-    def transcribe(self, audio: Path) -> list[tuple[str, float, float, float]]:
-        """Return (word, start_s, end_s, confidence) tuples."""
+    def transcribe(self, audio: Path) -> list[Word]:
+        """Return the words with timestamps and confidence."""
         ...
 
 
@@ -45,17 +47,23 @@ class LipSyncer(Protocol):
 
 
 class TextDetector(Protocol):
-    """Locates the target word in a transcript."""
+    """Finds on-screen text (OCR). Port only in M1 (R2.2)."""
 
-    def find(
-        self, words: list[tuple[str, float, float, float]], target: str
-    ) -> tuple[float, float, float] | None:
-        """Return (start_s, end_s, confidence) of the best match, or None."""
+    def detect(self, video: Path) -> list[TextRegion]:
+        """Return the text regions found in ``video``."""
         ...
 
 
 class TextRenderer(Protocol):
-    """Renders the AI-generated label as an image."""
+    """Replaces on-screen name text in a video (R5). Port only in M1."""
+
+    def render_text(self, video: Path, region: TextRegion, text: str, out: Path) -> None:
+        """Write ``video`` with ``region`` redrawn as ``text`` to ``out``."""
+        ...
+
+
+class LabelRenderer(Protocol):
+    """Renders the AI-generated disclosure label as an image."""
 
     def render_label(self, width: int, height: int, out: Path) -> None:
         """Write a PNG label band of the given size to ``out``."""
@@ -138,6 +146,7 @@ class Cipher(Protocol):
         ...
 
 
+# TODO(T10): replace ``object`` with the real entity types.
 class TemplateRepository(Protocol):
     """Persistence for template profiles."""
 

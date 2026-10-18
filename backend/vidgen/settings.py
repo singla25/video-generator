@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     """All configurable values. Secrets have no defaults and must be provided."""
 
     model_config = SettingsConfigDict(env_prefix="VIDGEN_", extra="ignore")
+
+    # Required, no defaults. The Admin supplies the real creator entity name (D13/C3).
+    creator_entity: str
 
     # Secrets (no defaults)
     encryption_key: SecretStr
@@ -29,7 +32,7 @@ class Settings(BaseSettings):
 
     # Upload limits
     max_video_bytes: int = Field(default=500 * 1024 * 1024, gt=0)
-    max_video_seconds: float = Field(default=600.0, gt=0)
+    max_video_seconds: float = Field(default=300.0, gt=0)
     min_video_seconds: float = Field(default=1.0, gt=0)
     max_sheet_bytes: int = Field(default=50 * 1024 * 1024, gt=0)
     max_sheet_rows: int = Field(default=100_000, gt=0)
@@ -54,13 +57,19 @@ class Settings(BaseSettings):
     # Retention
     retention_days: int = Field(default=30, gt=0)
 
-    # Output metadata
-    creator_entity: str = "Dynamic Video Generator"
-
     # Auth
     login_max_failures: int = Field(default=5, gt=0)
     login_window_minutes: int = Field(default=15, gt=0)
     login_lockout_minutes: int = Field(default=15, gt=0)
+
+    @field_validator("creator_entity")
+    @classmethod
+    def _creator_entity_not_blank(cls, value: str) -> str:
+        """Reject an empty or whitespace-only creator entity."""
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("creator_entity must not be empty")
+        return stripped
 
     @model_validator(mode="after")
     def _check_duration_limits(self) -> Settings:

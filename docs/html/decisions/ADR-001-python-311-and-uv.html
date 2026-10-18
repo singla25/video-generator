@@ -1,0 +1,38 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>ADR-001 — Pin Python 3.11 and manage the environment with uv</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>ADR-001 — Pin Python 3.11 and manage the environment with uv</h1>
+<h2>Status</h2>
+<p>Accepted (Admin, 2026-10-18, with plan <code>m1-batch-pipeline</code>)</p>
+<h2>Context</h2>
+<p><code>CLAUDE.md</code> requires Python 3.11+, but <code>pyproject.toml</code> allows <code>&gt;=3.10</code> and the current <code>.venv</code> runs Python 3.14. The AI libraries needed in M2 (PyTorch, speech-to-text, voice cloning, lip sync) usually lag behind the newest Python. We need one reproducible interpreter for every agent, CI and the GPU server.</p>
+<h2>Options</h2>
+<table><tr><th>Option</th><th>Pros</th><th>Cons</th><th>Cost</th><th>Scales?</th></tr><tr><td><strong>uv</strong></td><td>Installs Python 3.11 itself; very fast; <code>uv.lock</code> makes installs reproducible</td><td>One new tool</td><td>Free</td><td>Yes (CI/Docker friendly)</td></tr><tr><td>Homebrew python@3.11 + venv + pip-tools</td><td>Only standard tools</td><td>Slower; Python versions managed by hand</td><td>Free</td><td>Yes</td></tr><tr><td>pyenv + venv + pip</td><td>Flexible version switching</td><td>More moving parts, no lockfile by default</td><td>Free</td><td>Yes</td></tr></table>
+<h2>Decision</h2>
+<p>Pin <strong>Python 3.11</strong> (<code>requires-python = "&gt;=3.11,&lt;3.12"</code>, <code>.python-version</code> = <code>3.11</code>) and use <strong>uv</strong> with a committed <code>uv.lock</code>. Ruff <code>target-version = "py311"</code>, mypy <code>python_version = "3.11"</code>.</p>
+<h2>Setup — done by the Admin</h2>
+<pre><code># 1. Tools
+brew install uv ffmpeg
+brew install --cask docker          # Docker Desktop (OrbStack also works)
+
+# 2. Move the old Python 3.14 venv aside (agents never delete folders)
+mv .venv .venv-py314-old            # delete it yourself later if you wish
+
+# 3. Python 3.11
+uv python install 3.11
+
+# 4. After task T2 is merged to main
+uv sync                              # creates .venv (3.11) from uv.lock
+docker compose up -d                 # Postgres + Redis for dev/tests
+uv run pytest -q &amp;&amp; uv run ruff check . &amp;&amp; uv run mypy backend</code></pre>
+<p>Every agent runs tools through <code>uv run …</code>.</p>
+<h2>Consequences</h2>
+<ul><li>Same interpreter and package versions everywhere; GPU images in M2 use the same lockfile.</li><li>Upgrading to 3.12 later is a new ADR plus a <code>uv lock</code> refresh.</li><li>Adding a dependency becomes <code>uv add &lt;pkg&gt;</code>, and it still needs Admin approval.</li></ul></div></body></html>

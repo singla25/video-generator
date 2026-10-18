@@ -160,6 +160,14 @@ These close the gaps the tester found while drafting the test tree. They are bin
 | B12 | OI-12 retention clock | Counts from batch finish or cancel time. Never-started drafts are deleted N days after creation. |
 | B13 | OI-13 AC19 | Verified in T15 and CEO review, not by a self-referential test. |
 
+## Addendum C — CEO engineering clarifications (test-tree NA-1…NA-3, 2026-10-18; Admin informed, may override)
+
+| # | Issue | Rule |
+|---|-------|------|
+| C1 | NA-1 ETA "remaining" | remaining = `QUEUED` + `PROCESSING` rows |
+| C2 | NA-2 key reuse | Same `Idempotency-Key` on a different batch → HTTP 409 `IDEMPOTENCY_KEY_CONFLICT` |
+| C3 | NA-3 STT matches | Several matches → highest confidence, then earliest. Threshold is inclusive (`confidence >= threshold` counts as found). |
+
 ## Admin approval
 - [x] Plan approved (includes ADR-001 + ADR-008) — 2026-10-18
 - [x] Dependencies, system tools and font approved — 2026-10-18 (Admin downloads the font)

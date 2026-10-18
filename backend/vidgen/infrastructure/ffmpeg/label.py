@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from PIL import Image, ImageDraw, ImageFont, features
 
 from vidgen.domain.codes import DomainError, FailureCode
+from vidgen.domain.validation import ZWJ, ZWNJ
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ MAX_TEXT_WIDTH_SHARE = 0.94
 MAX_INK_HEIGHT_SHARE = 0.90
 MIN_FONT_SIZE = 4
 _DEVANAGARI_RANGE = range(0x0900, 0x0980)
-_JOINERS = frozenset({"‌", "‍"})
+_JOINERS = frozenset({ZWJ, ZWNJ})
 
 
 def label_band_height(frame_height: int) -> int:

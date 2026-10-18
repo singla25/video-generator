@@ -124,6 +124,7 @@ T0 → (T1 ∥ T2) → Gate 1 → T3 → T4 (∥ T5) → T6 → T7 → T8 → Ga
 | cryptography | AES-GCM, HMAC | Apache-2.0 / BSD |
 | argon2-cffi, itsdangerous | Password hash, signed cookie | MIT / BSD |
 | pillow | Label PNG rendering | MIT-CMU |
+| regex (+ dev: types-regex) | Grapheme-cluster counting for A1 — **approved by Admin 2026-10-18, added in T2** | Apache-2.0 |
 | **dev:** pytest, pytest-cov, httpx, ruff, mypy, types-openpyxl | Tests, lint, types | MIT / BSD / Apache |
 
 ## Addendum A — clarifications from T1 review (Admin approved 2026-10-18)

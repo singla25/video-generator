@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
@@ -77,7 +79,8 @@ def test_every_route_except_health_and_login_requires_a_session(anon: Env) -> No
     for route in anon.app.routes:
         if not isinstance(route, APIRoute):
             continue
-        path = route.path.replace("{template_id}", UNKNOWN_ID)
+        path = re.sub(r"\{template_id\}|\{batch_id\}", UNKNOWN_ID, route.path)
+        path = re.sub(r"\{[^}]+\}", "1", path)
         for method in route.methods - {"HEAD", "OPTIONS"}:
             if (method, route.path) in OPEN_ROUTES:
                 continue

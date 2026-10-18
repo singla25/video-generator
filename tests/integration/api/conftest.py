@@ -13,6 +13,7 @@ Contract used by every API test:
 
 from __future__ import annotations
 
+import dataclasses
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -26,7 +27,13 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import Engine
 
-from tests.fixtures.doubles import FakeClock, FakeSpeechToText, FakeVideoProbe, InMemoryStorage
+from tests.fixtures.doubles import (
+    FakeClock,
+    FakeJobQueue,
+    FakeSpeechToText,
+    FakeVideoProbe,
+    InMemoryStorage,
+)
 from vidgen.api.app import create_app
 from vidgen.api.deps import AppDeps
 from vidgen.settings import Settings
@@ -46,6 +53,7 @@ class Env:
     storage: InMemoryStorage
     probe: FakeVideoProbe
     stt: FakeSpeechToText
+    queue: FakeJobQueue
     csrf: dict[str, str]
     deps: AppDeps | None = None
 
@@ -108,11 +116,20 @@ def make_env(db: Engine, test_db_url: str, tmp_path: Path) -> EnvFactory:
     ) -> Env:
         settings = make_settings(test_db_url, tmp_path, **settings_overrides)
         clock, storage = FakeClock(), InMemoryStorage()
-        probe, stt = FakeVideoProbe(), FakeSpeechToText()
-        deps = AppDeps(clock=clock, speech_to_text=stt, video_probe=probe, storage=storage)
+        probe, stt, queue = FakeVideoProbe(), FakeSpeechToText(), FakeJobQueue()
+        deps_args: dict[str, Any] = {
+            "clock": clock,
+            "speech_to_text": stt,
+            "video_probe": probe,
+            "storage": storage,
+        }
+        # The batch slice adds AppDeps.job_queue; older code simply lacks the field.
+        if "job_queue" in {f.name for f in dataclasses.fields(AppDeps)}:
+            deps_args["job_queue"] = queue
+        deps = AppDeps(**deps_args)
         app = create_app(settings, deps=deps)
         client = TestClient(app, raise_server_exceptions=raise_server_exceptions)
-        env = Env(app, client, settings, clock, storage, probe, stt, csrf={}, deps=deps)
+        env = Env(app, client, settings, clock, storage, probe, stt, queue, csrf={}, deps=deps)
         if login:
             assert env.login().status_code == 200
         return env

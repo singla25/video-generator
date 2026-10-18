@@ -2,6 +2,11 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T11 (RED: batch API)
+- Added tests/integration/api/test_batches_{create,start,control,status,downloads,delete_retention}.py, batch_helpers.py; doubles FakeJobQueue and ChunkSpyStorage; Env.queue. The auth route sweep now fills any path parameter.
+- Contract: AppDeps.job_queue (enqueue_preview, enqueue_rows), Container.batches (preview_rendered, preview_failed, run_retention), batch routes plus the daily stats route. API codes added: PREVIEW_NOT_READY, PREVIEW_NOT_APPROVED, INVALID_STATE.
+- 193 new tests; 182 fail on missing routes, 11 pass trivially (404 cases); the 871 earlier tests pass.
+
 ## 2026-10-19 — T10b
 - Fixed the global-cap alert test (429 inside the gap). Added tests/integration/api/test_login_persistence.py (two app instances, restart), tests/integration/db/test_duplicate_guard.py (partial unique index), tests/integration/db/test_migrations.py (own DB vidgen_migration_test), tests/unit/infra/test_system_clock.py.
 

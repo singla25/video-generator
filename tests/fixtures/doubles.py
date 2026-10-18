@@ -6,6 +6,7 @@ import io
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import BinaryIO
+from uuid import UUID
 
 from PIL import Image
 
@@ -77,6 +78,48 @@ class InMemoryStorage:
     def exists(self, key: str) -> bool:
         """Return True if the key exists."""
         return key in self.files
+
+
+class FakeJobQueue:
+    """JobQueue double: records what would be handed to the workers."""
+
+    def __init__(self) -> None:
+        self.previews: list[tuple[UUID, UUID]] = []
+        self.rows: list[tuple[UUID, UUID]] = []
+
+    def enqueue_preview(self, batch_id: UUID, row_id: UUID) -> None:
+        """Record a preview render request for one row."""
+        self.previews.append((batch_id, row_id))
+
+    def enqueue_rows(self, batch_id: UUID, row_ids: list[UUID]) -> None:
+        """Record row render jobs, one entry per row."""
+        self.rows.extend((batch_id, row_id) for row_id in row_ids)
+
+
+class ChunkSpyStorage(InMemoryStorage):
+    """Storage whose ``open`` returns streams that record how they are read."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.unbounded_reads = 0
+        self.read_calls = 0
+        self.largest_read = 0
+
+    def open(self, key: str) -> BinaryIO:
+        """Open a stream that counts unbounded ``read()`` calls and chunk sizes."""
+        spy = self
+        inner = io.BytesIO(self.files[key])
+
+        class Stream(io.BytesIO):
+            def read(self, size: int | None = -1) -> bytes:
+                spy.read_calls += 1
+                if size is None or size < 0:
+                    spy.unbounded_reads += 1
+                else:
+                    spy.largest_read = max(spy.largest_read, size)
+                return super().read(size)
+
+        return Stream(inner.getvalue())
 
 
 class FakeVideoProbe:

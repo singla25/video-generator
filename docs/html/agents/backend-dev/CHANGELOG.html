@@ -11,5 +11,7 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Backend developer — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-10-18 — T2 (tooling + skeleton)</h2>
+<ul><li>Python 3.11 + uv, hatchling build, approved runtime/dev deps (incl. <code>regex</code>, <code>types-regex</code>), tool config (ruff, mypy strict, pytest, coverage).</li><li><code>backend/vidgen</code> skeleton per ADR-008, Protocols in <code>ports/interfaces.py</code>, <code>settings.py</code>, <code>logging.py</code> (closed non-PII context).</li><li>Alembic initialised in <code>backend/migrations</code> (<code>backend/alembic.ini</code>), no revisions.</li><li><code>docker-compose.yml</code> (postgres:16, redis:7, localhost-only). Ruff excludes <code>scripts/</code>, <code>.claude/</code>, <code>main.py</code>.</li><li>Files: <code>pyproject.toml</code>, <code>uv.lock</code>, <code>.python-version</code>, <code>docker-compose.yml</code>, <code>backend/**</code>, this doc folder.</li><li>Tests added: none (skeleton). Open: <code>docker compose</code> plugin missing on this Mac; compose file only YAML-parsed.</li></ul>
 <h2>2026-10-18 — SETUP</h2>
 <ul><li>Agent created.</li></ul></div></body></html>

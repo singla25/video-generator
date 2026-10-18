@@ -124,7 +124,50 @@ T0 → (T1 ∥ T2) → Gate 1 → T3 → T4 (∥ T5) → T6 → T7 → T8 → Ga
 | cryptography | AES-GCM, HMAC | Apache-2.0 / BSD |
 | argon2-cffi, itsdangerous | Password hash, signed cookie | MIT / BSD |
 | pillow | Label PNG rendering | MIT-CMU |
+| regex (+ dev: types-regex) | Grapheme-cluster counting for A1 — **approved by Admin 2026-10-18, added in T2** | Apache-2.0 |
 | **dev:** pytest, pytest-cov, httpx, ruff, mypy, types-openpyxl | Tests, lint, types | MIT / BSD / Apache |
+
+## Addendum A — clarifications from T1 review (Admin approved 2026-10-18)
+These close the gaps the tester found while drafting the test tree. They are binding for all M1 tests and code.
+
+| # | Topic | Rule |
+|---|-------|------|
+| A1 | Name length (AC3) | 40 = **grapheme clusters** (user-perceived characters), not code points. ZWJ (U+200D) and ZWNJ (U+200C) are allowed inside Devanagari. |
+| A2 | Duplicate ID (AC3, AC11) | Compare IDs after trim → case-fold → **file-name sanitising** (R6.3). `RJ/12/097` and `rj_12_097` are duplicates, because they would produce the same file. The first row is kept. |
+| A3 | Existing codes | Empty name / empty ID / duplicate → `INVALID_ROW_EMPTY_NAME`, `INVALID_ROW_EMPTY_ID`, `DUPLICATE_ID` (already in R8). |
+| A4 | New codes | Upload errors: `UNSUPPORTED_VIDEO`, `CORRUPT_VIDEO`, `UNSUPPORTED_SHEET`, `COLUMN_NOT_FOUND`. Template errors: `SLOT_NOT_FOUND`, `STT_FAILED`. Row errors: `CONTENT_LOCK_VIOLATION`, `INTERNAL_ERROR` (catch-all; never retried automatically unless it is a crash). |
+| A5 | Preview approval (AC7) | Changing the slot, template or column mapping after a preview **invalidates the approval**; a new preview + approval is required. |
+| A6 | Cancel (AC13) | Rows already `PROCESSING` finish and are delivered. Only `QUEUED` rows become `CANCELLED`. |
+| A7 | Manifest (AC11) | `manifest.csv` contains row number, name, ID, status, file name, failure code + message, render time. It is personal data: covered by retention and batch deletion. |
+| A8 | Retention (AC17) | The retention job skips batches that are not finished (queued / running / paused). |
+| A9 | Thresholds | AC4: peak memory for 100k-row validation ≤ 200 MB above baseline. AC9: outside the slot (excluding crossfade zones) the audio difference vs. template ≤ −40 dB RMS. AC10: label is a full-width band, height ≥ 10 % of frame height, at the top, in every sampled frame. AC16: 5 failed logins within 15 min → locked (HTTP 429) for 15 min. |
+| A10 | Worktrees | The guard blocks writes under `.claude/worktrees/`. Until the Admin changes that, tasks run **sequentially in the main project folder**, one branch at a time. T1 runs on `feat/tester/m1-tree`. |
+
+## Addendum B — closes test-tree open issues OI-1…OI-13 (Admin approved 2026-10-18)
+
+| # | Issue | Rule |
+|---|-------|------|
+| B1 | OI-1 multiple faults | One primary code by priority: empty name → empty ID → bad characters → too long → duplicate. The validation report also lists every fault. |
+| B2 | OI-2 codes | `CONSENT_FILE_INVALID` (consent upload wrong type/corrupt); empty or silent TTS output → `TTS_FAILED`; `OUTPUT_CHECK_FAILED` (row: output format/duration mismatch); `INVALID_FOLDER_NAME` (request error). |
+| B3 | OI-3 minimum video | Must have ≥1 video and ≥1 audio stream and duration ≥ 1 s (setting); otherwise `UNSUPPORTED_VIDEO`. |
+| B4 | OI-4 empty folder name | Empty/whitespace custom folder name → default name. |
+| B5 | OI-5 empty ZIP | No completed rows → HTTP 409 `NO_COMPLETED_ROWS`. |
+| B6 | OI-6 names in API | Logged-in admin receives decrypted name + ID in the rows API. Search by name or ID within one batch, done in the service layer (ADR-005). Never in logs or error messages. |
+| B7 | OI-7 stats | ETA = remaining rows × mean render time of the last 20 completed rows (null until the first completes). Success rate = completed ÷ (completed + failed); skipped/cancelled excluded. Stored and returned in UTC; UI shows Asia/Kolkata. Previews are excluded from stats. |
+| B8 | OI-8 timeouts/retries | Row render timeout 600 s (setting). Retryable = crash, `RENDER_TIMEOUT`, `STORAGE_ERROR`; 1 retry after 10 s → 2 attempts in total. `STORAGE_ERROR` = `OSError` (ENOSPC, EACCES, EIO…) or storage-adapter errors while writing outputs. |
+| B9 | OI-9 sheets | First worksheet only (its name shown in the report). CSV delimiter sniffed among `,` `;` tab; otherwise `UNSUPPORTED_SHEET`. |
+| B10 | OI-10 audio | Loudness per ITU-R BS.1770 / EBU R128. "Audio format" = codec + sample rate + channel layout. |
+| B11 | OI-11 idempotency | `POST …/start` requires an `Idempotency-Key` header; repeating the same key returns the same result. Starting an already-started batch is a no-op returning current state. |
+| B12 | OI-12 retention clock | Counts from batch finish or cancel time. Never-started drafts are deleted N days after creation. |
+| B13 | OI-13 AC19 | Verified in T15 and CEO review, not by a self-referential test. |
+
+## Addendum C — CEO engineering clarifications (test-tree NA-1…NA-3, 2026-10-18; Admin informed, may override)
+
+| # | Issue | Rule |
+|---|-------|------|
+| C1 | NA-1 ETA "remaining" | remaining = `QUEUED` + `PROCESSING` rows |
+| C2 | NA-2 key reuse | Same `Idempotency-Key` on a different batch → HTTP 409 `IDEMPOTENCY_KEY_CONFLICT` |
+| C3 | NA-3 STT matches | Several matches → highest confidence, then earliest. Threshold is inclusive (`confidence >= threshold` counts as found). |
 
 ## Admin approval
 - [x] Plan approved (includes ADR-001 + ADR-008) — 2026-10-18

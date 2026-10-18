@@ -1,0 +1,33 @@
+# Dev/test services only. Credentials are placeholders; override via environment.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${VIDGEN_DB_USER:-vidgen}
+      POSTGRES_PASSWORD: ${VIDGEN_DB_PASSWORD:-devpassword}
+      POSTGRES_DB: ${VIDGEN_DB_NAME:-vidgen}
+    ports:
+      - "127.0.0.1:${VIDGEN_DB_PORT:-5432}:5432"
+    volumes:
+      - vidgen_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "127.0.0.1:${VIDGEN_REDIS_PORT:-6379}:6379"
+    volumes:
+      - vidgen_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  vidgen_pgdata:
+  vidgen_redisdata:

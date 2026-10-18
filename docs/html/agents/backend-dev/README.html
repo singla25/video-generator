@@ -13,8 +13,14 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 <h2>Role</h2>
 <p>Implements the Python API, video pipeline, job workers, storage and database code to make the tester's failing tests pass.</p>
 <h2>Writes only in</h2>
-<p><code>backend/</code></p>
+<p><code>backend/</code> (plus root files <code>pyproject.toml</code>, <code>uv.lock</code>, <code>.python-version</code>, <code>docker-compose.yml</code> per decision D17)</p>
 <h2>Definition</h2>
 <p><code>.claude/agents/backend-dev.md</code></p>
 <h2>Current status</h2>
-<p>Not started yet.</p></div></body></html>
+<p>T2 done: tooling and empty package skeleton (<code>backend/vidgen</code>). No business logic yet.</p>
+<h2>Commands</h2>
+<p>Run everything through uv: <code>uv run pytest -q</code>, <code>uv run ruff check .</code>, <code>uv run ruff format --check .</code>, <code>uv run mypy</code>. Alembic config: <code>uv run alembic -c backend/alembic.ini &lt;cmd&gt;</code> (no revisions yet).</p>
+<h2>Environment variables (names only; prefix <code>VIDGEN_</code>)</h2>
+<p>Required (no defaults): <code>VIDGEN_CREATOR_ENTITY</code> (plain text, non-empty; written into video metadata), plus secrets <code>VIDGEN_ENCRYPTION_KEY</code>, <code>VIDGEN_INDEX_KEY</code>, <code>VIDGEN_SESSION_SECRET</code>, <code>VIDGEN_ADMIN_PASSWORD_HASH</code>.</p>
+<p>Optional (have defaults): <code>VIDGEN_DATABASE_URL</code>, <code>VIDGEN_REDIS_URL</code>, <code>VIDGEN_STORAGE_ROOT</code>, <code>VIDGEN_AI_BACKEND</code> (fake|real), <code>VIDGEN_MAX_VIDEO_BYTES</code>, <code>VIDGEN_MAX_VIDEO_SECONDS</code>, <code>VIDGEN_MIN_VIDEO_SECONDS</code>, <code>VIDGEN_MAX_SHEET_BYTES</code>, <code>VIDGEN_MAX_SHEET_ROWS</code>, <code>VIDGEN_MAX_CONSENT_BYTES</code>, <code>VIDGEN_MAX_NAME_GRAPHEMES</code>, <code>VIDGEN_CROSSFADE_MS</code> (20-50), <code>VIDGEN_MAX_STRETCH_RATIO</code>, <code>VIDGEN_MAX_EXTENSION_SECONDS</code>, <code>VIDGEN_DURATION_TOLERANCE_MS</code>, <code>VIDGEN_LOUDNESS_TOLERANCE_LU</code>, <code>VIDGEN_STT_CONFIDENCE_THRESHOLD</code>, <code>VIDGEN_ROW_TIMEOUT_SECONDS</code>, <code>VIDGEN_RETRY_DELAY_SECONDS</code>, <code>VIDGEN_MAX_RETRIES</code>, <code>VIDGEN_RETENTION_DAYS</code>, <code>VIDGEN_LOGIN_MAX_FAILURES</code>, <code>VIDGEN_LOGIN_WINDOW_MINUTES</code>, <code>VIDGEN_LOGIN_LOCKOUT_MINUTES</code>.</p>
+<p>docker-compose only: <code>VIDGEN_DB_USER</code>, <code>VIDGEN_DB_PASSWORD</code>, <code>VIDGEN_DB_NAME</code>, <code>VIDGEN_DB_PORT</code>, <code>VIDGEN_REDIS_PORT</code>.</p></div></body></html>

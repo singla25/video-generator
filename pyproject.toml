@@ -1,5 +1,77 @@
 [project]
-name = "video-generator"
+name = "vidgen"
 version = "0.1.0"
-requires-python = ">=3.10"
-dependencies = []
+description = "Dynamic Video Generator backend"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "alembic>=1.20.0",
+    "argon2-cffi>=25.1.0",
+    "cryptography>=50.0.2",
+    "dramatiq[redis]>=2.2.1",
+    "fastapi>=0.146.0",
+    "itsdangerous>=2.2.0",
+    "openpyxl>=3.1.5",
+    "pillow>=13.0.0",
+    "psycopg[binary]>=3",
+    "pydantic-settings>=2.16.0",
+    "python-multipart>=0.0.32",
+    "redis>=8.1.0",
+    "regex>=2026.9.29",
+    "sqlalchemy>=2",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/vidgen"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["samples", ".venv-py314-old", "main.py", "scripts", ".claude"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "N", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["vidgen"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["backend"]
+mypy_path = "backend"
+explicit_package_bases = true
+exclude = ["backend/migrations/versions/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = [
+  "slow: slow tests (large renders)",
+  "e2e: end-to-end tests that need docker compose services",
+]
+
+[tool.coverage.run]
+source = ["vidgen"]
+branch = true
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.1",
+    "types-openpyxl>=3.1.5.20261017",
+    "types-regex>=2026.9.29.20261017",
+]

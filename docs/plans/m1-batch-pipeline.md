@@ -198,4 +198,4 @@ These close the gaps the tester found while drafting the test tree. They are bin
 - [x] Dependencies, system tools and font approved — 2026-10-18 (Admin downloads the font)
 - [ ] Task assignment approved
 - [x] Migration 0001 run approved — 2026-10-19 (Admin runs it; final file reviewed: 7 tables, create-only, reverse downgrade, encrypted PII, migration test 9/9)
-- [ ] Merge gates 1 / 2 / 3 approved
+- [x] Merge gates 1 / 2 / 3 approved (gates 1–2 by the Admin; gate 3 by the CEO under delegated authority, DD-12, 2026-10-19)

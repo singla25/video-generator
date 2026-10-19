@@ -35,7 +35,7 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T13 | RED: worker pipeline | tester | sonnet | ✅ Done & CEO-reviewed after 1 round (stage order DD-6) @ fdb25d2 — 123+ tests; bodies verified with throwaway stubs | Delegated (CEO), 2026-10-19 | — |
 | T14 | GREEN: render pipeline, worker, Dramatiq queue, fake adapters, access-log redaction | backend-dev | sonnet | ✅ Done & CEO-verified after 2 rounds @ 244a0b2 — 1230 pass (incl. slow + e2e), 97 % total, domain/render_row/manifest 100 %, no infra imports in services | Delegated (CEO) | Waits for gate 3 |
 | T15 | VERIFY: runner tests, tree walk, COVERAGE.md | tester | sonnet | ✅ Done & CEO-verified @ 4f432b2 — 1597 pass + 3 strict xfail (V1/V2/V3), 98.2 % coverage, AC 19/19 ✅, all 374 tree IDs tested or annotated | Delegated (CEO) | — |
-| T16 | CEO review → gate 3 | CEO | — | Review clean (no protected files, no risky patterns, no secrets); V1 split in progress (DD-11) | Delegated (CEO) | — |
+| T16 | CEO review → gate 3 | CEO | — | ✅ Review clean; V1 split done (a11472d, 046b3fd); final run 1611 pass + 1 xfail (V2), 98 % | Delegated (CEO) | ✅ gate 3 (DD-12) |
 | T13c | Tests: 8 defect fixes, injection contract + layering guard, domain/fakes coverage | tester | sonnet | ✅ Done & CEO-reviewed @ 15b6ef0; T14 round 2 (layering) in progress | Delegated (CEO) | — |
 | T15a | RED: E2E tests (synthetic 10-row batch, retry, deletion) | tester | sonnet | ✅ Done & CEO-reviewed @ 5a1b106 — 3 e2e tests (real app/DB/storage/ffmpeg/label; fake AI; in-process StubBroker worker); probes label + creator metadata | Delegated (CEO) | — |
 | T15–T16 | Verify + coverage report; CEO review → gate 3 | tester / CEO | sonnet | Planned | — | — |

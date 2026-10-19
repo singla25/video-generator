@@ -7,6 +7,7 @@ import { AppShell } from './layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
+import { WizardPage } from './pages/WizardPage';
 
 function NotFound() {
   return (
@@ -31,6 +32,8 @@ function useRedirectOnUnauthorized(): void {
   }, [navigate, location.pathname]);
 }
 
+const IMPLEMENTED = new Set(['/', '/batches/new']);
+
 const PAGES: [string, string][] = [
   ['/', 'Overview'],
   ['/batches/running', 'Running batches'],
@@ -53,7 +56,8 @@ export function App() {
       <Route path={LOGIN_PATH} element={<LoginPage />} />
       <Route element={<AppShell />}>
         <Route path="/" element={<OverviewPage />} />
-        {PAGES.filter(([path]) => path !== '/').map(([path, name]) => (
+        <Route path="/batches/new" element={<WizardPage />} />
+        {PAGES.filter(([path]) => !IMPLEMENTED.has(path)).map(([path, name]) => (
           <Route key={path} path={path} element={<PlaceholderPage name={name} />} />
         ))}
         <Route path="*" element={<NotFound />} />

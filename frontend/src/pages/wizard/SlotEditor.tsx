@@ -1,0 +1,111 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+
+import { ApiError, apiFetch } from '../../api/client';
+import type { Template } from '../../api/types';
+
+const FIELD = 'w-full rounded-tile border px-3 py-2';
+
+function parse(text: string): number {
+  return text.trim() === '' ? Number.NaN : Number(text);
+}
+
+/** Returns a plain-language problem with the slot, or null when it is valid. */
+export function slotProblem(start: number, end: number, duration: number): string | null {
+  if (Number.isNaN(start) || Number.isNaN(end)) return 'Enter both start and end.';
+  if (end <= start) return 'End must be after start.';
+  if (start < 0 || end > duration) return `The slot must be inside the video (${duration} s).`;
+  return null;
+}
+
+function Timeline({ start, end, duration }: { start: number; end: number; duration: number }) {
+  const valid = !Number.isNaN(start) && !Number.isNaN(end) && end > start && duration > 0;
+  const left = valid ? Math.max(0, (start / duration) * 100) : 0;
+  const width = valid ? Math.min(100 - left, ((end - start) / duration) * 100) : 0;
+  return (
+    <div aria-hidden="true" className="relative h-3 rounded-full bg-page">
+      <div
+        className="absolute h-3 rounded-full bg-emerald"
+        style={{ left: `${left}%`, width: `${width}%` }}
+      />
+    </div>
+  );
+}
+
+/** Start/end fields for the name slot with a small timeline; saves with PUT. */
+export function SlotEditor({ template }: { template: Template }) {
+  const client = useQueryClient();
+  const [start, setStart] = useState(template.slot ? String(template.slot.start_s) : '');
+  const [end, setEnd] = useState(template.slot ? String(template.slot.end_s) : '');
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const save = useMutation({
+    mutationFn: (body: { start_s: number; end_s: number }) =>
+      apiFetch(`/templates/${template.id}/slot`, { method: 'PUT', body: JSON.stringify(body) }),
+    onSuccess: () => client.invalidateQueries(),
+  });
+
+  function submit() {
+    const s = parse(start);
+    const e = parse(end);
+    const issue = slotProblem(s, e, template.duration_s);
+    setProblem(issue);
+    if (!issue) save.mutate({ start_s: s, end_s: e });
+  }
+
+  return (
+    <div className="space-y-4 rounded-card border bg-card p-5">
+      <h2 className="font-semibold">Name slot</h2>
+      {template.needs_manual_slot && (
+        <p className="text-sm text-status-skipped">
+          The slot could not be found automatically. Set it by hand.
+        </p>
+      )}
+      <Timeline start={parse(start)} end={parse(end)} duration={template.duration_s} />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="slot-start" className="mb-1 block text-sm font-semibold">
+            Slot start (s)
+          </label>
+          <input
+            id="slot-start"
+            type="number"
+            step="0.1"
+            min="0"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            className={FIELD}
+          />
+        </div>
+        <div>
+          <label htmlFor="slot-end" className="mb-1 block text-sm font-semibold">
+            Slot end (s)
+          </label>
+          <input
+            id="slot-end"
+            type="number"
+            step="0.1"
+            min="0"
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+            className={FIELD}
+          />
+        </div>
+      </div>
+      {problem && <p className="text-sm text-status-failed">{problem}</p>}
+      {save.isError && (
+        <p role="alert" className="text-sm text-status-failed">
+          {save.error instanceof ApiError ? save.error.message : 'Something went wrong.'}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={submit}
+        disabled={save.isPending}
+        className="rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint disabled:opacity-50"
+      >
+        Save slot
+      </button>
+    </div>
+  );
+}

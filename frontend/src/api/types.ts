@@ -14,6 +14,39 @@ export interface Counts {
 export type BatchState =
   'DRAFT' | 'READY' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | 'FAILED' | string;
 
+export type PreviewState = 'NONE' | 'PENDING' | 'READY' | 'STALE' | 'FAILED' | string;
+
+export interface Problem {
+  row_number: number;
+  code: string;
+  message: string;
+}
+
+export interface SheetReport {
+  total_rows: number;
+  valid_rows: number;
+  skipped_rows: number;
+  problems: Problem[];
+}
+
+export interface Template {
+  id: string;
+  original_name: string;
+  duration_s: number;
+  slot: { start_s: number; end_s: number } | null;
+  needs_manual_slot: boolean;
+  slot_confirmed: boolean;
+  consent_confirmed: boolean;
+  usable: boolean;
+}
+
+export interface SheetInspection {
+  sheet_name: string;
+  headers: string[];
+  sample_rows: string[][];
+  row_count: number;
+}
+
 export interface Batch {
   id: string;
   template_id: string;
@@ -23,6 +56,8 @@ export interface Batch {
   folder_name: string | null;
   counts: Counts;
   success_rate: number | null;
+  preview?: { status: PreviewState; approved: boolean };
+  report?: SheetReport | null;
 }
 
 export interface BatchList {

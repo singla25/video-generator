@@ -2,7 +2,35 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { POLL_INTERVAL_MS } from '../config';
 import { apiFetch } from './client';
-import type { BatchList, BatchStatus, DailyStat } from './types';
+import type { Batch, BatchList, BatchStatus, DailyStat, Template } from './types';
+
+/** One batch; polled while its preview is being generated. */
+export function useBatch(batchId: string | undefined) {
+  return useQuery({
+    queryKey: ['batches', 'detail', batchId],
+    queryFn: () => apiFetch<Batch>(`/batches/${batchId}`),
+    enabled: Boolean(batchId),
+    refetchInterval: (query) =>
+      query.state.data?.preview?.status === 'PENDING' ? POLL_INTERVAL_MS : false,
+  });
+}
+
+/** All templates. */
+export function useTemplates() {
+  return useQuery({
+    queryKey: ['templates', 'list'],
+    queryFn: () => apiFetch<{ templates: Template[] }>('/templates'),
+  });
+}
+
+/** One template (slot, duration, consent). */
+export function useTemplate(templateId: string | undefined) {
+  return useQuery({
+    queryKey: ['templates', 'detail', templateId],
+    queryFn: () => apiFetch<Template>(`/templates/${templateId}`),
+    enabled: Boolean(templateId),
+  });
+}
 
 const LIST_PAGE_SIZE = 50;
 

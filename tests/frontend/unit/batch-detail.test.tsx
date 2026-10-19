@@ -160,11 +160,11 @@ describe('inline preview and downloads', () => {
     renderApp(PATH);
     expect(await screen.findByRole('link', { name: 'Download ZIP' })).toHaveAttribute(
       'href',
-      `/batches/${IDS.batch}/download.zip`,
+      `/api/batches/${IDS.batch}/download.zip`,
     );
     expect(screen.getByRole('link', { name: 'Export failures CSV' })).toHaveAttribute(
       'href',
-      `/batches/${IDS.batch}/failures.csv`,
+      `/api/batches/${IDS.batch}/failures.csv`,
     );
   });
 

@@ -25,6 +25,12 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 
 ### Feature: End-to-end (Playwright)
 
+- ✅ Positive `TT-UI-AC1-P1` [unit] a hatch pattern is defined and the non-peak bars are filled with it — `unit/design-tokens.test.tsx`
+- ✅ Positive `TT-UI-AC1-P2` [unit] the pattern draws diagonal lines (rotated) over a mint base — `unit/design-tokens.test.tsx`
+- ⚠️ Edge `TT-UI-AC1-E1` [unit] the highest bar stays solid, not hatched — `unit/design-tokens.test.tsx`
+
+### Feature: End-to-end (Playwright)
+
 - ✅ Positive `TT-UI-AC10-P1` [unit] shows skeletons while loading — `unit/overview.test.tsx`
 - ✅ Positive `TT-UI-AC10-P2` [unit] reduced motion shows the final KPI number immediately — `unit/overview.test.tsx`
 - ✅ Positive `TT-UI-AC10-P3` [unit] CountUp animates from 0 to the value when motion is allowed — `unit/overview.test.tsx`
@@ -51,6 +57,13 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ❌ Negative `TT-UI-AC12-N3` [unit] no third-party branding or CDN font loaders — `unit/privacy.test.tsx`
 - ❌ Negative `TT-UI-AC12-N4` [unit] no use of localStorage or sessionStorage for app data — `unit/privacy.test.tsx`
 - ❌ Negative `TT-UI-AC12-N5` [unit] no TrustVest branding appears in the rendered shell — `unit/shell.test.tsx`
+
+### Feature: End-to-end (Playwright)
+
+- ✅ Positive `TT-UI-AC13-P1` [unit] the map has exactly the five tones with hex colours — `unit/design-tokens.test.tsx`
+- ✅ Positive `TT-UI-AC13-P2` [unit] %s chip text has at least 4.5:1 contrast on its background — `unit/design-tokens.test.tsx`
+- ✅ Positive `TT-UI-AC13-P3` [unit] the %s chip renders the colours from the map — `unit/design-tokens.test.tsx`
+- ⚠️ Edge `TT-UI-AC13-E1` [unit] contrast helper sanity: black on white is 21, equal colours are 1 — `unit/design-tokens.test.tsx`
 
 ### Feature: End-to-end (Playwright)
 
@@ -99,6 +112,7 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ✅ Positive `TT-UI-AC4-P9` [unit] the status prop pre-applies a filter (failure-chart click-through) — `unit/rows-table.test.tsx`
 - ✅ Positive `TT-UI-AC4-P10` [unit] pages forward and back with Page X of Y — `unit/rows-table.test.tsx`
 - ✅ Positive `TT-UI-AC4-P11` [unit] after a row retry the row is refreshed from the server — `unit/rows-table.test.tsx`
+- ✅ Positive `TT-UI-AC4-P12` [unit] the row video download link points under /api — `unit/api-prefix.test.tsx`
 - ❌ Negative `TT-UI-AC4-N1` [unit] queued, processing and skipped rows have no video actions — `unit/rows-table.test.tsx`
 - ❌ Negative `TT-UI-AC4-N2` [unit] a failing retry shows the API message and keeps the table — `unit/rows-table.test.tsx`
 - ❌ Negative `TT-UI-AC4-N3` [unit] no matching rows shows — `unit/rows-table.test.tsx`
@@ -127,6 +141,7 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ✅ Positive `TT-UI-AC5-P13` [unit] step 1 links to the Templates page for new templates — `unit/wizard.test.tsx`
 - ✅ Positive `TT-UI-AC5-P14` [unit] step 3 plays the template video from the new endpoint — `unit/wizard.test.tsx`
 - ✅ Positive `TT-UI-AC5-P15` [unit] the detected slot is marked on the timeline and follows edits — `unit/wizard.test.tsx`
+- ✅ Positive `TT-UI-AC5-P16` [unit] an unconfirmed slot shows Confirm slot; confirming shows — `unit/slot-confirm.test.tsx`
 - ❌ Negative `TT-UI-AC5-N1` [unit] a PDF is refused with a clear message — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N2` [unit] an empty file is refused — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N3` [unit] a sheet with no valid rows blocks Next — `unit/wizard.test.tsx`
@@ -147,6 +162,8 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ⚠️ Edge `TT-UI-AC5-E6` [unit] double-clicking Confirm sends a single start request — `unit/wizard.test.tsx`
 - ⚠️ Edge `TT-UI-AC5-E7` [unit] an unknown draft id shows a not-found state — `unit/wizard.test.tsx`
 - ⚠️ Edge `TT-UI-AC5-E8` [unit] without a slot there is no marker, but the template video still plays — `unit/wizard.test.tsx`
+- ⚠️ Edge `TT-UI-AC5-E9` [unit] a confirmed slot shows — `unit/slot-confirm.test.tsx`
+- ⚠️ Edge `TT-UI-AC5-E10` [unit] Save slot then Confirm slot in the wizard sends PUT before POST — `unit/slot-confirm.test.tsx`
 
 ### Feature: End-to-end (Playwright)
 
@@ -175,15 +192,20 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ✅ Positive `TT-UI-AC7-P1` [unit] a consented template shows name, slot, badge and Ready to use — `unit/templates-history-security.test.tsx`
 - ✅ Positive `TT-UI-AC7-P2` [unit] consent upload needs a file and the tick, then posts multipart — `unit/templates-history-security.test.tsx`
 - ✅ Positive `TT-UI-AC7-P3` [unit] uploads the video and the word as multipart and closes the form — `unit/new-template.test.tsx`
+- ✅ Positive `TT-UI-AC7-P4` [unit] a consented template without a slot can be set, confirmed and becomes usable — `unit/slot-confirm.test.tsx`
+- ✅ Positive `TT-UI-AC7-P5` [unit] the wizard then offers the template as selectable — `unit/slot-confirm.test.tsx`
 - ❌ Negative `TT-UI-AC7-N1` [unit] missing consent shows the badge, Not usable and no use action — `unit/templates-history-security.test.tsx`
 - ❌ Negative `TT-UI-AC7-N2` [unit] an invalid consent file shows the API message and the badge stays missing — `unit/templates-history-security.test.tsx`
 - ❌ Negative `TT-UI-AC7-N3` [unit] a non-video file is refused on the client without a request — `unit/new-template.test.tsx`
 - ❌ Negative `TT-UI-AC7-N4` [unit] the API refusing the video shows its message and keeps the form open — `unit/new-template.test.tsx`
+- ❌ Negative `TT-UI-AC7-N5` [unit] a confirm refused by the API shows its message and keeps the template unusable — `unit/slot-confirm.test.tsx`
 - ⚠️ Edge `TT-UI-AC7-E1` [unit] a template without a slot says No slot yet — `unit/templates-history-security.test.tsx`
 - ⚠️ Edge `TT-UI-AC7-E2` [unit] no templates shows the empty state — `unit/templates-history-security.test.tsx`
 - ⚠️ Edge `TT-UI-AC7-E3` [unit] an API failure shows an error state — `unit/templates-history-security.test.tsx`
 - ⚠️ Edge `TT-UI-AC7-E4` [unit] a Devanagari original name is shown intact with lang=hi — `unit/templates-history-security.test.tsx`
 - ⚠️ Edge `TT-UI-AC7-E5` [unit] Upload stays disabled until both a video and a word are given; Cancel closes — `unit/new-template.test.tsx`
+- ⚠️ Edge `TT-UI-AC7-E6` [unit] a template whose slot is already confirmed shows no slot editor or Confirm button — `unit/slot-confirm.test.tsx`
+- ⚠️ Edge `TT-UI-AC7-E8` [unit] a template without consent gets no slot editor (consent comes first) — `unit/slot-confirm.test.tsx`
 
 ### Feature: End-to-end (Playwright)
 
@@ -202,6 +224,9 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 
 - ✅ Positive `TT-UI-AC9-P1` [unit] login with the right password posts JSON and opens the overview — `unit/auth.test.tsx`
 - ✅ Positive `TT-UI-AC9-P2` [unit] sends X-CSRF-Token from the cookie on every state-changing call — `unit/auth.test.tsx`
+- ✅ Positive `TT-UI-AC9-P3` [unit] the prefix is /api — `unit/api-prefix.test.tsx`
+- ✅ Positive `TT-UI-AC9-P4` [unit] apiFetch builds <origin>/api/<path> for GET and for state-changing calls — `unit/api-prefix.test.tsx`
+- ✅ Positive `TT-UI-AC9-P5` [unit] every request the app makes while rendering the overview is under /api — `unit/api-prefix.test.tsx`
 - ❌ Negative `TT-UI-AC9-N1` [unit] wrong password shows the API message and stays on login — `unit/auth.test.tsx`
 - ❌ Negative `TT-UI-AC9-N2` [unit] a 429 shows a live countdown and disables the button until it ends — `unit/auth.test.tsx`
 - ❌ Negative `TT-UI-AC9-N3` [unit] a 401 from any call leads to the login screen — `unit/auth.test.tsx`
@@ -216,15 +241,19 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ⚠️ Edge `TT-UI-AC9-E6` [unit] a non-JSON failure body gives a generic ApiError, not a parse crash — `unit/auth.test.tsx`
 - ⚠️ Edge `TT-UI-AC9-E7` [unit] a network failure gives ApiError NETWORK_ERROR — `unit/auth.test.tsx`
 - ⚠️ Edge `TT-UI-AC9-E8` [unit] a 204 response resolves without trying to parse a body — `unit/auth.test.tsx`
+- ⚠️ Edge `TT-UI-AC9-E10` [unit] login goes to /api/auth/login — `unit/api-prefix.test.tsx`
+- ⚠️ Edge `TT-UI-AC9-E11` [unit] a path is never prefixed twice — `unit/api-prefix.test.tsx`
 
 ### Feature: End-to-end (Playwright)
 
 - ✅ Positive `TT-UI-E2E-P1` [e2e] main flow: login, overview, wizard entry, templates, history, security — `e2e/dashboard.spec.ts`
 - ✅ Positive `TT-UI-E2E-P2a` [e2e] upload a template and its consent on the Templates page — `e2e/full-flow.spec.ts`
-- ✅ Positive `TT-UI-E2E-P2b` [e2e] the slot is set through the API (the UI has no confirm step) — `e2e/full-flow.spec.ts`
+- ✅ Positive `TT-UI-E2E-P2b` [e2e] the slot is set and confirmed in the UI and the template becomes usable — `e2e/full-flow.spec.ts`
 - ✅ Positive `TT-UI-E2E-P2c` [e2e] wizard: sheet, mapping with invalid rows, preview, approval, start — `e2e/full-flow.spec.ts`
 - ✅ Positive `TT-UI-E2E-P2d` [e2e] progress to completion, batch detail, rows, ZIP and failures CSV — `e2e/full-flow.spec.ts`
 - ✅ Positive `TT-UI-E2E-P2e` [e2e] overview and security views with real data — `e2e/full-flow.spec.ts`
+- ✅ Positive `TT-UI-E2E-P5` [e2e] a refresh or deep link on a SPA route renders the app, not API JSON — `e2e/full-flow.spec.ts`
+- ✅ Positive `TT-UI-E2E-P6` [e2e] the API answers under the api prefix and not at the root — `e2e/full-flow.spec.ts`
 - ❌ Negative `TT-UI-E2E-N1` [e2e] wrong password shows the error and stays on login — `e2e/dashboard.spec.ts`
 - ❌ Negative `TT-UI-E2E-N2` [e2e] an unauthenticated visit is sent to login — `e2e/dashboard.spec.ts`
 - ❌ Negative `TT-UI-E2E-N3` [e2e] a sheet chosen as a template is refused on the client with a clear message — `e2e/full-flow.spec.ts`
@@ -240,5 +269,5 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 
 | Level | Positive | Negative | Edge |
 |---|---|---|---|
-| unit | 70 | 40 | 51 |
-| e2e | 6 | 4 | 6 |
+| unit | 82 | 41 | 59 |
+| e2e | 8 | 4 | 6 |

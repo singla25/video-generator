@@ -117,7 +117,7 @@ def main() -> int:
             start_new_session=True,  # so the whole npm/vite tree can be stopped as a group
         )
         procs.append(vite)
-        wait_for(API + "/health")
+        wait_for(API + "/api/health")
         wait_for(WEB + "/")
 
         args = sys.argv[1:] or []

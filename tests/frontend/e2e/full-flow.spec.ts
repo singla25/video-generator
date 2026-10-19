@@ -23,13 +23,7 @@ async function shot(page: Page, name: string): Promise<void> {
   if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`), fullPage: true });
 }
 
-async function csrf(page: Page): Promise<Record<string, string>> {
-  const cookies = await page.context().cookies();
-  return { 'X-CSRF-Token': cookies.find((c) => c.name === 'vidgen_csrf')?.value ?? '' };
-}
-
-// Deep links to the templates and batches routes are answered by the Vite API proxy, not the
-// SPA (defect D-F6-2), so the tests move around by clicking a link on the current page.
+// Moves by clicking a link on the current page (deep links are covered by TT-UI-E2E-P5).
 async function go(page: Page, path: string): Promise<void> {
   await page.locator(`a[href="${path}"]`).first().click();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -61,26 +55,43 @@ test('TT-UI-E2E-P2a upload a template and its consent on the Templates page', as
   await expect(card.getByTestId('consent-badge')).toHaveText(/Consent confirmed/);
 });
 
-test('TT-UI-E2E-P2b the slot is set through the API (the UI has no confirm step)', async ({
+test('TT-UI-E2E-P2b the slot is set and confirmed in the UI and the template becomes usable', async ({
   page,
 }) => {
-  // Fake speech-to-text finds no slot, and the UI saves but never confirms one, so the template
-  // stays unusable. Defect D-F6-1 is reported; the test seeds the slot via the API to go on.
+  // Fake speech-to-text finds no slot, so the operator marks it by hand (D-F6-1 fix).
   await login(page);
-  const list = await page.request.get('/templates');
-  const templates = (await list.json()).templates as { id: string; usable: boolean }[];
-  const id = templates[0]!.id;
-  const headers = await csrf(page);
-  const put = await page.request.put(`/templates/${id}/slot`, {
-    data: { start_s: 1.0, end_s: 2.0 },
-    headers,
-  });
-  expect(put.ok()).toBeTruthy();
-  const confirm = await page.request.post(`/templates/${id}/slot/confirm`, { headers });
-  expect(confirm.ok()).toBeTruthy();
   await go(page, '/templates');
-  await expect(page.getByTestId('template-card').first()).toContainText('Ready to use');
+  const card = page.getByTestId('template-card').filter({ hasText: 'Rahul' });
+  await expect(card).toContainText('Not usable');
+  await card.getByRole('spinbutton', { name: 'Slot start (s)' }).fill('1');
+  await card.getByRole('spinbutton', { name: 'Slot end (s)' }).fill('2');
+  await card.getByRole('button', { name: 'Save slot' }).click();
+  await card.getByRole('button', { name: 'Confirm slot' }).click();
+  await expect(card).toContainText('Ready to use');
   await shot(page, 'templates');
+});
+
+test('TT-UI-E2E-P5 a refresh or deep link on a SPA route renders the app, not API JSON', async ({
+  page,
+}) => {
+  await login(page);
+  await page.goto('/templates');
+  await expect(page.getByRole('heading', { level: 1, name: 'Templates' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Templates' })).toBeVisible();
+  await page.goto('/batches/new');
+  await expect(page.getByRole('list', { name: 'Steps' })).toBeVisible();
+  await page.goto('/history');
+  await expect(page.getByRole('heading', { level: 1, name: 'History' })).toBeVisible();
+});
+
+test('TT-UI-E2E-P6 the API answers under the api prefix and not at the root', async ({ page }) => {
+  await login(page);
+  const api = await page.request.get('/api/templates');
+  expect(api.status()).toBe(200);
+  expect(api.headers()['content-type']).toContain('application/json');
+  const root = await page.request.get('/templates', { headers: { Accept: 'application/json' } });
+  expect((root.headers()['content-type'] ?? '').includes('application/json')).toBe(false);
 });
 
 test('TT-UI-E2E-P2c wizard: sheet, mapping with invalid rows, preview, approval, start', async ({
@@ -122,8 +133,7 @@ test('TT-UI-E2E-P2d progress to completion, batch detail, rows, ZIP and failures
   page,
 }) => {
   await login(page);
-  await go(page, '/history');
-  await go(page, batchPath);
+  await page.goto(batchPath);
   await expect(page.getByTestId('batch-stats')).toContainText('Completed', { timeout: 150_000 });
   await expect(page.getByRole('table')).toContainText('Asha Verma');
   await expect(page.getByRole('table')).toContainText('अनुराधा');

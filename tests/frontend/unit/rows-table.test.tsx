@@ -114,7 +114,7 @@ describe('row actions', () => {
     table();
     const name = DEVANAGARI_NAME;
     const download = await screen.findByRole('link', { name: `Download video for ${name}` });
-    expect(download).toHaveAttribute('href', `/batches/${IDS.batch}/rows/1/video`);
+    expect(download).toHaveAttribute('href', `/api/batches/${IDS.batch}/rows/1/video`);
     expect(screen.getByRole('link', { name: `Preview video for ${name}` })).toBeInTheDocument();
   });
 

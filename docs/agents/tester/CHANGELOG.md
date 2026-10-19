@@ -96,3 +96,7 @@ Newest first. One entry per task.
 
 ## 2026-10-19 - F6 M3 verification
 - Added the real-stack E2E runner (run_stack.py, serve_api.py), full-flow.spec.ts, new-template unit tests; M3 section in COVERAGE.md; tree regenerated. Vitest 178/178, 93 percent lines; Playwright 43 pass, 2 axe failures (defect D-F6-3). Defects D-F6-1 to D-F6-3 reported.
+
+## 2026-10-20 - F6 round 2 RED (DD-21/22)
+- Backend: test_server_app.py (server app mounted under the api prefix; root serves no API JSON).
+- UI: slot-confirm, api-prefix and design-tokens tests (Confirm slot, prefix, chipColors AA contrast, hatch fills); link hrefs now expect the prefix. E2E: slot set and confirmed in the UI, deep link and refresh test; run_stack uses the server app.

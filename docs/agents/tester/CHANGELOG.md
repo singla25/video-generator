@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T15 (VERIFY M1)
+- Added runner tests, 17 tree cases (extra batch/API, ffmpeg VFR and colour, log helper, architecture rules), strict xfails for range requests and two oversize files; tree annotated with a verification table; COVERAGE.md written (98.2 %, domain and render_row 100 %, 1597 passed, 3 xfailed).
+- Findings: V1 two files over 300 lines, V2 no range requests, V3 stateless cookie (by ADR). No functional defect.
+
 ## 2026-10-19 — T13c (DD-10)
 - Fixed 8 test defects (manifest in folder, decoded queue messages, collision-suffix check). Contract change: RowRenderer takes row_store_factory (no session_factory, no cipher) and RenderConfig.label_band_share. Added layering test (services must not import infrastructure), tests for domain outcomes, timing snap and the fake AI adapters.
 

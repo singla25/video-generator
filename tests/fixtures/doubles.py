@@ -49,6 +49,7 @@ class InMemoryStorage:
         self.bytes_consumed = 0
         self.fail_writes = False
         self.fail_next = 0  # fail this many writes, then recover
+        self.fail_deletes = False
         self._lock = threading.Lock()
 
     def write(self, key: str, data: BinaryIO) -> str:
@@ -78,6 +79,8 @@ class InMemoryStorage:
 
     def delete(self, key: str) -> None:
         """Delete a stored file (missing keys are fine)."""
+        if self.fail_deletes:
+            raise StorageError
         self.files.pop(key, None)
 
     def exists(self, key: str) -> bool:

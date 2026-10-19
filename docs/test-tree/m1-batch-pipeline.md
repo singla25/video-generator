@@ -605,3 +605,32 @@ Required-edge checklist: unicode + Devanagari (AC3-P2/P4/P7, E2, E12; AC11-E2/E3
 - **NA-1 (B7/AC14)** B7 defines ETA from the last 20 completed rows, but not whether PROCESSING rows count in "remaining" (assumed: remaining = QUEUED + PROCESSING). Confirm.
 - **NA-2 (B11)** What happens when the same `Idempotency-Key` is reused with a different batch id? Not specified; no test written until decided.
 - **NA-3 (AC6)** Plan does not state tie-breaking for several STT matches or whether the confidence threshold is inclusive. Tests assume highest-confidence/earliest and inclusive; confirm.
+
+---
+
+## Verification status (T15, 2026-10-19)
+
+Every case ID of this tree is either referenced by a test (the ID appears in the test's docstring) or listed below with its reason. Nothing is left silently open.
+
+| Case | Status | Reason or test that covers it |
+|------|--------|-------------------------------|
+| TT-AC1-E5, TT-AC8-E2 | n/a (D-8) | ffmpeg cannot produce odd-dimension H.264 test media; rounding is done by the encoder |
+| TT-AC5-E4, TT-AC13-N5 | n/a | M1 has no way to remove consent after upload, so the situation cannot arise; the worker check is covered by `test_missing_consent_fails_before_any_work` |
+| TT-AC6-P4 | covered | `tests/unit/services/test_layering.py::test_services_never_import_infrastructure` (services use ports only) |
+| TT-AC6-E7 | covered | slot fields are named `start_s` / `end_s`; `test_slot_with_missing_or_non_numeric_fields_is_a_validation_error` |
+| TT-AC8-N3 | covered | `test_quality_failures_are_never_retried[OUTPUT_CHECK_FAILED]` |
+| TT-AC9-E9 | M2 | background-music separation is plan risk R1 (real voice) |
+| TT-AC12-P8 | covered | `test_crash_and_timeout_ask_for_exactly_one_retry` (delay 10 s) and `test_actors_carry_the_retry_and_time_limit_options` |
+| TT-AC13-N6 | covered | `test_start_requires_an_idempotency_key` |
+| TT-AC14-N4 | covered | `test_every_route_except_health_and_login_requires_a_session` |
+| TT-AC14-E6 | covered | `test_time_series_counts_videos_per_utc_day_with_mean_render_time` |
+| TT-AC15-E4 | known limitation | byte-range requests are not implemented; `test_range_requests_on_a_single_video_return_partial_content` is a strict xfail |
+| TT-AC16-E4 | known limitation | the session cookie is stateless (ADR-006); a captured cookie stays valid until it expires or `session_version` is bumped (`test_bumping_the_session_version_invalidates_existing_sessions`) |
+| TT-AC17-E9 | n/a | no ZIP cache exists (the ZIP is streamed); worker temp dirs: `test_temp_files_are_removed_after_failures_too` |
+| TT-AC18-P2 | covered | `test_picture_below_the_band_is_unchanged` and `test_audio_outside_the_slot_matches_the_template` |
+| TT-AC18-N2 | covered | `test_the_slot_cannot_be_changed_through_the_template_resource`, `test_changing_the_slot_after_approval_requires_a_new_preview` |
+| TT-AC18-E5 | M2 | lip sync is a pass-through fake in M1 |
+| TT-AC19-P1..P4, N1 | procedure | run by T15 and the CEO review; results in `docs/agents/tester/COVERAGE.md` |
+| TT-AC19-E6 | procedure | slow tests carry `@pytest.mark.slow`; durations are reported in COVERAGE.md |
+
+Cases added in T15: TT-AC4-N1, TT-AC6-E6, TT-AC8-E1, TT-AC8-E5, TT-AC11-E11, TT-AC14-E8, TT-AC15-E3, TT-AC15-E5, TT-AC16-E3, TT-AC17-E6, TT-AC17-E7, TT-AC17-E11, TT-AC19-E1..E5.

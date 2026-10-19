@@ -10,4 +10,12 @@ Builds the user interface that talks to the backend API, handling loading, error
 `.claude/agents/frontend-dev.md`
 
 ## Current status
-Not started yet.
+F1a tooling scaffold done (no screens yet).
+
+## npm scripts (run in `frontend/`)
+- `dev` - Vite dev server; proxies the API paths (auth, templates, batches, stats, audit, health) to 127.0.0.1:8000, so the app is same-origin
+- `build` - typecheck + production build into `dist`
+- `typecheck` - `tsc --noEmit` (strict)
+- `lint` / `format:check` - ESLint (flat config) / Prettier
+- `test` / `test:coverage` - Vitest (jsdom); reads `tests/frontend/unit`, setup file `tests/frontend/setup.ts`
+- `e2e` - Playwright (`tests/frontend/e2e`; projects desktop, reduced-motion, tablet; env `E2E_BASE_URL`, `E2E_START_SERVER`)

@@ -57,7 +57,7 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | F6r2 | RED for D-F6-1..3 + hatch | tester | sonnet | ✅ @ ab15da5 (interrupted by usage limit, resumed) | Delegated (CEO) | — |
 | F6fix | GREEN: server app at /api (backend) + slot confirm, api prefix, AA chips, hatch (frontend) | backend-dev + frontend-dev | sonnet | Backend ✅ @ 3db45f7 (1745 pass); frontend ✅ @ 7c69ba1 (Vitest 207/207); E2E re-verify in progress | Delegated (CEO) | — |
 | F6rv | Re-verify on the real stack | tester | sonnet | ✅ @ 603c793 — E2E 47/48 (D-F6-4 tablet scroll), axe 0 serious, Python 1745, Vitest 207/207, 93 % lines | Delegated (CEO) | — |
-| F7a | D-F6-4 tablet fix + CEO visual polish (DD-24) | frontend-dev | sonnet | In progress | Delegated (CEO) | — |
+| F7a | D-F6-4 tablet fix + CEO visual polish (DD-24) | frontend-dev | sonnet | ✅ @ 099d773 + d86f49c (Vitest 207/207); final E2E in progress | Delegated (CEO) | — |
 | F6 | VERIFY M3: Playwright E2E on real stack (throwaway DB), axe, coverage, privacy | tester | sonnet | ✅ Verification done @ fd1e9ce — E2E 43/45, Vitest 178/178, frontend 93 % lines; defects D-F6-1..3 + hatch → F6 r2 (RED) → fixes (DD-21/22) | Delegated (CEO) | — |
 | DD-20 | Per-session throwaway test DBs | tester | sonnet | ✅ Done & CEO-verified @ 94e6225 (2 concurrent runs identical; protected-name guard); also fixed the tests' TS typecheck | Delegated (CEO) | — |
 | F5 | BatchDetail, Templates, History, Security | frontend-dev | sonnet | ✅ Done & CEO-verified @ 1073286 — 166/170 UI tests (4 = P10 defect + DD-18 wiring); privacy scan clean | Delegated (CEO) | — |

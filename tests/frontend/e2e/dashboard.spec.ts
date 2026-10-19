@@ -47,7 +47,7 @@ test('TT-UI-E2E-N1 wrong password shows the error and stays on login', async ({ 
 });
 
 test('TT-UI-E2E-N2 an unauthenticated visit is sent to login', async ({ page }) => {
-  await page.goto('/templates');
+  await page.goto('/history');
   await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
 });
 
@@ -88,10 +88,9 @@ test('TT-UI-E2E-E4 Devanagari text is not tofu: the Noto Sans Devanagari face is
 }) => {
   await login(page);
   const loaded = await page.evaluate(async () => {
-    await document.fonts.ready;
-    return [...document.fonts].some(
-      (f) => /Noto Sans Devanagari/i.test(f.family) && f.status === 'loaded',
-    );
+    // Fonts load lazily, so ask for a Devanagari glyph explicitly.
+    const faces = await document.fonts.load('16px "Noto Sans Devanagari"', 'अ');
+    return faces.some((f) => /Noto Sans Devanagari/i.test(f.family) && f.status === 'loaded');
   });
   expect(loaded).toBe(true);
 });
@@ -111,13 +110,36 @@ test('TT-UI-E2E-E5 no request leaves the local origin', async ({ page }) => {
   expect(external).toEqual([]);
 });
 
+// Moves by clicking a link: a direct load of the templates or batches routes is answered by the
+// Vite API proxy instead of the SPA (defect D-F6-2).
+async function visit(page: Page, path: string): Promise<void> {
+  if (path !== '/') await page.locator(`a[href="${path}"]`).first().click();
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await page.waitForLoadState('networkidle');
+}
+
 for (const path of ['/', '/templates', '/history', '/security', '/batches/new']) {
   test(`TT-UI-E2E-A1 axe: no serious or critical violations on ${path}`, async ({ page }) => {
     await login(page);
-    await page.goto(path);
-    await page.waitForLoadState('networkidle');
+    await visit(page, path);
     const results = await new AxeBuilder({ page }).analyze();
     const bad = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-    expect(bad.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+    expect(
+      bad.map((v) => `${v.id}: ${v.help} -> ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`),
+    ).toEqual([]);
   });
 }
+
+test('TT-UI-E2E-E6 no names or IDs in browser storage and no TrustVest text in the pages', async ({
+  page,
+}) => {
+  await login(page);
+  for (const path of ['/', '/templates', '/history', '/security']) {
+    await visit(page, path);
+    expect(await page.locator('body').innerText()).not.toMatch(/trustvest/i);
+  }
+  const storage = await page.evaluate(() =>
+    JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }),
+  );
+  expect(storage).not.toMatch(/E2E00000|Asha|Verma/);
+});

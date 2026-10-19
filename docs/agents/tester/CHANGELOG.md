@@ -93,3 +93,6 @@ Newest first. One entry per task.
 ## 2026-10-19 - DD-20 isolated DB per pytest session
 - tests/integration/conftest.py: each session creates vidgen_<hex>_test and vidgen_mig_<hex>_test, removed by finalizers (protected names refused). test_migrations.py uses the migration_db_url fixture. Two concurrent full runs gave identical results (51 failed = Range tests only, 1671 passed).
 - node-fetch-types.ts: copy bytes into a new Uint8Array (typecheck fix).
+
+## 2026-10-19 - F6 M3 verification
+- Added the real-stack E2E runner (run_stack.py, serve_api.py), full-flow.spec.ts, new-template unit tests; M3 section in COVERAGE.md; tree regenerated. Vitest 178/178, 93 percent lines; Playwright 43 pass, 2 axe failures (defect D-F6-3). Defects D-F6-1 to D-F6-3 reported.

@@ -174,12 +174,16 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 
 - ✅ Positive `TT-UI-AC7-P1` [unit] a consented template shows name, slot, badge and Ready to use — `unit/templates-history-security.test.tsx`
 - ✅ Positive `TT-UI-AC7-P2` [unit] consent upload needs a file and the tick, then posts multipart — `unit/templates-history-security.test.tsx`
+- ✅ Positive `TT-UI-AC7-P3` [unit] uploads the video and the word as multipart and closes the form — `unit/new-template.test.tsx`
 - ❌ Negative `TT-UI-AC7-N1` [unit] missing consent shows the badge, Not usable and no use action — `unit/templates-history-security.test.tsx`
 - ❌ Negative `TT-UI-AC7-N2` [unit] an invalid consent file shows the API message and the badge stays missing — `unit/templates-history-security.test.tsx`
+- ❌ Negative `TT-UI-AC7-N3` [unit] a non-video file is refused on the client without a request — `unit/new-template.test.tsx`
+- ❌ Negative `TT-UI-AC7-N4` [unit] the API refusing the video shows its message and keeps the form open — `unit/new-template.test.tsx`
 - ⚠️ Edge `TT-UI-AC7-E1` [unit] a template without a slot says No slot yet — `unit/templates-history-security.test.tsx`
 - ⚠️ Edge `TT-UI-AC7-E2` [unit] no templates shows the empty state — `unit/templates-history-security.test.tsx`
 - ⚠️ Edge `TT-UI-AC7-E3` [unit] an API failure shows an error state — `unit/templates-history-security.test.tsx`
 - ⚠️ Edge `TT-UI-AC7-E4` [unit] a Devanagari original name is shown intact with lang=hi — `unit/templates-history-security.test.tsx`
+- ⚠️ Edge `TT-UI-AC7-E5` [unit] Upload stays disabled until both a video and a word are given; Cancel closes — `unit/new-template.test.tsx`
 
 ### Feature: End-to-end (Playwright)
 
@@ -216,17 +220,25 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 ### Feature: End-to-end (Playwright)
 
 - ✅ Positive `TT-UI-E2E-P1` [e2e] main flow: login, overview, wizard entry, templates, history, security — `e2e/dashboard.spec.ts`
+- ✅ Positive `TT-UI-E2E-P2a` [e2e] upload a template and its consent on the Templates page — `e2e/full-flow.spec.ts`
+- ✅ Positive `TT-UI-E2E-P2b` [e2e] the slot is set through the API (the UI has no confirm step) — `e2e/full-flow.spec.ts`
+- ✅ Positive `TT-UI-E2E-P2c` [e2e] wizard: sheet, mapping with invalid rows, preview, approval, start — `e2e/full-flow.spec.ts`
+- ✅ Positive `TT-UI-E2E-P2d` [e2e] progress to completion, batch detail, rows, ZIP and failures CSV — `e2e/full-flow.spec.ts`
+- ✅ Positive `TT-UI-E2E-P2e` [e2e] overview and security views with real data — `e2e/full-flow.spec.ts`
 - ❌ Negative `TT-UI-E2E-N1` [e2e] wrong password shows the error and stays on login — `e2e/dashboard.spec.ts`
 - ❌ Negative `TT-UI-E2E-N2` [e2e] an unauthenticated visit is sent to login — `e2e/dashboard.spec.ts`
+- ❌ Negative `TT-UI-E2E-N3` [e2e] a sheet chosen as a template is refused on the client with a clear message — `e2e/full-flow.spec.ts`
+- ❌ Negative `TT-UI-E2E-N4` [e2e] a corrupt .mp4 is refused by the server and no template card appears — `e2e/full-flow.spec.ts`
 - ⚠️ Edge `TT-UI-E2E-E1` [e2e] tablet width keeps the header action and navigation usable — `e2e/dashboard.spec.ts`
 - ⚠️ Edge `TT-UI-E2E-E2` [e2e] reduced motion: no running CSS animations or transitions on the overview — `e2e/dashboard.spec.ts`
 - ⚠️ Edge `TT-UI-E2E-E3` [e2e] keyboard: Tab reaches the skip link first, Enter moves focus to main — `e2e/dashboard.spec.ts`
 - ⚠️ Edge `TT-UI-E2E-E4` [e2e] Devanagari text is not tofu: the Noto Sans Devanagari face is loaded locally — `e2e/dashboard.spec.ts`
 - ⚠️ Edge `TT-UI-E2E-E5` [e2e] no request leaves the local origin — `e2e/dashboard.spec.ts`
+- ⚠️ Edge `TT-UI-E2E-E6` [e2e] no names or IDs in browser storage and no TrustVest text in the pages — `e2e/dashboard.spec.ts`
 
 ## Counts (one line per case id; `it.each` expands to more runs)
 
 | Level | Positive | Negative | Edge |
 |---|---|---|---|
-| unit | 69 | 38 | 50 |
-| e2e | 1 | 2 | 5 |
+| unit | 70 | 40 | 51 |
+| e2e | 6 | 4 | 6 |

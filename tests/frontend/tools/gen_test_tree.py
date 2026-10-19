@@ -28,7 +28,7 @@ TITLES = {
 }
 SYMBOL = {"P": "✅ Positive", "N": "❌ Negative", "E": "⚠️ Edge"}
 CASE = re.compile(
-    r"""(?:it|test)(?:\.each\([^)]*\))?\(\s*['"`](TT-UI-([A-Z0-9]+)-([PNE])(\d+))\s+([^'"`]+)['"`]"""
+    r"""(?:it|test)(?:\.each\([^)]*\))?\(\s*['"`](TT-UI-([A-Z0-9]+)-([PNE])(\d+)[a-z]?)\s+([^'"`]+)['"`]"""
 )
 HEADER = Path(__file__).with_name("tree_header.md")
 

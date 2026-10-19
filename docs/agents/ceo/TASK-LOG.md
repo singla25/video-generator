@@ -41,6 +41,6 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T15–T16 | Verify + coverage report; CEO review → gate 3 | tester / CEO | sonnet | Planned | — | — |
 | — | **Merge gate 3** (M1 complete) | CEO | — | ✅ Merged `49f0767` (DD-12); main: 1611 pass + 1 xfail, mypy/ruff clean | Delegated (CEO) | ✅ |
 | F0 | Node.js | Admin | — | ✅ Already installed (v26.12.0, DD-2); placeholder brand DD-1 | — | — |
-| F1a | Frontend tooling scaffold (no app code) | frontend-dev | sonnet | Done @ e4377ff, CEO-reviewed; round 2 (@types, audit, DD-14) in progress | Delegated (CEO) | — |
+| F1a | Frontend tooling scaffold (no app code) | frontend-dev | sonnet | ✅ Done & CEO-verified after 3 rounds @ b42f597 (types DD-14, Tailwind 4 DD-15); npm audit 0, build ok | Delegated (CEO) | — |
 | F1 | RED: dashboard test tree + failing UI tests | tester (fresh agent) | sonnet | In progress (parallel with F1a round 2) | Delegated (CEO) | — |
 | F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | Planned; F1 after F1a | Plan: yes (Admin); assignment: delegated | — |

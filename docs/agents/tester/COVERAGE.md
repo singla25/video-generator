@@ -1,7 +1,7 @@
 # Tester — Coverage (M1 verification, 2026-10-19)
 
 Command: `uv run pytest tests -q -m "slow or not slow" --cov=vidgen --cov-branch`
-Result: **1597 passed, 3 xfailed** (157 s). Also clean: `ruff check`, `ruff format --check`, `mypy --strict backend` (86 files).
+Result: **1611 passed, 1 xfailed** (148 s, after the file split). Also clean: `ruff check`, `ruff format --check`, `mypy --strict backend` (86 files).
 
 ## Coverage
 
@@ -43,7 +43,7 @@ No uncovered line is on the happy path of a feature; all are error or defensive 
 | tagged negative (`N`) | 194 |
 | tagged edge (`E`) | 264 |
 | other (domain rules, contracts, helpers without a tree ID) | 169 |
-| xfail (strict, documented limits) | 3 |
+| xfail (strict, documented limit: range requests) | 1 |
 
 Tree: 374 cases from `docs/test-tree/m1-batch-pipeline.md` (105 P, 98 N, 171 E); 17 further cases were added in T15; every ID is either referenced by a test or listed with a reason under "Verification status" in the tree (n/a, M2, covered by named test, procedure).
 
@@ -77,7 +77,7 @@ Tree: 374 cases from `docs/test-tree/m1-batch-pipeline.md` (105 P, 98 N, 171 E);
 
 | ID | Kind | Detail |
 |----|------|--------|
-| V1 | code rule | `backend/vidgen/infrastructure/db/batch_store.py` has 384 lines and `backend/vidgen/services/render_row.py` 330 (rule: about 300). Tracked as strict xfail in `unit/meta/test_architecture.py`; split before M2. |
+| V1 | code rule, resolved | `batch_store.py` (384 lines) and `render_row.py` (330) were split (a11472d); every source file is now at most 300 lines (`unit/meta/test_architecture.py`). |
 | V2 | limit | Byte-range requests on single-video download are not supported (`test_range_requests_on_a_single_video_return_partial_content`, strict xfail). Needed for a seeking player in M3. |
 | V3 | limit (ADR-006) | The signed session cookie is stateless: a copied cookie works until it expires or `session_version` is bumped. |
 

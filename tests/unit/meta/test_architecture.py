@@ -76,17 +76,9 @@ def test_no_hard_coded_absolute_paths_external_urls_or_secrets(path: Path) -> No
         assert not SECRET_ASSIGNMENT.search(source), f"{relative(path)} looks like a secret"
 
 
-KNOWN_TOO_LONG = {
-    "vidgen/infrastructure/db/batch_store.py": "384 lines; split before M2 (reported in T15)",
-    "vidgen/services/render_row.py": "330 lines; split before M2 (reported in T15)",
-}
-
-
 @pytest.mark.parametrize("path", SOURCES, ids=relative)
-def test_files_stay_short(path: Path, request: pytest.FixtureRequest) -> None:
-    """TT-AC19-E4: about 300 lines at most (two known exceptions are tracked as xfail)."""
-    if relative(path) in KNOWN_TOO_LONG:
-        request.applymarker(pytest.mark.xfail(strict=True, reason=KNOWN_TOO_LONG[relative(path)]))
+def test_files_stay_short(path: Path) -> None:
+    """TT-AC19-E4: about 300 lines at most."""
     lines = len(path.read_text(encoding="utf-8").splitlines())
     assert lines <= MAX_LINES, f"{relative(path)} has {lines} lines"
 

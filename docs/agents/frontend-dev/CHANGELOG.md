@@ -2,6 +2,11 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 - F2
+- App routing, api/client (CSRF, ApiError, 401 handler), LoginPage with 429 countdown, AppShell (sidebar, header, skip link, security banner), StatusChip, CountUp, Skeleton/ErrorState/EmptyState, useReducedMotion; other pages are placeholders.
+- `tsconfig.tests.json` type-checks `tests/frontend` (typecheck script runs both). Fails only until RowsTable exists (F4).
+- Open: AC9-N3/N4 and AC12-P1/P3 need the F3/F4 pages.
+
 ## 2026-10-19 - F1a round 3 (DD-15)
 - Migrated to Tailwind 4.3.3 with @tailwindcss/vite; removed tailwindcss 3, postcss, autoprefixer, postcss and tailwind configs. Tokens moved to `@theme` in `src/index.css`. npm audit: 0 findings.
 

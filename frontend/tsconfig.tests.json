@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "typeRoots": ["./node_modules/@types"],
+    "types": ["node", "vite/client"],
+    "paths": {
+      "msw/node": ["./node_modules/msw/lib/node/index.d.ts"],
+      "*": ["./node_modules/@types/*", "./node_modules/*"]
+    }
+  },
+  "include": ["../tests/frontend/**/*.ts", "../tests/frontend/**/*.tsx", "src"]
+}

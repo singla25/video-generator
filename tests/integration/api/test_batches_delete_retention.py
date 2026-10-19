@@ -180,7 +180,7 @@ def test_unfinished_batches_are_never_deleted_however_old(
     """TT-AC17-N7 (A8)."""
     batch_id = _fresh_running(env)
     set_batch(db, batch_id, status=status, started_at=env.clock.now() - 90 * DAY)
-    env.clock.advance(days=90)
+    env.advance(days=90)
     assert run_retention(env) == 0
     assert env.client.get(f"/batches/{batch_id}").status_code == 200
 
@@ -188,7 +188,7 @@ def test_unfinished_batches_are_never_deleted_however_old(
 def test_never_started_drafts_are_deleted_n_days_after_creation(env: Env, db: Engine) -> None:
     """TT-AC17-P8 (B12)."""
     draft = new_batch(env, people(2))
-    env.clock.advance(days=30, seconds=1)
+    env.advance(days=30, seconds=1)
     assert run_retention(env) == 1
     assert env.client.get(f"/batches/{draft}").status_code == 404
 
@@ -196,7 +196,7 @@ def test_never_started_drafts_are_deleted_n_days_after_creation(env: Env, db: En
 def test_young_drafts_are_kept(env: Env) -> None:
     """TT-AC17-N8."""
     draft = new_batch(env, people(2))
-    env.clock.advance(days=29)
+    env.advance(days=29)
     assert run_retention(env) == 0
     assert env.client.get(f"/batches/{draft}").status_code == 200
 
@@ -205,7 +205,7 @@ def test_retention_period_comes_from_settings(make_env: EnvFactory, db: Engine) 
     """TT-AC17-P6."""
     env = make_env(retention_days=7)
     draft = new_batch(env, people(1))
-    env.clock.advance(days=8)
+    env.advance(days=8)
     assert run_retention(env) == 1
     assert env.client.get(f"/batches/{draft}").status_code == 404
 

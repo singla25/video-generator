@@ -312,7 +312,7 @@ def test_default_folder_name_is_date_and_valid_row_count(env: Env) -> None:
     """TT-AC11-P1: the date comes from the clock at start time."""
     batch_id = new_batch(env, [["Asha", "A1"], ["", "B2"], ["Chand", "C3"]])
     approve_preview(env, batch_id)
-    env.clock.advance(days=1)
+    env.advance(days=1)
     assert start(env, batch_id).json()["folder_name"] == "2026-10-19-2"
 
 

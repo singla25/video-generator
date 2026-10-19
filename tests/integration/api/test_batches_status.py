@@ -335,7 +335,7 @@ def test_time_series_counts_videos_per_utc_day_with_mean_render_time(env: Env, d
     finish_row(db, batch_id, 2, seconds=2.0, at=datetime(2026, 10, 18, 23, 59, 59, tzinfo=UTC))
     finish_row(db, batch_id, 3, seconds=4.0, at=datetime(2026, 10, 19, 0, 0, 1, tzinfo=UTC))
     finish_row(db, batch_id, 4, seconds=6.0, at=datetime(2026, 10, 19, 10, 0, tzinfo=UTC))
-    env.clock.advance(days=2)  # now: 2026-10-20 09:00 UTC
+    env.advance(days=2)  # now: 2026-10-20 09:00 UTC
     days = env.client.get("/stats/daily", params={"days": 4}).json()["days"]
     assert [d["date"] for d in days] == ["2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20"]
     by_date = {d["date"]: d for d in days}

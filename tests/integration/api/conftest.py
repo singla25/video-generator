@@ -57,6 +57,11 @@ class Env:
     csrf: dict[str, str]
     deps: AppDeps | None = None
 
+    def advance(self, **kwargs: float) -> None:
+        """Move the fake clock and log in again (the 8 h session would otherwise be expired)."""
+        self.clock.advance(**kwargs)
+        assert self.login().status_code == 200
+
     def new_instance(self) -> Env:
         """A second app built from the same settings, clock and doubles (a 'restart' or peer node).
 

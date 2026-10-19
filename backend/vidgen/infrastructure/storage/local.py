@@ -5,7 +5,9 @@ from __future__ import annotations
 import contextlib
 import os
 import tempfile
+import time
 from collections.abc import Iterator
+from datetime import timedelta
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, BinaryIO
 
@@ -63,6 +65,26 @@ class LocalStorage:
     def exists(self, key: str) -> bool:
         """True if ``key`` is a stored file."""
         return self._resolve(key).is_file()
+
+    def folder_exists(self, folder: str) -> bool:
+        """True if ``folder`` is an existing directory under the root."""
+        return self._resolve(folder).is_dir()
+
+    def remove_stale_temp(self, older_than: timedelta) -> int:
+        """Delete ``.tmp-*`` files left by crashed writes; returns how many were removed.
+
+        Recent temp files may belong to a running write and stay. Symlinks are not followed,
+        so nothing outside the root can be touched.
+        """
+        cutoff = time.time() - older_than.total_seconds()
+        removed = 0
+        for folder, _, names in os.walk(self._root, followlinks=False):
+            for name in names:
+                path = Path(folder) / name
+                if name.startswith(TEMP_PREFIX) and path.stat().st_mtime < cutoff:
+                    path.unlink(missing_ok=True)
+                    removed += 1
+        return removed
 
     def _resolve(self, key: str) -> Path:
         """Map ``key`` to a path inside the root or raise InvalidStorageKeyError."""

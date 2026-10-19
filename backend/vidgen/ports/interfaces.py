@@ -13,6 +13,7 @@ from uuid import UUID
 
 from vidgen.domain.timing import TimingPlan
 from vidgen.domain.values import TextRegion, Word
+from vidgen.ports.batches import BatchStore
 from vidgen.ports.models import AuditEntry, SheetRow, TemplateRecord, VideoInfo
 
 
@@ -124,6 +125,10 @@ class Storage(Protocol):
         """Return True if ``key`` exists."""
         ...
 
+    def folder_exists(self, folder: str) -> bool:
+        """Return True if ``folder`` already exists, so a new batch must not reuse it (R6.2)."""
+        ...
+
 
 class SheetReader(Protocol):
     """Streams rows from a spreadsheet file."""
@@ -219,24 +224,13 @@ class UnitOfWork(Protocol):
         """Audit persistence."""
         ...
 
+    @property
+    def batches(self) -> BatchStore:
+        """Batch and row persistence."""
+        ...
+
     def commit(self) -> None:
         """Commit the transaction."""
-        ...
-
-
-class BatchRepository(Protocol):
-    """Persistence for batches and their rows."""
-
-    def get(self, batch_id: UUID) -> object | None:
-        """Return the batch or None."""
-        ...
-
-    def add(self, batch: object) -> None:
-        """Persist a new batch."""
-        ...
-
-    def delete(self, batch_id: UUID) -> None:
-        """Delete a batch with its rows."""
         ...
 
 

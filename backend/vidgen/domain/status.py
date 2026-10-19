@@ -43,6 +43,7 @@ class BatchAction(StrEnum):
     RESUME = "RESUME"
     FINISH = "FINISH"
     CANCEL = "CANCEL"
+    RETRY = "RETRY"
 
 
 _R = RowStatus
@@ -71,6 +72,11 @@ _BATCH_TRANSITIONS: dict[tuple[BatchState, BatchAction], BatchState] = {
     (_B.RUNNING, _A.CANCEL): _B.CANCELLED,
     (_B.PAUSED, _A.CANCEL): _B.CANCELLED,
     (_B.CANCELLED, _A.CANCEL): _B.CANCELLED,
+    (_B.DRAFT, _A.CANCEL): _B.CANCELLED,  # D-19: a draft can be discarded
+    # Retry-failed (AC13): a finished batch with failed rows runs again.
+    (_B.RUNNING, _A.RETRY): _B.RUNNING,
+    (_B.PAUSED, _A.RETRY): _B.PAUSED,
+    (_B.COMPLETED, _A.RETRY): _B.RUNNING,
 }
 
 

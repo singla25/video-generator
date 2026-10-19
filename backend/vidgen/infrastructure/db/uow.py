@@ -8,6 +8,8 @@ from uuid import UUID
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
+from vidgen.infrastructure.db.batch_store import SqlBatchStore
 from vidgen.infrastructure.db.repositories import (
     AuditRepository,
     SqlTemplateRepository,
@@ -30,9 +32,11 @@ class SqlUnitOfWork:
     campaign_id: UUID
     templates: SqlTemplateRepository
     audit: AuditRepository
+    batches: SqlBatchStore
 
-    def __init__(self, factory: sessionmaker[Session]) -> None:
+    def __init__(self, factory: sessionmaker[Session], cipher: AesGcmCipher) -> None:
         self._factory = factory
+        self._cipher = cipher
         self._session: Session | None = None
 
     def __enter__(self) -> SqlUnitOfWork:
@@ -40,6 +44,7 @@ class SqlUnitOfWork:
         self.campaign_id = ensure_default_campaign(self._session)
         self.templates = SqlTemplateRepository(self._session)
         self.audit = AuditRepository(self._session)
+        self.batches = SqlBatchStore(self._session, self._cipher)
         return self
 
     def __exit__(

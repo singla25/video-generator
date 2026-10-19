@@ -1,8 +1,17 @@
 """Port interfaces (Protocols) that services depend on."""
 
+from vidgen.ports.batches import (
+    BatchRecord,
+    BatchStore,
+    DayStat,
+    JobQueue,
+    MappingRecord,
+    NewBatchRow,
+    PreviewRecord,
+    RowView,
+)
 from vidgen.ports.interfaces import (
     AuditRepository,
-    BatchRepository,
     Cipher,
     Clock,
     LabelRenderer,
@@ -31,12 +40,19 @@ from vidgen.ports.models import (
 __all__ = [
     "AuditEntry",
     "AuditRepository",
-    "BatchRepository",
+    "BatchRecord",
+    "BatchStore",
     "Cipher",
     "Clock",
+    "DayStat",
+    "JobQueue",
     "LabelRenderer",
     "LipSyncer",
+    "MappingRecord",
+    "NewBatchRow",
+    "PreviewRecord",
     "QualityChecker",
+    "RowView",
     "SheetReader",
     "SheetRow",
     "SpeechToText",

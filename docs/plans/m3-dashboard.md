@@ -106,7 +106,7 @@ Order (TDD): F0 → F1 → F2 → (F3, F4, F5 in sequence or parallel) → F6 �
 | @fontsource/plus-jakarta-sans, @fontsource/noto-sans-devanagari | Self-hosted fonts | OFL-1.1 (fonts) / MIT (packaging) |
 | clsx | Class names | MIT |
 
-**npm dev:** @types/react, @types/react-dom, @types/node (added under delegated authority, DD-14), typescript, vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer, vitest, @vitest/coverage-v8, @testing-library/react, @testing-library/user-event, @testing-library/jest-dom, jsdom, msw, @playwright/test, @axe-core/playwright, eslint (+ typescript-eslint, eslint-plugin-react-hooks), prettier. All MIT / Apache-2.0 / BSD.
+**npm dev:** @types/react, @types/react-dom, @types/node (added under delegated authority, DD-14), typescript, vite, @vitejs/plugin-react, tailwindcss 4 + @tailwindcss/vite (DD-15; replaces postcss + autoprefixer), vitest, @vitest/coverage-v8, @testing-library/react, @testing-library/user-event, @testing-library/jest-dom, jsdom, msw, @playwright/test, @axe-core/playwright, eslint (+ typescript-eslint, eslint-plugin-react-hooks), prettier. All MIT / Apache-2.0 / BSD.
 
 **Open questions:** none blocking. The product name and logo for the sidebar are needed before F2: the Admin supplies them, or we use a plain text name.
 

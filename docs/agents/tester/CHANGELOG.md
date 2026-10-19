@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T15a (RED: end-to-end)
+- Added tests/e2e/{conftest,test_synthetic_batch_e2e}.py: P1 (10-row batch, probe, manifest, downloads, PII logs), E1 (one injected crash, one retry), E2 (delete, no PII). Real app, Postgres test DB, FFmpeg, local storage, Pillow label; fake STT, voice, lip sync, quality. Queue: Dramatiq StubBroker with an in-process worker (no Redis).
+- Fails now on the missing worker modules; with throw-away stubs the flow reached the worker wait (template, consent, slot, batch, report, preview request all work).
+
 ## 2026-10-19 — T13 round 2 (DD-6)
 - Stage order is now tts, lipsync, encode, check, publish. Lip sync sees the original template plus the new audio; its output feeds the single final encode. Added a chain test; FakeLipSync records inputs and can append a marker.
 

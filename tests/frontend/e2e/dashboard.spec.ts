@@ -143,3 +143,14 @@ test('TT-UI-E2E-E6 no names or IDs in browser storage and no TrustVest text in t
   );
   expect(storage).not.toMatch(/E2E00000|Asha|Verma/);
 });
+
+test('TT-UI-E2E-P7 screenshot of the Overview at tablet width for the visual review', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'tablet', 'tablet project only');
+  await login(page);
+  await expect(page.getByTestId('kpi-total')).toBeVisible();
+  await page.waitForTimeout(1800); // let count-up and grow-in animations finish
+  const dir = process.env.E2E_SCREENSHOTS;
+  if (dir) await page.screenshot({ path: `${dir}/overview-tablet.png`, fullPage: true });
+});

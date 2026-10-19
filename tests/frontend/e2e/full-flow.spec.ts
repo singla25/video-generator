@@ -31,8 +31,9 @@ async function go(page: Page, path: string): Promise<void> {
 
 let batchPath = '';
 
-test.beforeEach(async ({}, info) => {
+test.beforeEach(async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'main flow runs once, on desktop');
+  await page.setViewportSize({ width: 1440, height: 900 }); // review screenshots size
 });
 
 test('TT-UI-E2E-P2a upload a template and its consent on the Templates page', async ({ page }) => {

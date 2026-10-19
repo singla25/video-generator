@@ -100,3 +100,6 @@ Newest first. One entry per task.
 ## 2026-10-20 - F6 round 2 RED (DD-21/22)
 - Backend: test_server_app.py (server app mounted under the api prefix; root serves no API JSON).
 - UI: slot-confirm, api-prefix and design-tokens tests (Confirm slot, prefix, chipColors AA contrast, hatch fills); link hrefs now expect the prefix. E2E: slot set and confirmed in the UI, deep link and refresh test; run_stack uses the server app.
+
+## 2026-10-20 - F6 re-verification
+- Real-stack E2E 47 pass, 1 fail (tablet overflow, D-F6-4); Python 1745; Vitest 207, 93 percent lines. Added tablet Overview screenshot test, desktop 1440x900 screenshots. COVERAGE.md updated.

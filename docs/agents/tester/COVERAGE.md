@@ -143,3 +143,48 @@ Coverage per folder (lines): src 79 % (main.tsx is the bootstrap, not covered), 
 
 - The "vs last week" pill shows "-" when there is no earlier week; fine, but the label reads oddly.
 - Concurrent pytest runs share nothing now (DD-20); the E2E runner uses its own database and queue name.
+
+
+## M3 re-verification (F6 round 2, 2026-10-20)
+
+Fixes verified: slot confirm in the UI, API under the api prefix, AA chip colours, hatched bars. Same real stack as before (throwaway DB `vidgen_e2e_<hex>_test`, stopped and dropped at the end).
+
+| Suite | Result |
+|---|---|
+| Python | **1745 passed** (full suite, ruff clean) |
+| Vitest | **207 / 207**; coverage `frontend/src` **92.98 % lines** (91.44 % statements, 84.39 % branches) |
+| Playwright, real stack (desktop 1440x900, reduced-motion, tablet 768) | **47 pass, 1 fail** |
+| Main flow | pass: template + consent, slot set and **confirmed in the UI**, wizard, preview, approval, start, Completed, ZIP |
+| Deep link / refresh on Templates, New batch, History | pass (app renders, not JSON) |
+| API only under the api prefix | pass |
+| axe (Overview with data, Templates, History, Security, New batch; all three projects) | **0 serious/critical** |
+| Requests to hosts other than 127.0.0.1 | none |
+| Names/IDs in browser storage, TrustVest text | none |
+
+Screenshots (1440x900, plus tablet): `media/review/ui/` overview, overview-tablet, wizard-step3, batch-detail, templates, security.
+
+### Defect found
+
+| ID | Severity | Description |
+|---|---|---|
+| D-F6-4 | medium | Overview at 768 px width with data scrolls horizontally: the chart, current batch and rows cards are wider than the header (page width about 946 px, `scrollWidth > innerWidth`). The KPI grid wraps correctly; the cards below it do not shrink. Test: `TT-UI-E2E-E1` (tablet project). It passed earlier only because the page had no data yet |
+
+D-F6-1, D-F6-2 and D-F6-3 are fixed and verified.
+
+### UI acceptance criteria (updated)
+
+| AC | Status |
+|---|---|
+| UI-AC1 Design fidelity | awaiting visual sign-off (hatched bars now present; screenshots ready) |
+| UI-AC2 Layout | ❌ tablet width overflows with data (D-F6-4); desktop ✅ |
+| UI-AC3 Overview | ✅ |
+| UI-AC4 Rows table | ✅ |
+| UI-AC5 Wizard | ✅ (template made usable in the UI) |
+| UI-AC6 Batch detail | ✅ |
+| UI-AC7 Templates | ✅ |
+| UI-AC8 History / Security | ✅ |
+| UI-AC9 Auth | ✅ |
+| UI-AC10 States and motion | ✅ |
+| UI-AC11 Hindi | ✅ |
+| UI-AC12 Privacy | ✅ |
+| UI-AC13 Quality | ✅ (coverage 93 %, axe 0 serious/critical) |

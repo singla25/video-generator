@@ -36,6 +36,7 @@ from vidgen.ports.models import (
     VideoInfo,
     VideoLimits,
 )
+from vidgen.ports.rows import PreviewSink, RowStore
 
 __all__ = [
     "AuditEntry",
@@ -51,7 +52,9 @@ __all__ = [
     "MappingRecord",
     "NewBatchRow",
     "PreviewRecord",
+    "PreviewSink",
     "QualityChecker",
+    "RowStore",
     "RowView",
     "SheetReader",
     "SheetRow",

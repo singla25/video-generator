@@ -11,18 +11,16 @@ from __future__ import annotations
 import array
 import io
 import logging
+import math
 import time
 import wave
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
 from uuid import UUID
-
-from sqlalchemy.orm import Session, sessionmaker
 
 from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.domain.naming import output_file_name
@@ -30,8 +28,6 @@ from vidgen.domain.outcomes import RowOutcomeKind
 from vidgen.domain.retry import FailureKind, RetryPolicy, classify_exception, failure_code_for
 from vidgen.domain.timing import TimingRules, plan_timing
 from vidgen.domain.validation import effective_spoken_name
-from vidgen.infrastructure.db.row_store import SqlRowStore
-from vidgen.infrastructure.ffmpeg.label import label_band_height
 from vidgen.logging import log_event
 from vidgen.ports import (
     Clock,
@@ -48,13 +44,11 @@ from vidgen.ports.rows import (
     ManifestInput,
     PreviewSink,
     RowJob,
+    RowStore,
     RowUpdate,
 )
 from vidgen.services.claim_rules import decide_claim, decide_completion
 from vidgen.services.manifest import build_manifest_csv, manifest_row
-
-if TYPE_CHECKING:
-    from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 
 __all__ = ["RenderConfig", "RowOutcome", "RowOutcomeKind", "RowRenderer"]
 
@@ -63,6 +57,7 @@ logger = logging.getLogger(__name__)
 PREVIEW_KEY = "previews/{batch_id}.mp4"
 MANIFEST_NAME = "manifest.csv"
 WAV_CHUNK_FRAMES = 16384
+BAND_ROUNDING_TOLERANCE = 1e-9  # keeps 1300 * 0.10 at 130, not 131
 SECONDS_DIGITS = 6  # slot lengths are rounded to microseconds to avoid float noise
 STAGE_PUBLISH = "publish"
 _KIND_BY_DOMAIN_CODE = {
@@ -79,6 +74,7 @@ class RenderConfig:
     pause_s: float  # DD-7: the pause after the name; per-template measurement comes later
     timing: TimingRules = field(default_factory=TimingRules)
     retry: RetryPolicy = field(default_factory=RetryPolicy)
+    label_band_share: float = 0.10  # share of the frame height covered by the AI label (C2)
     stale_margin_s: float = 60.0  # a PROCESSING row older than timeout + margin is abandoned
 
     @property
@@ -123,6 +119,11 @@ class _Run:
             )
 
 
+def _band_height(frame_height: int, share: float) -> int:
+    """Height of the label band: ``share`` of the frame height, rounded up."""
+    return math.ceil(frame_height * share - BAND_ROUNDING_TOLERANCE)
+
+
 def classify_failure(exc: Exception, *, publishing: bool) -> tuple[FailureKind, FailureCode]:
     """Failure kind and stored code for an exception (B8, A4)."""
     if isinstance(exc, DomainError):
@@ -144,9 +145,8 @@ class RowRenderer:
     def __init__(
         self,
         *,
-        session_factory: sessionmaker[Session],
+        row_store_factory: Callable[[], RowStore],
         storage: Storage,
-        cipher: AesGcmCipher,
         voice: VoiceCloner,
         lipsync: LipSyncer,
         encoder: VideoEncoder,
@@ -156,7 +156,7 @@ class RowRenderer:
         config: RenderConfig,
         preview_sink: PreviewSink,
     ) -> None:
-        self._store = SqlRowStore(session_factory, cipher)
+        self._store = row_store_factory()
         self._storage = storage
         self._voice = voice
         self._lipsync = lipsync
@@ -300,7 +300,11 @@ class RowRenderer:
         with run.stage("lipsync"):
             self._lipsync.sync(template, speech, synced)
         label = folder / "label.png"
-        self._labels.render_label(job.template.width, label_band_height(job.template.height), label)
+        self._labels.render_label(
+            job.template.width,
+            _band_height(job.template.height, self._config.label_band_share),
+            label,
+        )
         output = folder / "output.mp4"
         metadata = {
             "creator_entity": self._config.creator_entity,

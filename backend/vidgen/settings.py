@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     max_retries: int = Field(default=1, ge=0)
 
     # Worker
+    label_band_share: float = Field(default=0.10, ge=0.10, le=0.5)  # C2: at least 10 %
     queue_name: str = Field(default="vidgen", min_length=1)
     pause_poll_seconds: int = Field(default=5, gt=0)
     worker_threads: int = Field(default=2, gt=0)

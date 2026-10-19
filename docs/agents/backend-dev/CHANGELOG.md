@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-10-20 — T14 round 2 (DD-10 layering)
+- `RowRenderer` takes `row_store_factory` (new `RowStore`/`PreviewSink` exports in `vidgen.ports`); the label band comes from `RenderConfig.label_band_share` (setting `label_band_share`, default 0.10, minimum 0.10). No `vidgen.infrastructure` import remains in `vidgen/services` (test_layering).
+- `worker/runner.py` builds the store factory; only `run()` is marked `# pragma: no cover`. Open: `render_config`/`build_renderer` need a unit test (module shows 0 % until then).
+
 ## 2026-10-20 — T14 (render pipeline, worker, queue adapter)
 - Pipeline: `services/render_row.py` (RowRenderer: claim, tts -> lipsync -> encode -> check -> publish, retry classification, previews, manifest), `claim_rules.py` and `manifest.py` (pure), `infrastructure/db/row_store.py` (claim with `FOR UPDATE SKIP LOCKED`, batch completion under a batch row lock), ports `rows.py`, domain `outcomes.py`.
 - Queue and worker: `infrastructure/queue/dramatiq_queue.py` (ids only in messages, `depth()`), `worker/actors.py` (retries and busy/paused rows are re-sent with a delay; a busy row is re-checked until its worker finishes or the row goes stale), `worker/runner.py` (`python -m vidgen.worker`).

@@ -21,6 +21,7 @@ from vidgen.domain.retry import RetryPolicy
 from vidgen.domain.timing import TimingRules
 from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
+from vidgen.infrastructure.db.row_store import SqlRowStore
 from vidgen.infrastructure.db.uow import get_engine
 from vidgen.infrastructure.fakes import FakeLipSyncer, FakeQualityChecker, FakeVoiceCloner
 from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
@@ -38,11 +39,12 @@ LATIN_FONT = "NotoSans-Bold.ttf"
 FFMPEG = "ffmpeg"
 
 
-def render_config(settings: Settings) -> RenderConfig:  # pragma: no cover
+def render_config(settings: Settings) -> RenderConfig:
     """Rendering options from settings."""
     return RenderConfig(
         creator_entity=settings.creator_entity,
         pause_s=settings.pause_seconds,
+        label_band_share=settings.label_band_share,
         timing=TimingRules(
             max_stretch_ratio=settings.max_stretch_ratio,
             max_extension_s=settings.max_extension_seconds,
@@ -56,18 +58,19 @@ def render_config(settings: Settings) -> RenderConfig:  # pragma: no cover
     )
 
 
-def build_renderer(settings: Settings, sink: PreviewSink) -> RowRenderer:  # pragma: no cover
+def build_renderer(settings: Settings, sink: PreviewSink) -> RowRenderer:
     """The row renderer with fake AI adapters (``ai_backend=fake``) and the real engine."""
     if settings.ai_backend != "fake":
         raise RuntimeError("Real AI adapters arrive in M2; set VIDGEN_AI_BACKEND=fake.")
+    factory = sessionmaker(get_engine(settings.database_url), expire_on_commit=False)
+    cipher = AesGcmCipher(
+        keys={settings.encryption_key_id: settings.encryption_key_bytes()},
+        active_key_id=settings.encryption_key_id,
+        index_key=settings.index_key_bytes(),
+    )
     return RowRenderer(
-        session_factory=sessionmaker(get_engine(settings.database_url), expire_on_commit=False),
+        row_store_factory=lambda: SqlRowStore(factory, cipher),
         storage=LocalStorage(settings.storage_root),
-        cipher=AesGcmCipher(
-            keys={settings.encryption_key_id: settings.encryption_key_bytes()},
-            active_key_id=settings.encryption_key_id,
-            index_key=settings.index_key_bytes(),
-        ),
         voice=FakeVoiceCloner(),
         lipsync=FakeLipSyncer(),
         encoder=FfmpegVideoEncoder(

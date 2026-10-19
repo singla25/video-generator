@@ -2,6 +2,16 @@
 
 Newest first. One entry per task.
 
+## 2026-10-20 — T14 (render pipeline, worker, queue adapter)
+- Pipeline: `services/render_row.py` (RowRenderer: claim, tts -> lipsync -> encode -> check -> publish, retry classification, previews, manifest), `claim_rules.py` and `manifest.py` (pure), `infrastructure/db/row_store.py` (claim with `FOR UPDATE SKIP LOCKED`, batch completion under a batch row lock), ports `rows.py`, domain `outcomes.py`.
+- Queue and worker: `infrastructure/queue/dramatiq_queue.py` (ids only in messages, `depth()`), `worker/actors.py` (retries and busy/paused rows are re-sent with a delay; a busy row is re-checked until its worker finishes or the row goes stale), `worker/runner.py` (`python -m vidgen.worker`).
+- Defaults: `infrastructure/fakes` (STT, tone voice, pass-through lip sync, accept-all checker) wired when `ai_backend=fake`; `DramatiqJobQueue` on Redis is the default queue.
+- Privacy: `StripQueryFilter` on `uvicorn.access` removes query strings (DD-9); batch deletion now also removes `manifest.csv`.
+- Domain: `plan_timing` snaps float noise below 1e-9 s to zero padding (needed for exact plan equality in tests).
+- Layering note: `RowRenderer` takes a `session_factory` (the T13 contract) and builds `SqlRowStore` itself, so `services/render_row.py` imports one infrastructure class.
+- Tests: 1186 fast + 6 slow pass; 6 fast and 2 slow fail because of test defects (reported).
+- Open: tests for `infrastructure/fakes` and `worker/runner.py`; a transactional outbox for queue sends (M2).
+
 ## 2026-10-20 — T12 (batch services + endpoints)
 - Ports: `JobQueue`, `BatchStore` and batch records (`ports/batches.py`), `Storage.folder_exists`, `UnitOfWork.batches`. Domain: `BatchAction.RETRY`, `DRAFT -> CANCEL` transitions (D-19).
 - Infrastructure: `SqlBatchStore` (Core bulk inserts, row locks, grouped counts), `LocalStorage.folder_exists` and `remove_stale_temp`.

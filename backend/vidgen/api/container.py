@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from uuid import UUID
 
 from argon2 import PasswordHasher
+from dramatiq.brokers.redis import RedisBroker
 
 from vidgen.api.client_address import Network, parse_networks
 from vidgen.api.security import SessionCodec
-from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.consent import detect_consent_type
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.login_state import SqlLoginStateStore
 from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
+from vidgen.infrastructure.fakes import FakeSpeechToText
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
+from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
 from vidgen.infrastructure.sheets.reader import FileSheetReader
 from vidgen.infrastructure.storage.local import LocalStorage
 from vidgen.ports import Clock, JobQueue, SpeechToText, Storage, VideoLimits, VideoProbe
@@ -47,16 +48,6 @@ class _NotConfiguredSpeechToText:
         raise RuntimeError("speech-to-text is not configured")
 
 
-class _NotConfiguredQueue:
-    """Used until the Dramatiq adapter exists (T14): jobs fail loudly instead of vanishing."""
-
-    def enqueue_preview(self, batch_id: UUID, row_id: UUID) -> None:
-        raise DomainError(FailureCode.INTERNAL_ERROR, "The job queue is not configured.")
-
-    def enqueue_rows(self, batch_id: UUID, row_ids: list[UUID]) -> None:
-        raise DomainError(FailureCode.INTERNAL_ERROR, "The job queue is not configured.")
-
-
 @dataclass
 class Container:
     """Everything the request handlers need."""
@@ -71,6 +62,19 @@ class Container:
     templates: TemplateService
     batches: BatchService
     storage: Storage
+
+
+def _default_stt(settings: Settings) -> SpeechToText:
+    """The fake transcriber while ``ai_backend=fake``; real models arrive in M2."""
+    if settings.ai_backend == "fake":
+        return FakeSpeechToText()
+    return _NotConfiguredSpeechToText()  # type: ignore[return-value]
+
+
+def _default_queue(settings: Settings) -> JobQueue:
+    """The Dramatiq queue on the configured Redis (the connection opens on first use)."""
+    broker = RedisBroker(url=settings.redis_url)  # type: ignore[no-untyped-call]
+    return DramatiqJobQueue(broker, queue_name=settings.queue_name)
 
 
 def build_container(settings: Settings, deps: AppDeps) -> Container:
@@ -99,7 +103,7 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         uow=open_uow,
         storage=storage,
         probe=deps.video_probe or FfprobeVideoProbe(limits),
-        stt=deps.speech_to_text or _NotConfiguredSpeechToText(),  # type: ignore[arg-type]
+        stt=deps.speech_to_text or _default_stt(settings),
         clock=clock,
         confidence_threshold=settings.stt_confidence_threshold,
         sniff_consent=detect_consent_type,
@@ -116,7 +120,7 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
             uow=open_uow,
             storage=storage,
             clock=clock,
-            queue=deps.job_queue or _NotConfiguredQueue(),
+            queue=deps.job_queue or _default_queue(settings),
             reader=FileSheetReader(),
             max_sheet_rows=settings.max_sheet_rows,
             max_name_graphemes=settings.max_name_graphemes,

@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     retry_delay_seconds: int = Field(default=10, ge=0)
     max_retries: int = Field(default=1, ge=0)
 
+    # Worker
+    queue_name: str = Field(default="vidgen", min_length=1)
+    pause_poll_seconds: int = Field(default=5, gt=0)
+    worker_threads: int = Field(default=2, gt=0)
+    pause_seconds: float = Field(default=0.5, ge=0)  # DD-7: pause after the name, until measured
+
     # Retention
     retention_days: int = Field(default=30, gt=0)
 

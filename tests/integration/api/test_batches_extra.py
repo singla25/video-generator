@@ -160,12 +160,8 @@ def test_zip_entries_are_written_with_zip64_headers(env: Env, db: Engine) -> Non
         assert info.extract_version >= 45 or info.file_size == 5
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known M1 limitation: byte-range requests are not implemented (full file is sent)",
-)
 def test_range_requests_on_a_single_video_return_partial_content(env: Env, db: Engine) -> None:
-    """TT-AC15-E4: expected to fail until range support is added (M3 preview player)."""
+    """TT-AC15-E4: byte-range requests give 206 with only the requested bytes."""
     batch_id = running_batch(env, people(1))
     key = env.storage.write("out/ID1.mp4", io.BytesIO(b"0123456789"))
     finish_row(db, batch_id, 2, at=env.clock.now(), output_key=key)

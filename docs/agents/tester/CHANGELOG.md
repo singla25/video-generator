@@ -84,3 +84,8 @@ Newest first. One entry per task.
 
 ## 2026-10-19 - DD-18 per-row retry
 - Backend RED: tests/integration/api/test_row_retry.py. UI: RowsTable row Retry posts the per-row endpoint (P6, P11, E6); batch-level Retry failed stays on the detail page (AC6-P7). Tree regenerated.
+
+## 2026-10-19 - DD-19 template video, Range, wizard player
+- Backend RED: test_video_range.py (template video + Range on template/row/preview); V2 xfail in test_batches_extra.py is now a normal test.
+- UI: P10 uses toHaveDisplayValue; new P13-P15, E8 (New template link, template player, slot marker). Test glue moved to tests/frontend/support/node-fetch-types.ts (imported first in setup.ts); verified with the frontend copy removed from setupFiles. Both loading together throws "Cannot redefine Symbol.hasInstance".
+- Note: parallel pytest runs by other agents share one test DB and cause spurious errors; a clean full run needs a quiet moment.

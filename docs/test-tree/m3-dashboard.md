@@ -124,6 +124,9 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ✅ Positive `TT-UI-AC5-P10` [unit] pre-fills the default folder name YYYY-MM-DD-N — `unit/wizard.test.tsx`
 - ✅ Positive `TT-UI-AC5-P11` [unit] confirm screen, then start with an Idempotency-Key and the folder — `unit/wizard.test.tsx`
 - ✅ Positive `TT-UI-AC5-P12` [unit] Next on step 1 inspects the sheet through the API and shows a sample — `unit/wizard.test.tsx`
+- ✅ Positive `TT-UI-AC5-P13` [unit] step 1 links to the Templates page for new templates — `unit/wizard.test.tsx`
+- ✅ Positive `TT-UI-AC5-P14` [unit] step 3 plays the template video from the new endpoint — `unit/wizard.test.tsx`
+- ✅ Positive `TT-UI-AC5-P15` [unit] the detected slot is marked on the timeline and follows edits — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N1` [unit] a PDF is refused with a clear message — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N2` [unit] an empty file is refused — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N3` [unit] a sheet with no valid rows blocks Next — `unit/wizard.test.tsx`
@@ -143,6 +146,7 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ⚠️ Edge `TT-UI-AC5-E5` [unit] Generate preview failing shows the API message and allows trying again — `unit/wizard.test.tsx`
 - ⚠️ Edge `TT-UI-AC5-E6` [unit] double-clicking Confirm sends a single start request — `unit/wizard.test.tsx`
 - ⚠️ Edge `TT-UI-AC5-E7` [unit] an unknown draft id shows a not-found state — `unit/wizard.test.tsx`
+- ⚠️ Edge `TT-UI-AC5-E8` [unit] without a slot there is no marker, but the template video still plays — `unit/wizard.test.tsx`
 
 ### Feature: End-to-end (Playwright)
 
@@ -224,5 +228,5 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 
 | Level | Positive | Negative | Edge |
 |---|---|---|---|
-| unit | 66 | 38 | 49 |
+| unit | 69 | 38 | 50 |
 | e2e | 1 | 2 | 5 |

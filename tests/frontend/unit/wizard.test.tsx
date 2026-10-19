@@ -16,6 +16,10 @@
 //                          sheet, name_column, id_column, template_id). Report summary
 //                          "8 of 10 rows are valid"; each problem is a row with data-invalid="true"
 //                          showing row number and the API message; "Next" needs valid_rows > 0.
+//   Step 1 also shows a link "+ New template" to /templates (upload and consent live there).
+//   Step 3 also shows [data-testid=template-video] <video src=/templates/<template_id>/video>
+//                          and [data-testid=slot-marker] on the timeline with data-start / data-end
+//                          (seconds) that follow the slot fields and the saved slot.
 //   Step 3 Slot & preview  [data-testid=preview-video] <video src=/batches/<id>/preview> only when the
 //                          preview is READY; spinbuttons "Slot start (s)" / "Slot end (s)" prefilled
 //                          from the template slot, button "Save slot" -> PUT /templates/<id>/slot;
@@ -272,6 +276,51 @@ describe('step 3 slot and preview gate', () => {
     ).toHaveTextContent('Slot & preview');
   });
 
+  it('TT-UI-AC5-P13 step 1 links to the Templates page for new templates', async () => {
+    renderApp('/batches/new');
+    expect(await screen.findByRole('link', { name: '+ New template' })).toHaveAttribute(
+      'href',
+      '/templates',
+    );
+    expect(screen.queryByLabelText('Template video')).not.toBeInTheDocument();
+  });
+
+  it('TT-UI-AC5-P14 step 3 plays the template video from the new endpoint', async () => {
+    draft(PREVIEW_NONE);
+    resume();
+    const video = await screen.findByTestId('template-video');
+    expect(video.tagName).toBe('VIDEO');
+    expect(video).toHaveAttribute(
+      'src',
+      expect.stringContaining(`/templates/${IDS.template}/video`),
+    );
+    expect(video).toHaveAttribute('controls');
+  });
+
+  it('TT-UI-AC5-P15 the detected slot is marked on the timeline and follows edits', async () => {
+    draft(PREVIEW_NONE);
+    resume();
+    const marker = await screen.findByTestId('slot-marker');
+    expect(marker).toHaveAttribute('data-start', '4.2');
+    expect(marker).toHaveAttribute('data-end', '5.1');
+    const end = screen.getByRole('spinbutton', { name: 'Slot end (s)' });
+    await userEvent.clear(end);
+    await userEvent.type(end, '6');
+    expect(screen.getByTestId('slot-marker')).toHaveAttribute('data-end', '6');
+  });
+
+  it('TT-UI-AC5-E8 without a slot there is no marker, but the template video still plays', async () => {
+    draft(PREVIEW_NONE);
+    server.use(
+      http.get('*/templates/:id', () =>
+        HttpResponse.json(template({ slot: null, needs_manual_slot: true, slot_confirmed: false })),
+      ),
+    );
+    resume();
+    expect(await screen.findByTestId('template-video')).toBeInTheDocument();
+    expect(screen.queryByTestId('slot-marker')).not.toBeInTheDocument();
+  });
+
   it('TT-UI-AC5-N5 without an approved preview, Next stays disabled (preview gate A5)', async () => {
     draft(PREVIEW_NONE);
     resume();
@@ -434,8 +483,8 @@ describe('step 4 output and start', () => {
   it('TT-UI-AC5-P10 pre-fills the default folder name YYYY-MM-DD-N', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-19T10:00:00') });
     await toStep4();
-    expect(await screen.findByRole('textbox', { name: 'Output folder' })).toHaveValue(
-      expect.stringMatching(/^2026-10-19-\d+$/),
+    expect(await screen.findByRole('textbox', { name: 'Output folder' })).toHaveDisplayValue(
+      /^2026-10-19-\d+$/,
     );
   });
 

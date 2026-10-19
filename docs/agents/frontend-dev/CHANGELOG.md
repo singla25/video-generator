@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 - F6 prep (DD-18, DD-19)
+- Removed `test-support/` and its setupFiles entry (glue now lives in tests/frontend/support).
+- RowsTable row Retry posts `/batches/{id}/rows/{n}/retry`; wizard step 3 plays the template video and marks the slot on the timeline.
+
 ## 2026-10-19 - F5
 - BatchDetail (stats, failure reasons, inline preview, exports, pause/resume/cancel/delete with dialogs), Templates (cards, consent upload, new template form), History, Security; ConfirmDialog; `useBatchAction` now guards double submits and supports cancel.
 - Open: AC5-P10 (test defect) and the DD-18 per-row retry tests (AC4-P6/P11/N2) are not wired yet.

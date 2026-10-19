@@ -121,7 +121,8 @@ export function RowsTable({ batchId, status, failureCode, onPreview }: Props) {
   });
 
   const retry = useMutation({
-    mutationFn: () => apiFetch(`/batches/${batchId}/retry-failed`, { method: 'POST' }),
+    mutationFn: (rowNumber: number) =>
+      apiFetch(`/batches/${batchId}/rows/${rowNumber}/retry`, { method: 'POST' }),
     onSuccess: () => client.invalidateQueries({ queryKey: ['rows', batchId] }),
   });
 
@@ -203,7 +204,7 @@ export function RowsTable({ batchId, status, failureCode, onPreview }: Props) {
                         <RowActions
                           batchId={batchId}
                           row={row}
-                          onRetry={() => retry.mutate()}
+                          onRetry={() => retry.mutate(row.row_number)}
                           onPreview={onPreview}
                         />
                       </td>

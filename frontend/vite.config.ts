@@ -43,7 +43,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['../tests/frontend/unit/**/*.test.{ts,tsx}'],
-    setupFiles: ['./test-support/node-fetch-types.ts', '../tests/frontend/setup.ts'],
+    setupFiles: ['../tests/frontend/setup.ts'],
     css: false,
     coverage: { provider: 'v8', include: ['src/**'], reporter: ['text', 'html'] },
   },

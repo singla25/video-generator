@@ -18,16 +18,24 @@ export function slotProblem(start: number, end: number, duration: number): strin
   return null;
 }
 
-function Timeline({ start, end, duration }: { start: number; end: number; duration: number }) {
-  const valid = !Number.isNaN(start) && !Number.isNaN(end) && end > start && duration > 0;
-  const left = valid ? Math.max(0, (start / duration) * 100) : 0;
-  const width = valid ? Math.min(100 - left, ((end - start) / duration) * 100) : 0;
+/** Bar for the whole video with the slot marked on it (nothing is marked until both ends are set). */
+function Timeline({ start, end, duration }: { start: string; end: string; duration: number }) {
+  const s = parse(start);
+  const e = parse(end);
+  const marked = !Number.isNaN(s) && !Number.isNaN(e) && duration > 0;
+  const left = marked ? Math.min(100, Math.max(0, (s / duration) * 100)) : 0;
+  const width = marked ? Math.min(100 - left, Math.max(0, ((e - s) / duration) * 100)) : 0;
   return (
     <div aria-hidden="true" className="relative h-3 rounded-full bg-page">
-      <div
-        className="absolute h-3 rounded-full bg-emerald"
-        style={{ left: `${left}%`, width: `${width}%` }}
-      />
+      {marked && (
+        <div
+          data-testid="slot-marker"
+          data-start={start}
+          data-end={end}
+          className="absolute h-3 rounded-full bg-emerald"
+          style={{ left: `${left}%`, width: `${width}%` }}
+        />
+      )}
     </div>
   );
 }
@@ -61,7 +69,14 @@ export function SlotEditor({ template }: { template: Template }) {
           The slot could not be found automatically. Set it by hand.
         </p>
       )}
-      <Timeline start={parse(start)} end={parse(end)} duration={template.duration_s} />
+      <video
+        data-testid="template-video"
+        src={`/templates/${template.id}/video`}
+        controls
+        preload="metadata"
+        className="w-full rounded-tile bg-black"
+      />
+      <Timeline start={start} end={end} duration={template.duration_s} />
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="slot-start" className="mb-1 block text-sm font-semibold">

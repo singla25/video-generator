@@ -93,11 +93,12 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ✅ Positive `TT-UI-AC4-P3` [unit] a failed row explains the failure in plain words — `unit/rows-table.test.tsx`
 - ✅ Positive `TT-UI-AC4-P4` [unit] shows render time in seconds and a dash when there is none — `unit/rows-table.test.tsx`
 - ✅ Positive `TT-UI-AC4-P5` [unit] completed rows offer preview and download links to the video — `unit/rows-table.test.tsx`
-- ✅ Positive `TT-UI-AC4-P6` [unit] Retry on a failed row posts retry-failed with the CSRF header — `unit/rows-table.test.tsx`
+- ✅ Positive `TT-UI-AC4-P6` [unit] Retry on a failed row posts the per-row endpoint with the CSRF header — `unit/rows-table.test.tsx`
 - ✅ Positive `TT-UI-AC4-P7` [unit] searching sends the text (Devanagari too) and resets to page 1 — `unit/rows-table.test.tsx`
 - ✅ Positive `TT-UI-AC4-P8` [unit] the status filter sends the matching status value — `unit/rows-table.test.tsx`
 - ✅ Positive `TT-UI-AC4-P9` [unit] the status prop pre-applies a filter (failure-chart click-through) — `unit/rows-table.test.tsx`
 - ✅ Positive `TT-UI-AC4-P10` [unit] pages forward and back with Page X of Y — `unit/rows-table.test.tsx`
+- ✅ Positive `TT-UI-AC4-P11` [unit] after a row retry the row is refreshed from the server — `unit/rows-table.test.tsx`
 - ❌ Negative `TT-UI-AC4-N1` [unit] queued, processing and skipped rows have no video actions — `unit/rows-table.test.tsx`
 - ❌ Negative `TT-UI-AC4-N2` [unit] a failing retry shows the API message and keeps the table — `unit/rows-table.test.tsx`
 - ❌ Negative `TT-UI-AC4-N3` [unit] no matching rows shows — `unit/rows-table.test.tsx`
@@ -107,6 +108,7 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ⚠️ Edge `TT-UI-AC4-E3` [unit] search text is capped at the API limit of 200 characters — `unit/rows-table.test.tsx`
 - ⚠️ Edge `TT-UI-AC4-E4` [unit] a 1,000-row batch renders one page only (smooth), not 1,000 DOM rows — `unit/rows-table.test.tsx`
 - ⚠️ Edge `TT-UI-AC4-E5` [unit] shows skeleton rows while loading — `unit/rows-table.test.tsx`
+- ⚠️ Edge `TT-UI-AC4-E6` [unit] only FAILED rows ever show a Retry button — `unit/rows-table.test.tsx`
 
 ### Feature: End-to-end (Playwright)
 
@@ -150,7 +152,7 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ✅ Positive `TT-UI-AC6-P4` [unit] Preview opens an inline player on the row video — `unit/batch-detail.test.tsx`
 - ✅ Positive `TT-UI-AC6-P5` [unit] offers ZIP and failures CSV links — `unit/batch-detail.test.tsx`
 - ✅ Positive `TT-UI-AC6-P6` [unit] Pause and Resume post with the CSRF header — `unit/batch-detail.test.tsx`
-- ✅ Positive `TT-UI-AC6-P7` [unit] Retry failed posts retry-failed — `unit/batch-detail.test.tsx`
+- ✅ Positive `TT-UI-AC6-P7` [unit] batch-level Retry failed (page only) posts retry-failed — `unit/batch-detail.test.tsx`
 - ✅ Positive `TT-UI-AC6-P8` [unit] Cancel batch asks first and only cancels after confirmation — `unit/batch-detail.test.tsx`
 - ✅ Positive `TT-UI-AC6-P9` [unit] Delete batch confirms, deletes and goes to History — `unit/batch-detail.test.tsx`
 - ❌ Negative `TT-UI-AC6-N1` [unit] an unknown batch shows the not-found message — `unit/batch-detail.test.tsx`
@@ -222,5 +224,5 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 
 | Level | Positive | Negative | Edge |
 |---|---|---|---|
-| unit | 65 | 38 | 48 |
+| unit | 66 | 38 | 49 |
 | e2e | 1 | 2 | 5 |

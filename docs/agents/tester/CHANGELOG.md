@@ -81,3 +81,6 @@ Newest first. One entry per task.
 - Removed the committed node_modules symlink in tests/frontend (done in 9ce6bee).
 - Wizard tests use the inspect-sheet endpoint (MSW default handler added); batch-detail failure click sends failure_code (no client filtering); template cards show a placeholder icon, no img. Tree regenerated: unit P65/N38/E48.
 - New backend tests (RED): tests/integration/api/test_inspect_sheet.py (20) and test_rows_failure_filter.py (12). Python suite: only these 32 fail.
+
+## 2026-10-19 - DD-18 per-row retry
+- Backend RED: tests/integration/api/test_row_retry.py. UI: RowsTable row Retry posts the per-row endpoint (P6, P11, E6); batch-level Retry failed stays on the detail page (AC6-P7). Tree regenerated.

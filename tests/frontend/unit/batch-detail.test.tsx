@@ -205,7 +205,7 @@ describe('batch actions', () => {
     await waitFor(() => expect(seen).toContain(`pause:${CSRF}`));
   });
 
-  it('TT-UI-AC6-P7 Retry failed posts retry-failed', async () => {
+  it('TT-UI-AC6-P7 batch-level Retry failed (page only) posts retry-failed', async () => {
     const hit = vi.fn();
     server.use(http.post('*/batches/:id/retry-failed', () => (hit(), HttpResponse.json(batch()))));
     renderApp(PATH);

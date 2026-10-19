@@ -11,7 +11,7 @@
 //        paging: "Page 1 of 3", buttons "Previous page" / "Next page", page_size 50
 //        per row: link "Preview video for <name>" (completed only), link "Download video for <name>"
 //          href /batches/<id>/rows/<n>/video, button "Retry row <n>" (failed only) -> POST
-//          /batches/<id>/retry-failed
+//          /batches/<id>/rows/<n>/retry (per row, DD-18; never retry-failed), then refetch rows
 //        a cell containing Devanagari gets lang="hi"; names are rendered as text, never HTML
 //        empty result "No rows match", error role=alert "Could not load rows"
 import { screen, waitFor, within } from '@testing-library/react';
@@ -124,23 +124,67 @@ describe('row actions', () => {
     expect(screen.getAllByRole('link', { name: /Download video for/ })).toHaveLength(1);
   });
 
-  it('TT-UI-AC4-P6 Retry on a failed row posts retry-failed with the CSRF header', async () => {
+  it('TT-UI-AC4-P6 Retry on a failed row posts the per-row endpoint with the CSRF header', async () => {
     let csrf: string | null = null;
+    let batchWide = 0;
     server.use(
-      http.post('*/batches/:id/retry-failed', ({ request }) => {
+      http.post('*/batches/:id/rows/:n/retry', ({ request, params }) => {
         csrf = request.headers.get('x-csrf-token');
+        expect(params.n).toBe('4');
+        return HttpResponse.json({});
+      }),
+      http.post('*/batches/:id/retry-failed', () => {
+        batchWide += 1;
         return HttpResponse.json({});
       }),
     );
     table();
     await userEvent.click(await screen.findByRole('button', { name: 'Retry row 4' }));
     await waitFor(() => expect(csrf).toBe(CSRF));
+    expect(batchWide).toBe(0);
     expect(screen.queryByRole('button', { name: 'Retry row 1' })).not.toBeInTheDocument();
+  });
+
+  it('TT-UI-AC4-P11 after a row retry the row is refreshed from the server', async () => {
+    let retried = false;
+    server.use(
+      http.get('*/batches/:id/rows', () =>
+        HttpResponse.json(
+          rowsPage([
+            retried
+              ? row(4, { status: 'QUEUED', failure_code: null, message: null, has_video: false })
+              : row(4, {
+                  status: 'FAILED',
+                  failure_code: 'TTS_FAILED',
+                  message: 'The voice for this name could not be created.',
+                  has_video: false,
+                }),
+          ]),
+        ),
+      ),
+      http.post('*/batches/:id/rows/:n/retry', () => {
+        retried = true;
+        return HttpResponse.json({});
+      }),
+    );
+    table();
+    await userEvent.click(await screen.findByRole('button', { name: 'Retry row 4' }));
+    expect(await screen.findByText('Queued')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry row 4' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('The voice for this name could not be created.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('TT-UI-AC4-E6 only FAILED rows ever show a Retry button', async () => {
+    table();
+    await screen.findByRole('table');
+    expect(screen.getAllByRole('button', { name: /^Retry row/ })).toHaveLength(1);
   });
 
   it('TT-UI-AC4-N2 a failing retry shows the API message and keeps the table', async () => {
     server.use(
-      http.post('*/batches/:id/retry-failed', () =>
+      http.post('*/batches/:id/rows/:n/retry', () =>
         HttpResponse.json(
           {
             code: 'INVALID_STATE',

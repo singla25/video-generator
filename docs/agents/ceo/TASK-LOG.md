@@ -34,5 +34,6 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T11b | Tests: re-login after clock jumps; access-log query redaction (DD-9) | tester | sonnet | ✅ Done & CEO-reviewed @ e418c64 — session TTL untouched; 4 access-log tests fail until T14 | Delegated (CEO) | — |
 | T13 | RED: worker pipeline | tester | sonnet | ✅ Done & CEO-reviewed after 1 round (stage order DD-6) @ fdb25d2 — 123+ tests; bodies verified with throwaway stubs | Delegated (CEO), 2026-10-19 | — |
 | T14 | GREEN: render pipeline, worker, Dramatiq queue, fake adapters, access-log redaction | backend-dev | sonnet | In progress (parallel with T11b) | Delegated (CEO) | — |
-| T15–T16 | Verify + E2E; CEO review → gate 3 | tester / CEO | sonnet | Planned | — | — |
+| T15a | RED: E2E tests (synthetic 10-row batch, retry, deletion) | tester | sonnet | In progress (parallel with T14) | Delegated (CEO) | — |
+| T15–T16 | Verify + coverage report; CEO review → gate 3 | tester / CEO | sonnet | Planned | — | — |
 | F0–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | Admin / tester / frontend-dev / CEO | sonnet | Plan + deps approved 2026-10-19; design reference committed (b557ff0). Waits for M1 gate 3, Node.js install and product name/logo | Plan: yes; assignment: pending | — |

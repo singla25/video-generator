@@ -19,14 +19,11 @@ from vidgen.services.batch_queries import BatchQueries, failure_message
 from vidgen.services.batch_rules import neutralise_cell
 from vidgen.services.batch_support import BatchContext, load_batch
 from vidgen.services.errors import BatchNotFoundError, StateConflictError
+from vidgen.services.manifest import ManifestRow, build_manifest_csv, manifest_row
 
 ZIP_CHUNK_BYTES = 1024 * 1024
 MANIFEST_NAME = "manifest.csv"
 FAILURE_HEADER = ["row_number", "name", "voter_id", "status", "failure_code", "message"]
-MANIFEST_HEADER = [
-    "row_number", "name", "voter_id", "status", "file_name", "failure_code", "message",
-    "render_seconds",
-]  # fmt: skip
 FAILED_STATUSES = ["FAILED", "SKIPPED"]
 
 
@@ -126,28 +123,17 @@ class BatchDownloads:
     def zip_plan(self, batch_id: UUID) -> ZipPlan:
         """Entries for every completed video plus the manifest (A7)."""
         entries: list[tuple[str, str]] = []
-        manifest = [MANIFEST_HEADER]
+        manifest: list[ManifestRow] = []
         with self._ctx.uow() as uow:
             load_batch(uow, batch_id)
             for row in uow.batches.iter_rows(batch_id):
-                name = output_file_name(row.voter_id) if row.output_key else ""
-                if row.status == "COMPLETED" and row.output_key:
-                    entries.append((name, row.output_key))
-                manifest.append(
-                    [
-                        str(row.row_number),
-                        neutralise_cell(row.name),
-                        neutralise_cell(row.voter_id),
-                        row.status,
-                        name,
-                        row.failure_code or "",
-                        _message(row),
-                        "" if row.render_seconds is None else f"{row.render_seconds:.2f}",
-                    ]
-                )
+                line = manifest_row(row)
+                manifest.append(line)
+                if line.file_name and row.output_key:
+                    entries.append((line.file_name, row.output_key))
         if not entries:
             raise DomainError(FailureCode.NO_COMPLETED_ROWS)
-        return ZipPlan(entries, _csv_text(manifest))
+        return ZipPlan(entries, build_manifest_csv(manifest))
 
     def failures_csv(self, batch_id: UUID) -> str:
         """Failed and skipped rows with code and plain message; formulas are neutralised."""

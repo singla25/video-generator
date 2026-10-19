@@ -88,9 +88,15 @@ def plan_timing(
         stretch_factor=stretch,
         pause_absorbed_s=absorbed_s,
         extension_s=extension_s,
-        pause_padding_s=max(0.0, slot_s - spoken_s),
+        pause_padding_s=_padding(slot_s, spoken_s),
         final_audio_s=spoken_s,
     )
+
+
+def _padding(slot_s: float, spoken_s: float) -> float:
+    """Silence needed after a shorter name; float noise below EPSILON_S counts as none."""
+    gap = slot_s - spoken_s
+    return gap if gap > EPSILON_S else 0.0
 
 
 def duration_within_tolerance(

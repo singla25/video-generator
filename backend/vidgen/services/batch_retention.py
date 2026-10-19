@@ -13,6 +13,7 @@ from vidgen.services.errors import BatchNotFoundError
 
 logger = logging.getLogger(__name__)
 REASON_RETENTION = "retention"
+MANIFEST_NAME = "manifest.csv"  # written by the worker; it holds personal data (A7)
 
 
 class BatchRetention:
@@ -30,7 +31,13 @@ class BatchRetention:
             batch = uow.batches.get(batch_id, lock=True)
             if batch is None:
                 raise BatchNotFoundError
-            keys = [batch.sheet_key, batch.preview.key, *uow.batches.output_keys(batch_id)]
+            manifest = f"{batch.folder_name}/{MANIFEST_NAME}" if batch.folder_name else None
+            keys = [
+                batch.sheet_key,
+                batch.preview.key,
+                manifest,
+                *uow.batches.output_keys(batch_id),
+            ]
             uow.batches.delete(batch_id)
             details = {"batch_id": str(batch_id)} | ({"reason": reason} if reason else {})
             audit(ctx, uow, "BATCH_DELETED", actor=actor, **details)

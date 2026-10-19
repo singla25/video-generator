@@ -224,6 +224,12 @@ def retry_failed(batch_id: UUID, request: Request) -> dict[str, Any]:
     return batch_json(container(request).batches.retry_failed(batch_id))
 
 
+@router.post("/{batch_id}/rows/{row_number}/retry")
+def retry_row(batch_id: UUID, row_number: int, request: Request) -> dict[str, Any]:
+    """Queue one failed row again."""
+    return batch_json(container(request).batches.retry_row(batch_id, row_number))
+
+
 @router.delete("/{batch_id}", status_code=204)
 def delete_batch(batch_id: UUID, request: Request) -> Response:
     """Delete the batch, its rows and its files."""

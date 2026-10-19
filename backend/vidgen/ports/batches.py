@@ -161,6 +161,10 @@ class BatchStore(Protocol):
         """Turn FAILED rows into QUEUED (clearing the failure code); returns their ids."""
         ...
 
+    def requeue_row(self, batch_id: UUID, row_number: int) -> UUID | None:
+        """Turn one FAILED row into QUEUED atomically; its id, or None if it was not FAILED."""
+        ...
+
     def get_row(self, batch_id: UUID, row_number: int) -> RowView | None:
         """One row by sheet row number."""
         ...

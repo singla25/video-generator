@@ -88,6 +88,10 @@ class BatchService:
         """Queue failed rows again."""
         return self._flow.retry_failed(batch_id)
 
+    def retry_row(self, batch_id: UUID, row_number: int) -> BatchView:
+        """Queue one failed row again."""
+        return self._flow.retry_row(batch_id, row_number)
+
     # reads
     def get(self, batch_id: UUID) -> BatchView:
         """One batch."""

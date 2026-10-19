@@ -149,6 +149,20 @@ class SqlBatchStore(BatchStatsMixin):
         )
         return [row_id for row_id, _ in sorted(result.all(), key=lambda r: r[1])]
 
+    def requeue_row(self, batch_id: UUID, row_number: int) -> UUID | None:
+        """Turn one FAILED row into QUEUED in one statement; the attempt history is kept."""
+        result = self._session.execute(
+            update(BatchRow)
+            .where(
+                BatchRow.batch_id == batch_id,
+                BatchRow.row_number == row_number,
+                BatchRow.status == "FAILED",
+            )
+            .values(status="QUEUED", failure_code=None, started_at=None, finished_at=None)
+            .returning(BatchRow.id)
+        )
+        return result.scalar_one_or_none()
+
     # rows: reading
 
     def counts(self, batch_ids: list[UUID]) -> dict[UUID, dict[str, int]]:

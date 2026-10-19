@@ -54,6 +54,6 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | F4 | New batch wizard | frontend-dev | sonnet | ✅ Done & CEO-reviewed @ 64a310a — 33/34 wizard tests (1 test defect); player + glue follow-ups (DD-19) | Delegated (CEO) | — |
 | DD-18 | Per-row retry: RED tests (tester) → backend → UI | tester → backend-dev → frontend-dev | sonnet | RED ✅ @ 7a210f1; backend GREEN in progress | Delegated (CEO) | — |
 | DD-19 | Template video + HTTP Range; wizard player; test glue → tests/ | tester → backend-dev → frontend-dev | sonnet | RED ✅ @ b9ac43c; backend after DD-18; UI wiring in progress | Delegated (CEO) | — |
-| DD-20 | Per-session throwaway test DBs | tester | sonnet | In progress | Delegated (CEO) | — |
+| DD-20 | Per-session throwaway test DBs | tester | sonnet | ✅ Done & CEO-verified @ 94e6225 (2 concurrent runs identical; protected-name guard); also fixed the tests' TS typecheck | Delegated (CEO) | — |
 | F5 | BatchDetail, Templates, History, Security | frontend-dev | sonnet | ✅ Done & CEO-verified @ 1073286 — 166/170 UI tests (4 = P10 defect + DD-18 wiring); privacy scan clean | Delegated (CEO) | — |
 | F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | Planned; F1 after F1a | Plan: yes (Admin); assignment: delegated | — |

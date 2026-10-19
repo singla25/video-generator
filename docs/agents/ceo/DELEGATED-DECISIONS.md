@@ -34,4 +34,5 @@
 | # | Since | Item | Why blocked | Prepared |
 |---|-------|------|-------------|----------|
 | W-1 | 2026-10-19 | M2 GPU provider + budget | Paid service (forbidden under delegation) | `docs/plans/m2-real-ai.md` draft, ADR-010 provisional model stack |
+| W-3 | 2026-10-19 | Drop 2 leftover throwaway test DBs from killed pytest runs: `vidgen_55e3f615_test`, `vidgen_63e1f22e_test` (leave any other `vidgen_<hex>_test` that may be in use) | The guard blocks `DROP DATABASE` for agents, and deletions are outside the delegation | `docker compose exec postgres dropdb -U vidgen vidgen_55e3f615_test` and the same for `vidgen_63e1f22e_test`. Harmless if left. |
 | W-2 | 2026-10-19 | Using the real `samples/` on a GPU box for the M2 spike | Voter data handling decision | Plan says: our own server only, never a third party |

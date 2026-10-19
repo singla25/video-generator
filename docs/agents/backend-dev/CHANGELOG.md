@@ -2,6 +2,15 @@
 
 Newest first. One entry per task.
 
+## 2026-10-20 — T12 (batch services + endpoints)
+- Ports: `JobQueue`, `BatchStore` and batch records (`ports/batches.py`), `Storage.folder_exists`, `UnitOfWork.batches`. Domain: `BatchAction.RETRY`, `DRAFT -> CANCEL` transitions (D-19).
+- Infrastructure: `SqlBatchStore` (Core bulk inserts, row locks, grouped counts), `LocalStorage.folder_exists` and `remove_stale_temp`.
+- Services (no FastAPI): `batch_create`, `batch_flow`, `batch_queries`, `batch_downloads` (streamed ZIP + manifest), `batch_retention`, pure `batch_rules`, facade `batches.BatchService`.
+- API: `/batches/*`, `/batches/{id}/download.zip`, `failures.csv`, `/stats/daily`; sheet uploads streamed with size limit (413); missing job queue fails loudly (`_NotConfiguredQueue`) until T14.
+- No migration 0002: preview state, mapping and sheet name live in the JSON `batches.column_mapping`.
+- Choices: jobs are queued after the commit (an outbox would be safer, M2); resume does not re-queue (worker must defer jobs while paused); `httpx` logger is set to WARNING because URLs can hold search text.
+- Tests: 1064 pass; 7 fail because of test defects (session TTL 8 h vs clock advances of days). Verified green with VIDGEN_SESSION_TTL_MINUTES=999999.
+
 ## 2026-10-19 — T10 round 2 (D-17)
 - Login protection state moved to Postgres: new table `login_attempts` (campaign_id, client_key [resolved IP or `*` for the global row], window_started_at, failure_count, locked_until, last_allowed_at; PK campaign_id + client_key). `services/login_guard.py` is now pure decision functions plus a thin `LoginGuard` over a `LoginStateStore`; `infrastructure/db/login_state.py` implements it. Every attempt locks the global row (`SELECT ... FOR UPDATE`), so instances never lose updates; stale client rows are pruned on each write.
 - Partial unique index `uq_batch_rows_batch_id_voter_id_index_live` (status <> 'SKIPPED') and `ix_batches_finished_at`. Migration 0001 amended in place (create-only upgrade, reverse downgrade, no data); migration tests (schema diff empty, round trip) pass.

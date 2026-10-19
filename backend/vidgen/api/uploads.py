@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 import tempfile
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import IO, TYPE_CHECKING
 from urllib.parse import parse_qs
 
@@ -29,6 +30,19 @@ MULTIPART_OVERHEAD_BYTES = 64 * 1024  # boundaries and headers around the file
 MAX_FIELD_BYTES = 8 * 1024
 _FORM_DATA = b"multipart/form-data"
 _URLENCODED = b"application/x-www-form-urlencoded"
+_EXTENSION = re.compile(r"\.[a-z0-9]{1,8}")
+
+
+def _safe_suffix(raw_filename: bytes) -> str:
+    """The file extension of an uploaded name (lower case, plain letters and digits only).
+
+    The extension is kept so the sheet reader can tell .csv from .xlsx; the rest of the
+    name is never used.
+    """
+    suffix = PurePosixPath(
+        raw_filename.decode("utf-8", "replace").replace("\\", "/")
+    ).suffix.lower()
+    return suffix if _EXTENSION.fullmatch(suffix) else ""
 
 
 class UploadTooLargeError(Exception):
@@ -88,7 +102,9 @@ class _Collector:
         _, options = parse_options_header(self._headers.get(b"content-disposition", b""))
         self._name = options.get(b"name", b"").decode("utf-8", "replace")
         if b"filename" in options:
-            fd, name = tempfile.mkstemp(prefix="vidgen-upload-")
+            fd, name = tempfile.mkstemp(
+                prefix="vidgen-upload-", suffix=_safe_suffix(options[b"filename"])
+            )
             self._path = Path(name)
             self._handle = os.fdopen(fd, "wb")
             self._size = 0

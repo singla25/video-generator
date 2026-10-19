@@ -16,7 +16,12 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from vidgen.domain.codes import DomainError, FailureCode, plain_message
-from vidgen.services.errors import InvalidInputError, PreconditionError, TemplateNotFoundError
+from vidgen.services.errors import (
+    InvalidInputError,
+    PreconditionError,
+    StateConflictError,
+    TemplateNotFoundError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +32,9 @@ RATE_LIMITED = "RATE_LIMITED"
 NOT_FOUND = "NOT_FOUND"
 VALIDATION_ERROR = "VALIDATION_ERROR"
 METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
+INVALID_STATE = "INVALID_STATE"
+PREVIEW_NOT_READY = "PREVIEW_NOT_READY"
+PREVIEW_NOT_APPROVED = "PREVIEW_NOT_APPROVED"
 
 API_MESSAGES: Mapping[str, str] = {
     UNAUTHENTICATED: "Please log in to continue.",
@@ -36,6 +44,9 @@ API_MESSAGES: Mapping[str, str] = {
     NOT_FOUND: "The requested item was not found.",
     VALIDATION_ERROR: "The request is missing something or has an invalid value.",
     METHOD_NOT_ALLOWED: "This action is not available here.",
+    INVALID_STATE: "This action is not possible in the batch's current state.",
+    PREVIEW_NOT_READY: "The preview is not ready for the current settings yet.",
+    PREVIEW_NOT_APPROVED: "Approve a preview of the current settings before starting.",
 }
 
 HTTP_UNPROCESSABLE = 422
@@ -88,6 +99,11 @@ def _domain_error(_: Request, exc: Exception) -> JSONResponse:
     return error_response(status, error.code.value, error.message)
 
 
+def _state_conflict(_: Request, exc: Exception) -> JSONResponse:
+    error = cast(StateConflictError, exc)
+    return error_response(409, error.code, API_MESSAGES[error.code])
+
+
 def _not_found(_: Request, __: Exception) -> JSONResponse:
     return error_response(404, NOT_FOUND, API_MESSAGES[NOT_FOUND])
 
@@ -116,6 +132,7 @@ def install_error_handlers(app: FastAPI) -> None:
     """Register every handler on the app."""
     app.add_exception_handler(ApiError, _api_error)
     app.add_exception_handler(DomainError, _domain_error)
+    app.add_exception_handler(StateConflictError, _state_conflict)
     app.add_exception_handler(TemplateNotFoundError, _not_found)
     app.add_exception_handler(InvalidInputError, _invalid_input)
     app.add_exception_handler(RequestValidationError, _invalid_input)

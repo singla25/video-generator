@@ -4,20 +4,26 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
+from uuid import UUID
 
 from argon2 import PasswordHasher
 
 from vidgen.api.client_address import Network, parse_networks
 from vidgen.api.security import SessionCodec
+from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.consent import detect_consent_type
+from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.login_state import SqlLoginStateStore
 from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
+from vidgen.infrastructure.sheets.reader import FileSheetReader
 from vidgen.infrastructure.storage.local import LocalStorage
-from vidgen.ports import Clock, SpeechToText, Storage, VideoLimits, VideoProbe
+from vidgen.ports import Clock, JobQueue, SpeechToText, Storage, VideoLimits, VideoProbe
 from vidgen.ports.models import TemplateRecord
 from vidgen.services.audit import AuditTrail
+from vidgen.services.batch_support import BatchContext
+from vidgen.services.batches import BatchService
 from vidgen.services.login_guard import LoginGuard, LoginRules
 from vidgen.services.templates import TemplateService
 from vidgen.settings import Settings
@@ -31,6 +37,7 @@ class AppDeps:
     speech_to_text: SpeechToText | None = None
     video_probe: VideoProbe | None = None
     storage: Storage | None = None
+    job_queue: JobQueue | None = None
 
 
 class _NotConfiguredSpeechToText:
@@ -38,6 +45,16 @@ class _NotConfiguredSpeechToText:
 
     def transcribe(self, audio: object) -> list[object]:
         raise RuntimeError("speech-to-text is not configured")
+
+
+class _NotConfiguredQueue:
+    """Used until the Dramatiq adapter exists (T14): jobs fail loudly instead of vanishing."""
+
+    def enqueue_preview(self, batch_id: UUID, row_id: UUID) -> None:
+        raise DomainError(FailureCode.INTERNAL_ERROR, "The job queue is not configured.")
+
+    def enqueue_rows(self, batch_id: UUID, row_ids: list[UUID]) -> None:
+        raise DomainError(FailureCode.INTERNAL_ERROR, "The job queue is not configured.")
 
 
 @dataclass
@@ -52,6 +69,8 @@ class Container:
     trusted_proxies: tuple[Network, ...]
     audit: AuditTrail
     templates: TemplateService
+    batches: BatchService
+    storage: Storage
 
 
 def build_container(settings: Settings, deps: AppDeps) -> Container:
@@ -62,15 +81,23 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
     factory = uow_factory(settings.database_url)
     get_engine(settings.database_url)
 
+    cipher = AesGcmCipher(
+        keys={settings.encryption_key_id: settings.encryption_key_bytes()},
+        active_key_id=settings.encryption_key_id,
+        index_key=settings.index_key_bytes(),
+    )
+
     def open_uow() -> SqlUnitOfWork:
-        return SqlUnitOfWork(factory)
+        return SqlUnitOfWork(factory, cipher)
+
+    storage = deps.storage or LocalStorage(settings.storage_root)
 
     limits = VideoLimits(
         settings.max_video_bytes, settings.max_video_seconds, settings.min_video_seconds
     )
     templates = TemplateService(
         uow=open_uow,
-        storage=deps.storage or LocalStorage(settings.storage_root),
+        storage=storage,
         probe=deps.video_probe or FfprobeVideoProbe(limits),
         stt=deps.speech_to_text or _NotConfiguredSpeechToText(),  # type: ignore[arg-type]
         clock=clock,
@@ -83,6 +110,18 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         window=timedelta(minutes=settings.login_window_minutes),
         lockout=timedelta(minutes=settings.login_lockout_minutes),
         throttle_gap=timedelta(seconds=settings.login_throttle_seconds),
+    )
+    batches = BatchService(
+        BatchContext(
+            uow=open_uow,
+            storage=storage,
+            clock=clock,
+            queue=deps.job_queue or _NotConfiguredQueue(),
+            reader=FileSheetReader(),
+            max_sheet_rows=settings.max_sheet_rows,
+            max_name_graphemes=settings.max_name_graphemes,
+            retention_days=settings.retention_days,
+        )
     )
     return Container(
         settings=settings,
@@ -97,6 +136,8 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         trusted_proxies=parse_networks(settings.trusted_proxies),
         audit=AuditTrail(open_uow, clock),
         templates=templates,
+        batches=batches,
+        storage=storage,
     )
 
 

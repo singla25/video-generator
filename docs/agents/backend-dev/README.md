@@ -27,3 +27,9 @@ Optional (have defaults): `VIDGEN_DATABASE_URL`, `VIDGEN_REDIS_URL`, `VIDGEN_STO
 `VIDGEN_LOGIN_MAX_FAILURES`, `VIDGEN_LOGIN_WINDOW_MINUTES`, `VIDGEN_LOGIN_LOCKOUT_MINUTES`.
 
 docker-compose only: `VIDGEN_DB_USER`, `VIDGEN_DB_PASSWORD`, `VIDGEN_DB_NAME`, `VIDGEN_DB_PORT`, `VIDGEN_REDIS_PORT`.
+
+## Running the system
+- API (served under `/api`): `uv run uvicorn vidgen.api.server:create_server_app --factory --host 127.0.0.1 --port 8000`
+- Worker: `uv run python -m vidgen.worker`
+- Services (dev): `docker compose up -d` (Postgres and Redis on 127.0.0.1)
+- Migrations are run by the Admin: `uv run alembic -c backend/alembic.ini upgrade head`

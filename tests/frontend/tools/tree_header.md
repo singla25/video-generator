@@ -17,6 +17,6 @@ Case IDs `TT-UI-AC<n>-<P|N|E><m>` start each test title. Unit files import the f
 | `components/RowsTable.tsx`  | `RowsTable({batchId, status?})`: search, status filter, paging, row actions                                                                                                                                                                                                          |
 | `pages/*`                   | `LoginPage`, `OverviewPage`, `WizardPage`, `BatchDetailPage`, `TemplatesPage`, `HistoryPage`, `SecurityPage`; labels and test ids are in the header comment of each test file                                                                                                        |
 
-Gaps to settle with the CEO: the API has no template thumbnail endpoint (UI shows a placeholder image); no failure-code row filter (UI requests `status=FAILED`, then filters by `failure_code` client-side); sheet column names are read from the CSV header in the browser (reading an xlsx header needs a decision).
+API additions decided (DD-16/17): `POST /batches/inspect-sheet` returns headers and a sample for the wizard; `GET /batches/{id}/rows?failure_code=` filters failures server-side; template cards show a placeholder icon.
 
 Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-AC13 coverage and lint gates (CI: `npm run test:coverage`, tsc, eslint, prettier); hatched chart pixels (recharts is not asserted in jsdom); axe runs in F6 (`TT-UI-E2E-A1`).

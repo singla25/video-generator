@@ -10,7 +10,9 @@
 //                          "Drag a sheet here or choose a file", button "Next".
 //                          Errors: "Use a CSV or Excel sheet." / "The sheet is empty."
 //   Step 2 Map columns     comboboxes "Name column", "ID column", "Spoken name column (optional)" filled
-//                          from the CSV header; button "Validate sheet" -> POST /batches (multipart:
+//                          from the headers returned by POST /batches/inspect-sheet (multipart `sheet`, called when Next is
+//                          pressed on step 1; response {sheet_name, headers, sample_rows, row_count});
+//                          sample rows are shown as a preview; button "Validate sheet" -> POST /batches (multipart:
 //                          sheet, name_column, id_column, template_id). Report summary
 //                          "8 of 10 rows are valid"; each problem is a row with data-invalid="true"
 //                          showing row number and the API message; "Next" needs valid_rows > 0.
@@ -120,6 +122,36 @@ describe('step 2 mapping and validation', () => {
     await userEvent.selectOptions(select, IDS.template);
     await userEvent.click(screen.getByRole('button', { name: 'Next' }));
   }
+
+  it('TT-UI-AC5-P12 Next on step 1 inspects the sheet through the API and shows a sample', async () => {
+    let sent = 'none';
+    server.use(
+      http.post('*/batches/inspect-sheet', async ({ request }) => {
+        const form = await request.formData();
+        sent = form.get('sheet') instanceof File ? 'file' : 'missing';
+        return HttpResponse.json({
+          sheet_name: 'sheet.csv',
+          headers: ['Voter Name', 'Voter ID'],
+          sample_rows: [[DEVANAGARI_NAME, 'TST000001']],
+          row_count: 1,
+        });
+      }),
+    );
+    await toStep2();
+    expect(await screen.findByText(DEVANAGARI_NAME)).toBeInTheDocument();
+    expect(sent).toBe('file');
+  });
+
+  it('TT-UI-AC5-N12 an unreadable sheet (UNSUPPORTED_SHEET) shows the message and stays on step 1', async () => {
+    server.use(
+      http.post('*/batches/inspect-sheet', () =>
+        apiError(422, 'UNSUPPORTED_SHEET', 'This sheet type is not supported. Use CSV or XLSX.'),
+      ),
+    );
+    await toStep2();
+    expect(await screen.findByRole('alert')).toHaveTextContent('not supported');
+    expect(screen.queryByRole('combobox', { name: 'Name column' })).not.toBeInTheDocument();
+  });
 
   it('TT-UI-AC5-P4 fills the column pickers from the sheet header', async () => {
     await toStep2();

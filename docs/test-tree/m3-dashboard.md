@@ -6,18 +6,18 @@ Case IDs `TT-UI-AC<n>-<P|N|E><m>` start each test title. Unit files import the f
 
 ## Frontend contract (what frontend-dev provides under `frontend/src`)
 
-| Module | Exports and behaviour |
-|---|---|
-| `App.tsx` | `App`: routes only, needs Router + QueryClientProvider above it. Routes: login, overview, batches running/completed/failed, new batch (query `batch=<id>` resumes a draft), batch detail, templates, history, security, settings, help, else "Page not found". Any 401 goes to login |
-| `config.ts` | `POLL_INTERVAL_MS = 2000` |
-| `api/client.ts` | `ApiError {status, code, message, retryAfterSeconds?}`; `apiFetch(path, init?)`: absolute URL from `window.location.origin`, `X-CSRF-Token` from cookie `vidgen_csrf` on non-GET/HEAD, codes `UNKNOWN_ERROR` and `NETWORK_ERROR`, 204 resolves undefined |
-| `layout/AppShell.tsx` | nav "Primary" (MENU, group Batches, GENERAL), header banner with h1, "+ New batch", avatar image, skip link, `main#main`, `data-testid=app-root` with `data-reduced-motion`, security banner |
-| `components/StatusChip.tsx` | `StatusChip({status})`, `data-testid=status-chip`, `data-tone` green/blue/grey/red/amber |
-| `components/CountUp.tsx` | `CountUp({value})`, en-US digit grouping, immediate under reduced motion |
-| `components/RowsTable.tsx` | `RowsTable({batchId, status?})`: search, status filter, paging, row actions |
-| `pages/*` | `LoginPage`, `OverviewPage`, `WizardPage`, `BatchDetailPage`, `TemplatesPage`, `HistoryPage`, `SecurityPage`; labels and test ids are in the header comment of each test file |
+| Module                      | Exports and behaviour                                                                                                                                                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `App.tsx`                   | `App`: routes only, needs Router + QueryClientProvider above it. Routes: login, overview, batches running/completed/failed, new batch (query `batch=<id>` resumes a draft), batch detail, templates, history, security, settings, help, else "Page not found". Any 401 goes to login |
+| `config.ts`                 | `POLL_INTERVAL_MS = 2000`                                                                                                                                                                                                                                                            |
+| `api/client.ts`             | `ApiError {status, code, message, retryAfterSeconds?}`; `apiFetch(path, init?)`: absolute URL from `window.location.origin`, `X-CSRF-Token` from cookie `vidgen_csrf` on non-GET/HEAD, codes `UNKNOWN_ERROR` and `NETWORK_ERROR`, 204 resolves undefined                             |
+| `layout/AppShell.tsx`       | nav "Primary" (MENU, group Batches, GENERAL), header banner with h1, "+ New batch", avatar image, skip link, `main#main`, `data-testid=app-root` with `data-reduced-motion`, security banner                                                                                         |
+| `components/StatusChip.tsx` | `StatusChip({status})`, `data-testid=status-chip`, `data-tone` green/blue/grey/red/amber                                                                                                                                                                                             |
+| `components/CountUp.tsx`    | `CountUp({value})`, en-US digit grouping, immediate under reduced motion                                                                                                                                                                                                             |
+| `components/RowsTable.tsx`  | `RowsTable({batchId, status?})`: search, status filter, paging, row actions                                                                                                                                                                                                          |
+| `pages/*`                   | `LoginPage`, `OverviewPage`, `WizardPage`, `BatchDetailPage`, `TemplatesPage`, `HistoryPage`, `SecurityPage`; labels and test ids are in the header comment of each test file                                                                                                        |
 
-Gaps to settle with the CEO: the API has no template thumbnail endpoint (UI shows a placeholder image); no failure-code row filter (UI requests `status=FAILED`, then filters by `failure_code` client-side); sheet column names are read from the CSV header in the browser (reading an xlsx header needs a decision).
+API additions decided (DD-16/17): `POST /batches/inspect-sheet` returns headers and a sample for the wizard; `GET /batches/{id}/rows?failure_code=` filters failures server-side; template cards show a placeholder icon.
 
 Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-AC13 coverage and lint gates (CI: `npm run test:coverage`, tsc, eslint, prettier); hatched chart pixels (recharts is not asserted in jsdom); axe runs in F6 (`TT-UI-E2E-A1`).
 
@@ -121,6 +121,7 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ✅ Positive `TT-UI-AC5-P9` [unit] saving a valid slot sends start_s and end_s as numbers — `unit/wizard.test.tsx`
 - ✅ Positive `TT-UI-AC5-P10` [unit] pre-fills the default folder name YYYY-MM-DD-N — `unit/wizard.test.tsx`
 - ✅ Positive `TT-UI-AC5-P11` [unit] confirm screen, then start with an Idempotency-Key and the folder — `unit/wizard.test.tsx`
+- ✅ Positive `TT-UI-AC5-P12` [unit] Next on step 1 inspects the sheet through the API and shows a sample — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N1` [unit] a PDF is refused with a clear message — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N2` [unit] an empty file is refused — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N3` [unit] a sheet with no valid rows blocks Next — `unit/wizard.test.tsx`
@@ -132,6 +133,7 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ❌ Negative `TT-UI-AC5-N9` [unit] folder name %s is refused locally without a request — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N10` [unit] the API refusing the folder (INVALID_FOLDER_NAME) shows its message — `unit/wizard.test.tsx`
 - ❌ Negative `TT-UI-AC5-N11` [unit] PREVIEW_NOT_APPROVED from the API is shown, nothing navigates away — `unit/wizard.test.tsx`
+- ❌ Negative `TT-UI-AC5-N12` [unit] an unreadable sheet (UNSUPPORTED_SHEET) shows the message and stays on step 1 — `unit/wizard.test.tsx`
 - ⚠️ Edge `TT-UI-AC5-E1` [unit] a wrong extension on real CSV content is judged by name, spaces and unicode in the filename are fine — `unit/wizard.test.tsx`
 - ⚠️ Edge `TT-UI-AC5-E2` [unit] Devanagari names in the report keep lang=hi — `unit/wizard.test.tsx`
 - ⚠️ Edge `TT-UI-AC5-E3` [unit] a slot beyond the video duration is refused locally — `unit/wizard.test.tsx`
@@ -144,7 +146,7 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 
 - ✅ Positive `TT-UI-AC6-P1` [unit] shows the header stats, progress bar and ETA — `unit/batch-detail.test.tsx`
 - ✅ Positive `TT-UI-AC6-P2` [unit] lists each failure reason with its count — `unit/batch-detail.test.tsx`
-- ✅ Positive `TT-UI-AC6-P3` [unit] clicking a reason filters the table to that reason and can be cleared — `unit/batch-detail.test.tsx`
+- ✅ Positive `TT-UI-AC6-P3` [unit] clicking a reason requests rows with failure_code and can be cleared — `unit/batch-detail.test.tsx`
 - ✅ Positive `TT-UI-AC6-P4` [unit] Preview opens an inline player on the row video — `unit/batch-detail.test.tsx`
 - ✅ Positive `TT-UI-AC6-P5` [unit] offers ZIP and failures CSV links — `unit/batch-detail.test.tsx`
 - ✅ Positive `TT-UI-AC6-P6` [unit] Pause and Resume post with the CSRF header — `unit/batch-detail.test.tsx`
@@ -160,6 +162,7 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 - ⚠️ Edge `TT-UI-AC6-E3` [unit] no failures shows a friendly empty note instead of an empty chart — `unit/batch-detail.test.tsx`
 - ⚠️ Edge `TT-UI-AC6-E4` [unit] a finished batch hides Pause, Resume and Cancel — `unit/batch-detail.test.tsx`
 - ⚠️ Edge `TT-UI-AC6-E5` [unit] a button is disabled while its request is in flight (no double submit) — `unit/batch-detail.test.tsx`
+- ⚠️ Edge `TT-UI-AC6-E6` [unit] the UI trusts the server: rows returned for a filter are not re-filtered — `unit/batch-detail.test.tsx`
 
 ### Feature: End-to-end (Playwright)
 
@@ -219,5 +222,5 @@ Not covered by automated tests: UI-AC1 visual fidelity (Admin sign-off, F7); UI-
 
 | Level | Positive | Negative | Edge |
 |---|---|---|---|
-| unit | 64 | 37 | 47 |
+| unit | 65 | 38 | 48 |
 | e2e | 1 | 2 | 5 |

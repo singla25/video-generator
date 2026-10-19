@@ -5,8 +5,8 @@
 //     header stats      [data-testid=batch-stats] counts + status text (Running, Paused, Completed...)
 //     progress          role=progressbar name "Batch progress" aria-valuenow = progress_percent, "ETA ..."
 //     failure chart     list aria-label "Failure reasons"; one button per reason named
-//                       "<message> (<count>)"; click -> RowsTable status=FAILED and only rows with that
-//                       failure_code; chip "Filtering: <message>" + button "Clear filter"
+//                       "<message> (<count>)"; click -> RowsTable requests GET rows?failure_code=<code> (server-side filter,
+//                       no client-side filtering); chip "Filtering: <message>" + button "Clear filter"
 //     inline preview    clicking "Preview video for <name>" shows [data-testid=inline-preview] <video>
 //                       with src /batches/<id>/rows/<n>/video
 //     links             "Download ZIP" -> /batches/<id>/download.zip (aria-disabled when no completed row)
@@ -102,25 +102,39 @@ describe('failure chart', () => {
     ).toBeInTheDocument();
   });
 
-  it('TT-UI-AC6-P3 clicking a reason filters the table to that reason and can be cleared', async () => {
-    const statuses: (string | null)[] = [];
+  it('TT-UI-AC6-P3 clicking a reason requests rows with failure_code and can be cleared', async () => {
+    const codes: (string | null)[] = [];
     server.use(
       http.get('*/batches/:id/rows', ({ request }) => {
-        const s = new URL(request.url).searchParams.get('status');
-        statuses.push(s);
-        return HttpResponse.json(rowsPage(s === 'FAILED' ? failedRows : ROWS_BY_STATUS));
+        const c = new URL(request.url).searchParams.get('failure_code');
+        codes.push(c);
+        return HttpResponse.json(rowsPage(c === 'TTS_FAILED' ? [failedRows[0]!] : ROWS_BY_STATUS));
       }),
     );
     renderApp(PATH);
     await userEvent.click(await screen.findByRole('button', { name: `${TTS} (6)` }));
-    await waitFor(() => expect(statuses.at(-1)).toBe('FAILED'));
+    await waitFor(() => expect(codes.at(-1)).toBe('TTS_FAILED'));
     const table = await screen.findByRole('table');
     await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(2));
-    expect(within(table).getByText(TTS)).toBeInTheDocument();
-    expect(within(table).queryByText('Making this video took too long.')).not.toBeInTheDocument();
     expect(screen.getByText(`Filtering: ${TTS}`)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
-    await waitFor(() => expect(statuses.at(-1)).toBeNull());
+    await waitFor(() => expect(codes.at(-1)).toBeNull());
+  });
+
+  it('TT-UI-AC6-E6 the UI trusts the server: rows returned for a filter are not re-filtered', async () => {
+    server.use(
+      http.get('*/batches/:id/rows', ({ request }) =>
+        HttpResponse.json(
+          rowsPage(
+            new URL(request.url).searchParams.get('failure_code') ? failedRows : ROWS_BY_STATUS,
+          ),
+        ),
+      ),
+    );
+    renderApp(PATH);
+    await userEvent.click(await screen.findByRole('button', { name: `${TTS} (6)` }));
+    const table = await screen.findByRole('table');
+    await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(3));
   });
 
   it('TT-UI-AC6-E3 no failures shows a friendly empty note instead of an empty chart', async () => {

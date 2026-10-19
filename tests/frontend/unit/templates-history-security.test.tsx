@@ -4,7 +4,7 @@
 //   pages/TemplatesPage.tsx  route /templates
 //     [data-testid=template-card] per template: original name, "Slot 4.2 s - 5.1 s" (or "No slot yet"),
 //       consent badge [data-testid=consent-badge] with text "Consent confirmed" | "Consent missing",
-//       usable state text "Ready to use" | "Not usable", an <img> thumbnail placeholder.
+//       usable state text "Ready to use" | "Not usable", a placeholder icon [data-testid=template-thumb-placeholder] (no thumbnail endpoint; no <img>).
 //       Missing consent -> button "Upload consent" opens a form: file input "Consent file", checkbox
 //       "I confirm I have consent to use this video", button "Submit consent" (disabled until both)
 //       -> POST /templates/<id>/consent multipart {file, confirmed:"true"}
@@ -36,7 +36,8 @@ describe('templates', () => {
     expect(within(rahul).getByTestId('consent-badge')).toHaveTextContent('Consent confirmed');
     expect(rahul).toHaveTextContent('Slot 4.2 s - 5.1 s');
     expect(rahul).toHaveTextContent('Ready to use');
-    expect(within(rahul).getByRole('img')).toBeInTheDocument();
+    expect(within(rahul).getByTestId('template-thumb-placeholder')).toBeInTheDocument();
+    expect(rahul.querySelector('img')).toBeNull();
   });
 
   it('TT-UI-AC7-N1 missing consent shows the badge, Not usable and no use action', async () => {

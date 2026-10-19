@@ -4,7 +4,7 @@
 //   components/StatusChip.tsx  export StatusChip({ status })  status: QUEUED|PROCESSING|COMPLETED|
 //        FAILED|SKIPPED|CANCELLED; [data-testid=status-chip] with the label (Completed, Processing,
 //        Queued, Failed, Skipped, Cancelled) and data-tone = green|blue|grey|red|amber|grey
-//   components/RowsTable.tsx   export RowsTable({ batchId: string; status?: RowStatus })
+//   components/RowsTable.tsx   export RowsTable({ batchId: string; status?: RowStatus; failureCode?: string })  (failureCode -> query failure_code)
 //        table (role=table) with column headers Name, ID, Status, Reason, Render time, Actions
 //        textbox "Search by name or ID" (debounced <= 400 ms; query params search=, page=1)
 //        combobox "Status" (All, Completed, Processing, Queued, Failed, Skipped) -> status=FAILED...

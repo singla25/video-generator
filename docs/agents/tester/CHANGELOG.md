@@ -76,3 +76,8 @@ Newest first. One entry per task.
 - Added `tests/frontend/`: `setup.ts` (jest-dom, MSW lifecycle, matchMedia/reduced-motion stub, storage reset), `mocks/` (MSW handlers and fixtures shaped like the M1 API; synthetic Devanagari name and fake IDs), `helpers.tsx`, 8 unit files and a Playwright spec (runs only with `E2E_BASE_URL`).
 - Tests: unit P64 / N37 / E47, e2e P1 / N2 / E5 plus 5 axe runs (156 case IDs). All fail on missing `frontend/src` modules only; `tsc -p tests/frontend/tsconfig.json` is clean apart from those missing modules; Prettier clean.
 - Open issues: (1) Vitest cannot load files outside `frontend/` until `frontend/vite.config.ts` gets `server.fs.strict: false` (or `fs.allow` on the repo root); `tests/frontend/node_modules` is a relative symlink to `frontend/node_modules` so bare imports resolve. (2) API gaps: no template thumbnail endpoint; no failure-code row filter; xlsx header reading.
+
+## 2026-10-19 - F1 round 2 (DD-16/17)
+- Removed the committed node_modules symlink in tests/frontend (done in 9ce6bee).
+- Wizard tests use the inspect-sheet endpoint (MSW default handler added); batch-detail failure click sends failure_code (no client filtering); template cards show a placeholder icon, no img. Tree regenerated: unit P65/N38/E48.
+- New backend tests (RED): tests/integration/api/test_inspect_sheet.py (20) and test_rows_failure_filter.py (12). Python suite: only these 32 fail.

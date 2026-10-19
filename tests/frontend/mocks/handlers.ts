@@ -25,6 +25,14 @@ export function apiError(
 export const handlers = [
   http.post('*/auth/login', () => HttpResponse.json({ csrf_token: 'csrf-test-token' })),
   http.post('*/auth/logout', () => HttpResponse.json({ status: 'logged_out' })),
+  http.post('*/batches/inspect-sheet', () =>
+    HttpResponse.json({
+      sheet_name: 'sheet.csv',
+      headers: ['Voter Name', 'Voter ID', 'Spoken'],
+      sample_rows: [['Test Person 1', 'TST000001', '']],
+      row_count: 1,
+    }),
+  ),
   http.get('*/stats/daily', () => HttpResponse.json(daily())),
   http.get('*/audit', () => HttpResponse.json({ entries: [] })),
   http.get('*/templates', () =>

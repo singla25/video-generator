@@ -59,7 +59,7 @@ export function OverviewPage() {
   return (
     <div className="space-y-4">
       <KpiCards counts={status.data.counts} />
-      <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <VideosChart />
         <CurrentBatchPanel batch={current} status={status.data} />
       </div>

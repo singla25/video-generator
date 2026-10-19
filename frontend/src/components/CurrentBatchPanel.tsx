@@ -19,7 +19,7 @@ export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: Bat
   const failure = action.error instanceof ApiError ? action.error.message : 'Something went wrong.';
 
   return (
-    <section data-testid="current-batch" className="rounded-card border bg-card p-5">
+    <section data-testid="current-batch" className="min-w-0 rounded-card border bg-card p-5">
       <h2 className="font-semibold">Current batch</h2>
       <p className="truncate text-sm text-muted">{batch.sheet_name ?? batch.folder_name ?? ''}</p>
       <div className="my-4 flex items-center gap-5">

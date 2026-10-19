@@ -58,7 +58,7 @@ export function VideosChart() {
   const peak = bars.reduce((best, b, i) => (b.videos > (bars[best]?.videos ?? -1) ? i : best), 0);
 
   return (
-    <section className="rounded-card border bg-card p-5">
+    <section className="min-w-0 rounded-card border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-semibold">Videos generated</h2>
         <Toggle period={period} onChange={setPeriod} />
@@ -84,7 +84,11 @@ export function VideosChart() {
             <p className="py-10 text-center text-muted">No videos generated in this period</p>
           ) : (
             <div className="mt-4" aria-label="Videos generated per period" role="img">
-              <div ref={setBox}>
+              <div
+                ref={setBox}
+                className="relative w-full overflow-hidden"
+                style={{ height: CHART_HEIGHT }}
+              >
                 <BarChart data={bars} width={width} height={CHART_HEIGHT} margin={{ top: 24 }}>
                   <defs>
                     <pattern

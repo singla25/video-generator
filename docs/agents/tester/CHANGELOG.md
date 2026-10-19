@@ -103,3 +103,6 @@ Newest first. One entry per task.
 
 ## 2026-10-20 - F6 re-verification
 - Real-stack E2E 47 pass, 1 fail (tablet overflow, D-F6-4); Python 1745; Vitest 207, 93 percent lines. Added tablet Overview screenshot test, desktop 1440x900 screenshots. COVERAGE.md updated.
+
+## 2026-10-20 - final M3 verification
+- E2E 48/48, Python 1745, Vitest 207 (93 percent lines), checks clean; screenshots refreshed; UI-AC2 now green.

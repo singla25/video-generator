@@ -188,3 +188,25 @@ D-F6-1, D-F6-2 and D-F6-3 are fixed and verified.
 | UI-AC11 Hindi | ✅ |
 | UI-AC12 Privacy | ✅ |
 | UI-AC13 Quality | ✅ (coverage 93 %, axe 0 serious/critical) |
+
+
+## M3 final verification (2026-10-20, after D-F6-4 and the visual polish)
+
+| Suite | Result |
+|---|---|
+| Playwright, real stack (desktop 1440x900, reduced-motion, tablet 768; throwaway DB dropped, nothing left running) | **48 / 48 pass**, including `TT-UI-E2E-E1` (no horizontal scroll at 768 px with data) |
+| axe on all pages, all projects | 0 serious/critical |
+| Requests to hosts other than 127.0.0.1 | none |
+| Python (`-m "slow or not slow"`) | **1745 passed**; ruff check and format clean |
+| Vitest | **207 / 207**; coverage `frontend/src` **93.07 % lines** (91.53 % statements, 84.75 % branches) |
+| Typecheck, ESLint, Prettier | clean |
+
+Screenshots refreshed in `media/review/ui/`: overview, overview-tablet, wizard-step3, batch-detail, templates, security.
+
+D-F6-4 is fixed and verified. No open defects.
+
+| AC | Status |
+|---|---|
+| UI-AC1 Design fidelity | awaiting Admin visual sign-off |
+| UI-AC2 Layout | ✅ (tablet overflow fixed) |
+| UI-AC3 to UI-AC13 | ✅ |

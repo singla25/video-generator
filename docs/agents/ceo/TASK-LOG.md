@@ -33,5 +33,6 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T12 | GREEN: batch services + endpoints | backend-dev | sonnet | ✅ Done & CEO-reviewed @ c0ced81 (interrupted by usage limit, resumed) — 1064 pass; 7 failures = test clock/session defects → T11b; coverage 89–100 %; no migration 0002 (DD-8) | Yes, 2026-10-19 | — |
 | T11b | Tests: re-login after clock jumps; access-log query redaction (DD-9) | tester | sonnet | In progress | Delegated (CEO) | — |
 | T13 | RED: worker pipeline | tester | sonnet | ✅ Done & CEO-reviewed after 1 round (stage order DD-6) @ fdb25d2 — 123+ tests; bodies verified with throwaway stubs | Delegated (CEO), 2026-10-19 | — |
-| T14–T16 | See plan | tester / backend-dev / CEO | sonnet | Planned | — | — |
+| T14 | GREEN: render pipeline, worker, Dramatiq queue, fake adapters, access-log redaction | backend-dev | sonnet | In progress (parallel with T11b) | Delegated (CEO) | — |
+| T15–T16 | Verify + E2E; CEO review → gate 3 | tester / CEO | sonnet | Planned | — | — |
 | F0–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | Admin / tester / frontend-dev / CEO | sonnet | Plan + deps approved 2026-10-19; design reference committed (b557ff0). Waits for M1 gate 3, Node.js install and product name/logo | Plan: yes; assignment: pending | — |

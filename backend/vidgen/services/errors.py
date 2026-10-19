@@ -18,3 +18,19 @@ class PreconditionError(DomainError):
 
     def __init__(self, code: FailureCode) -> None:
         super().__init__(code)
+
+
+class BatchNotFoundError(TemplateNotFoundError):
+    """The requested batch (or row, or file) does not exist."""
+
+
+class StateConflictError(Exception):
+    """The action does not fit the batch's current state (maps to HTTP 409)."""
+
+    INVALID_STATE = "INVALID_STATE"
+    PREVIEW_NOT_READY = "PREVIEW_NOT_READY"
+    PREVIEW_NOT_APPROVED = "PREVIEW_NOT_APPROVED"
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)

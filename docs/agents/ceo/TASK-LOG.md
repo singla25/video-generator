@@ -49,5 +49,6 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | F1b | Vitest config resolves tests/frontend (scoped fs.allow) | frontend-dev | sonnet | ✅ Done & CEO-verified @ 9ce6bee (swept in the tester's staged symlink removal; see incident notes) | Delegated (CEO) | — |
 | B-M3 | Backend: inspect-sheet + failure_code filter (GREEN) | backend-dev | sonnet | ✅ Done & CEO-verified @ 3896422 (31/33 pass; 2 test defects + tester lint → tester fix round) | Delegated (CEO) | — |
 | F2 | App shell, auth, API client, primitives | frontend-dev | sonnet | ✅ Done & CEO-verified @ 55610bc — 44/142 UI tests pass (rest = F3–F5); lint/build ok; privacy scan clean | Delegated (CEO) | — |
+| F1c | Tester fix: 2 failure-filter fixtures + gen_test_tree lint | tester | sonnet | ✅ Done @ 2417768 — Python suite 1648 pass + 1 xfail | Delegated (CEO) | — |
 | F3 | Overview + RowsTable | frontend-dev | sonnet | In progress | Delegated (CEO) | — |
 | F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | Planned; F1 after F1a | Plan: yes (Admin); assignment: delegated | — |

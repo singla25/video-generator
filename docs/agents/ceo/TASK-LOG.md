@@ -51,6 +51,6 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | F2 | App shell, auth, API client, primitives | frontend-dev | sonnet | ✅ Done & CEO-verified @ 55610bc — 44/142 UI tests pass (rest = F3–F5); lint/build ok; privacy scan clean | Delegated (CEO) | — |
 | F1c | Tester fix: 2 failure-filter fixtures + gen_test_tree lint | tester | sonnet | ✅ Done @ 2417768 — Python suite 1648 pass + 1 xfail | Delegated (CEO) | — |
 | F3 | Overview + RowsTable | frontend-dev | sonnet | ✅ Done & CEO-verified @ e262800 — 96/168 UI tests pass (rest = F4/F5), typecheck/lint green; hatch visual check → F7 | Delegated (CEO) | — |
-| F4 | New batch wizard | frontend-dev | sonnet | In progress | Delegated (CEO) | — |
+| F4 | New batch wizard | frontend-dev | sonnet | ✅ Done & CEO-reviewed @ 64a310a — 33/34 wizard tests (1 test defect); player + glue follow-ups (DD-19) | Delegated (CEO) | — |
 | DD-18 | Per-row retry: RED tests (tester) → backend → UI | tester → backend-dev → frontend-dev | sonnet | RED in progress (parallel with F4) | Delegated (CEO) | — |
 | F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | Planned; F1 after F1a | Plan: yes (Admin); assignment: delegated | — |

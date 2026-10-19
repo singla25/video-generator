@@ -39,4 +39,7 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T13c | Tests: 8 defect fixes, injection contract + layering guard, domain/fakes coverage | tester | sonnet | ✅ Done & CEO-reviewed @ 15b6ef0; T14 round 2 (layering) in progress | Delegated (CEO) | — |
 | T15a | RED: E2E tests (synthetic 10-row batch, retry, deletion) | tester | sonnet | ✅ Done & CEO-reviewed @ 5a1b106 — 3 e2e tests (real app/DB/storage/ffmpeg/label; fake AI; in-process StubBroker worker); probes label + creator metadata | Delegated (CEO) | — |
 | T15–T16 | Verify + coverage report; CEO review → gate 3 | tester / CEO | sonnet | Planned | — | — |
-| F0–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | Admin / tester / frontend-dev / CEO | sonnet | Plan + deps approved 2026-10-19; design reference committed (b557ff0). Waits for M1 gate 3, Node.js install and product name/logo | Plan: yes; assignment: pending | — |
+| — | **Merge gate 3** (M1 complete) | CEO | — | ✅ Merged `49f0767` (DD-12); main: 1611 pass + 1 xfail, mypy/ruff clean | Delegated (CEO) | ✅ |
+| F0 | Node.js | Admin | — | ✅ Already installed (v26.12.0, DD-2); placeholder brand DD-1 | — | — |
+| F1a | Frontend tooling scaffold (no app code) | frontend-dev | sonnet | In progress on `feat/m3-dashboard` (DD-13) | Delegated (CEO) | — |
+| F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | Planned; F1 after F1a | Plan: yes (Admin); assignment: delegated | — |

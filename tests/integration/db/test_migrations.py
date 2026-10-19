@@ -1,7 +1,7 @@
 """Alembic migrations against a separate throwaway database (plan D-14).
 
-Uses the database ``vidgen_migration_test``. The name must end in ``_test``; the dev database
-``vidgen`` and the model-built ``vidgen_test`` are never touched.
+Uses a per-session database ``vidgen_mig_<hex>_test`` created and removed by the conftest. The
+name must end in ``_test``; ``vidgen``, ``vidgen_test`` and ``vidgen_migration_test`` are untouched.
 """
 
 from __future__ import annotations
@@ -17,11 +17,9 @@ from alembic.migration import MigrationContext
 from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.engine import make_url
 
-from tests.integration.conftest import _ensure_database
 from vidgen.infrastructure.db.models import Base
 
 ROOT = Path(__file__).resolve().parents[3]
-MIGRATION_DB = "vidgen_migration_test"
 EXPECTED_TABLES = {
     "campaigns",
     "templates",
@@ -33,13 +31,10 @@ EXPECTED_TABLES = {
 
 
 @pytest.fixture(scope="module")
-def migration_url(test_db_url: str) -> str:
-    """URL of the migration database (same server and credentials as the test database)."""
-    url = make_url(test_db_url).set(database=MIGRATION_DB)
-    assert (url.database or "").endswith("_test")
-    rendered = url.render_as_string(hide_password=False)
-    _ensure_database(rendered)
-    return rendered
+def migration_url(migration_db_url: str) -> str:
+    """URL of this session's migration database (created and removed by the conftest)."""
+    assert (make_url(migration_db_url).database or "").endswith("_test")
+    return migration_db_url
 
 
 @pytest.fixture
@@ -162,6 +157,6 @@ def test_migration_never_touches_the_dev_or_model_test_databases(
     migration_url: str, test_db_url: str
 ) -> None:
     """Safety guard for this test module."""
-    assert make_url(migration_url).database == MIGRATION_DB
+    assert (make_url(migration_url).database or "").startswith("vidgen_mig_")
     assert make_url(migration_url).database != "vidgen"
     assert make_url(migration_url).database != make_url(test_db_url).database

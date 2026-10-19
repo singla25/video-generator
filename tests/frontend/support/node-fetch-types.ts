@@ -32,9 +32,14 @@ function jsdomBytes(blob: JsdomBlob): Uint8Array {
 class JsdomFriendlyFormData extends NodeFormData {
   append(name: string, value: string | Blob, filename?: string): void {
     if (isJsdomBlob(value)) {
-      const file = new NodeFile([jsdomBytes(value)], filename ?? value.name ?? 'blob', {
-        type: value.type,
-      });
+      // Copy into a plain ArrayBuffer-backed array so it is a valid BlobPart.
+      const file = new NodeFile(
+        [new Uint8Array(jsdomBytes(value))],
+        filename ?? value.name ?? 'blob',
+        {
+          type: value.type,
+        },
+      );
       super.append(name, file as unknown as Blob);
     } else {
       super.append(name, value as string);

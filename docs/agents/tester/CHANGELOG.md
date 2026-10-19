@@ -89,3 +89,7 @@ Newest first. One entry per task.
 - Backend RED: test_video_range.py (template video + Range on template/row/preview); V2 xfail in test_batches_extra.py is now a normal test.
 - UI: P10 uses toHaveDisplayValue; new P13-P15, E8 (New template link, template player, slot marker). Test glue moved to tests/frontend/support/node-fetch-types.ts (imported first in setup.ts); verified with the frontend copy removed from setupFiles. Both loading together throws "Cannot redefine Symbol.hasInstance".
 - Note: parallel pytest runs by other agents share one test DB and cause spurious errors; a clean full run needs a quiet moment.
+
+## 2026-10-19 - DD-20 isolated DB per pytest session
+- tests/integration/conftest.py: each session creates vidgen_<hex>_test and vidgen_mig_<hex>_test, removed by finalizers (protected names refused). test_migrations.py uses the migration_db_url fixture. Two concurrent full runs gave identical results (51 failed = Range tests only, 1671 passed).
+- node-fetch-types.ts: copy bytes into a new Uint8Array (typecheck fix).

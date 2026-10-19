@@ -40,7 +40,9 @@ def test_output_that_already_exists_means_the_row_is_done(world: World) -> None:
     assert outcome.kind is RowOutcomeKind.COMPLETED
     assert world.order == []  # nothing re-rendered
     assert world.storage.files[key] == b"PRE-EXISTING"
-    assert [k for k in world.storage.files if k.startswith("2026-10-18-2/")] == [key]
+    assert [
+        k for k in world.storage.files if k.startswith("2026-10-18-2/") and k.endswith(".mp4")
+    ] == [key]
     assert world.row(2)["status"] == "COMPLETED"
     assert world.row(2)["output_key"] == key
 
@@ -125,9 +127,9 @@ def test_two_workers_delivered_the_same_row_render_it_once(world: World) -> None
         sorted([RowOutcomeKind.COMPLETED.value, RowOutcomeKind.NOOP.value]),
     )
     assert len(world.encoder.calls) == 1
-    assert [k for k in world.storage.files if k.startswith("2026-10-18-2/")] == [
-        world.expected_key("A1")
-    ]
+    assert [
+        k for k in world.storage.files if k.startswith("2026-10-18-2/") and k.endswith(".mp4")
+    ] == [world.expected_key("A1")]
     assert world.row(2)["attempts"] == 1
 
 

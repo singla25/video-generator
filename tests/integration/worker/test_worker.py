@@ -57,6 +57,14 @@ def running_workers(broker: StubBroker, threads: int = 1, workers: int = 1) -> I
             worker.stop()
 
 
+def queued_messages(broker: StubBroker) -> list[dramatiq.Message]:
+    """Messages waiting on the test queue (the StubBroker keeps them encoded)."""
+    return [
+        dramatiq.Message.decode(item) if isinstance(item, bytes) else item
+        for item in broker.queues[QUEUE].queue
+    ]
+
+
 def drain(broker: StubBroker) -> None:
     """Wait until every message (including retries and delays) has been handled."""
     broker.join(QUEUE, timeout=20_000)
@@ -113,7 +121,7 @@ def test_enqueue_rows_puts_one_message_per_row_on_the_queue(
     _, queue = setup(world, broker)
     queue.enqueue_rows(world.batch_id, list(world.rows.values()))
     assert queue.depth() == 3
-    messages = list(broker.queues[QUEUE].queue)
+    messages = queued_messages(broker)
     assert {m.actor_name for m in messages} == {ROW_ACTOR_NAME}
     assert {UUID(m.kwargs["row_id"]) for m in messages} == set(world.rows.values())
     assert {UUID(m.kwargs["batch_id"]) for m in messages} == {world.batch_id}
@@ -123,7 +131,7 @@ def test_enqueue_preview_sends_a_preview_message(world: World, broker: StubBroke
     """D-19."""
     _, queue = setup(world, broker)
     queue.enqueue_preview(world.batch_id, world.rows[2])
-    message = broker.queues[QUEUE].queue[0]
+    message = queued_messages(broker)[0]
     assert message.actor_name == PREVIEW_ACTOR_NAME
     assert UUID(message.kwargs["row_id"]) == world.rows[2]
 
@@ -136,7 +144,7 @@ def test_messages_carry_only_ids_never_personal_data(
     _, queue = setup(world, broker)
     queue.enqueue_rows(world.batch_id, list(world.rows.values()))
     queue.enqueue_preview(world.batch_id, world.rows[2])
-    text = "".join(repr(m.asdict()) for m in broker.queues[QUEUE].queue)
+    text = "".join(repr(m.asdict()) for m in queued_messages(broker))
     assert "Canary" not in text
     assert "CANARY1" not in text
 

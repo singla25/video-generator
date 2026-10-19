@@ -31,6 +31,7 @@ from vidgen.api.app import create_app
 from vidgen.api.container import AppDeps
 from vidgen.domain.retry import WorkerCrashedError
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
+from vidgen.infrastructure.db.row_store import SqlRowStore
 from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
 from vidgen.infrastructure.ffmpeg.label import PillowLabelRenderer
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
@@ -104,14 +105,14 @@ def stack(db: Engine, test_db_url: str, tmp_path: Path) -> Iterator[Stack]:  # n
     encoder = ArmedCrashEncoder(
         FfmpegVideoEncoder(ffmpeg_path=ffmpeg, timeout_seconds=120.0, crossfade_ms=30)
     )
+    cipher = AesGcmCipher(
+        keys={settings.encryption_key_id: settings.encryption_key_bytes()},
+        active_key_id=settings.encryption_key_id,
+        index_key=settings.index_key_bytes(),
+    )
     renderer = RowRenderer(
-        session_factory=sessionmaker(db, expire_on_commit=False),
+        row_store_factory=lambda: SqlRowStore(sessionmaker(db, expire_on_commit=False), cipher),
         storage=storage,
-        cipher=AesGcmCipher(
-            keys={settings.encryption_key_id: settings.encryption_key_bytes()},
-            active_key_id=settings.encryption_key_id,
-            index_key=settings.index_key_bytes(),
-        ),
         voice=voice,
         lipsync=FakeLipSync(),
         encoder=encoder,

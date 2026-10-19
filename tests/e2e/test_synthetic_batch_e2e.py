@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import re
 import zipfile
 from typing import Any
 
@@ -109,6 +110,14 @@ def start_and_wait(stack: Stack, batch_id: str) -> dict[str, Any]:
     return result
 
 
+def assert_no_collision_suffix(files: list[str]) -> None:
+    """One file per ID: names are <ID>.mp4, never <ID>-2.mp4 (the canary ID has slashes)."""
+    plain = [name for name in files if name != "RJ_12_097_CANARY1.mp4"]
+    assert plain, "expected the ordinary rows' files"
+    assert all(re.fullmatch(r"ID-\d+\.mp4", name) for name in plain), files
+    assert len(set(files)) == len(files)
+
+
 def mp4_files(stack: Stack) -> list[str]:
     """Output videos in the batch folder."""
     folder = stack.media_root / FOLDER
@@ -134,7 +143,7 @@ def test_synthetic_ten_row_batch_goes_through_the_whole_system(
     files = mp4_files(stack)
     assert len(files) == 8
     assert "RJ_12_097_CANARY1.mp4" in files
-    assert not any("-2" in name for name in files)
+    assert_no_collision_suffix(files)
 
     # one output is probed: format kept, label burned in, creator metadata present
     sample = stack.media_root / FOLDER / "ID-3.mp4"
@@ -195,7 +204,7 @@ def test_a_worker_crash_is_retried_once_and_the_batch_still_completes(stack: Sta
     files = mp4_files(stack)
     assert len(files) == 8
     assert len(set(files)) == 8
-    assert not any("-2" in name for name in files)
+    assert_no_collision_suffix(files)
     counts = stack.client.get(f"/batches/{batch_id}/status").json()["counts"]
     assert counts["completed"] == 8
     assert counts["failed"] == 0

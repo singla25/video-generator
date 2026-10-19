@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T13c (DD-10)
+- Fixed 8 test defects (manifest in folder, decoded queue messages, collision-suffix check). Contract change: RowRenderer takes row_store_factory (no session_factory, no cipher) and RenderConfig.label_band_share. Added layering test (services must not import infrastructure), tests for domain outcomes, timing snap and the fake AI adapters.
+
 ## 2026-10-19 — T15a (RED: end-to-end)
 - Added tests/e2e/{conftest,test_synthetic_batch_e2e}.py: P1 (10-row batch, probe, manifest, downloads, PII logs), E1 (one injected crash, one retry), E2 (delete, no PII). Real app, Postgres test DB, FFmpeg, local storage, Pillow label; fake STT, voice, lip sync, quality. Queue: Dramatiq StubBroker with an in-process worker (no Redis).
 - Fails now on the missing worker modules; with throw-away stubs the flow reached the worker wait (template, consent, slot, batch, report, preview request all work).

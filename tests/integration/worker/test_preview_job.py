@@ -33,7 +33,9 @@ def test_preview_does_not_touch_the_row_or_the_batch_folder(world: World) -> Non
     before = world.row(2)
     preview(world)
     assert world.row(2) == before
-    assert not any(k.startswith("2026-10-18-2/") for k in world.storage.files)
+    assert not any(
+        k.startswith("2026-10-18-2/") and k.endswith(".mp4") for k in world.storage.files
+    )
     assert world.batch()["status"] == "RUNNING"
 
 

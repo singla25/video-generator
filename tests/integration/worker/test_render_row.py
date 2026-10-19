@@ -123,6 +123,17 @@ def test_label_is_a_full_width_band_of_at_least_ten_percent_of_the_frame_height(
     assert world.labels.sizes == [(320, label_band_height(240))]
 
 
+def test_the_label_band_share_comes_from_the_render_config(make_world: WorldFactory) -> None:
+    """DD-10: the service reads the share from RenderConfig, not from infrastructure code."""
+    from vidgen.services.render_row import RenderConfig
+
+    world = make_world(
+        config=RenderConfig(creator_entity=CREATOR, pause_s=PAUSE_S, label_band_share=0.2)
+    )
+    render(world)
+    assert world.labels.sizes == [(320, 48)]
+
+
 def test_metadata_has_creator_date_and_batch_id_only(world: World) -> None:
     """TT-AC10-P4, E6 (C3): no personal data."""
     render(world)
@@ -229,7 +240,9 @@ def test_quality_check_failure_is_output_check_failed_and_nothing_is_published(
     world.quality.result = ["FORMAT_MISMATCH"]
     outcome = render(world)
     assert outcome.code is FailureCode.OUTPUT_CHECK_FAILED
-    assert not any(k.startswith("2026-10-18-2/") for k in world.storage.files)
+    assert not any(
+        k.startswith("2026-10-18-2/") and k.endswith(".mp4") for k in world.storage.files
+    )
     assert world.row(2)["output_key"] is None
 
 
@@ -352,7 +365,9 @@ def test_disk_full_while_publishing_is_a_retryable_storage_error_with_no_partial
     world.storage.fail_next = 1
     first = render(world)
     assert first.kind is RowOutcomeKind.RETRY
-    assert not any(k.startswith("2026-10-18-2/") for k in world.storage.files)
+    assert not any(
+        k.startswith("2026-10-18-2/") and k.endswith(".mp4") for k in world.storage.files
+    )
     assert render(world).kind is RowOutcomeKind.COMPLETED
 
 
@@ -364,7 +379,9 @@ def test_disk_full_twice_ends_as_storage_error(world: World) -> None:
     assert outcome.kind is RowOutcomeKind.FAILED
     assert outcome.code is FailureCode.STORAGE_ERROR
     assert world.row(2)["failure_code"] == "STORAGE_ERROR"
-    assert not any(k.startswith("2026-10-18-2/") for k in world.storage.files)
+    assert not any(
+        k.startswith("2026-10-18-2/") and k.endswith(".mp4") for k in world.storage.files
+    )
 
 
 def test_template_video_missing_in_storage_is_an_internal_error(world: World) -> None:

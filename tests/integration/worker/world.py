@@ -27,6 +27,7 @@ from tests.fixtures.pipeline_fakes import (
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.models import Batch, BatchRow, Campaign, Template
 from vidgen.infrastructure.db.repositories import BatchRepository, NewRow
+from vidgen.infrastructure.db.row_store import SqlRowStore
 from vidgen.services.render_row import RenderConfig, RowRenderer
 
 FOLDER = "2026-10-18-2"
@@ -195,9 +196,8 @@ def build_world(
     lipsync, quality = FakeLipSync(order), FakeQuality(order)
     labels, previews = FakeLabels(), PreviewEvents()
     renderer = RowRenderer(
-        session_factory=factory,
+        row_store_factory=lambda: SqlRowStore(factory, cipher),
         storage=storage,
-        cipher=cipher,
         voice=voice,
         lipsync=lipsync,
         encoder=real_encoder or encoder,

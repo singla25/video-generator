@@ -179,3 +179,25 @@ def test_random_inputs_always_give_a_consistent_plan_or_the_documented_failure()
             slot + plan.pause_absorbed_s + plan.extension_s - plan.pause_padding_s, abs=1e-6
         )
         assert plan.final_audio_s == pytest.approx(spoken, abs=1e-6)
+
+
+def test_float_noise_below_a_nanosecond_gives_no_padding() -> None:
+    """Snap: a name 0.5 ns shorter than the slot is the same length for every practical use."""
+    plan = plan_timing(slot_s=0.6, pause_s=0.6, new_audio_s=0.6 - 5e-10, rules=RULES)
+    assert plan.pause_padding_s == 0.0
+    assert plan.extension_s == 0
+    assert plan.duration_delta_s == 0
+
+
+def test_a_gap_above_a_nanosecond_is_real_padding() -> None:
+    """Snap boundary: 2 ns of silence is kept, 1 ms certainly."""
+    tiny = plan_timing(slot_s=0.6, pause_s=0.6, new_audio_s=0.6 - 2e-9, rules=RULES)
+    assert tiny.pause_padding_s == pytest.approx(2e-9, rel=1e-3)
+    millisecond = plan_timing(slot_s=0.6, pause_s=0.6, new_audio_s=0.599, rules=RULES)
+    assert millisecond.pause_padding_s == pytest.approx(0.001)
+
+
+def test_padding_is_never_negative_for_a_longer_name() -> None:
+    """Snap: longer audio never yields negative padding."""
+    plan = plan_timing(slot_s=0.6, pause_s=0.6, new_audio_s=0.6 + 5e-10, rules=RULES)
+    assert plan.pause_padding_s == 0.0

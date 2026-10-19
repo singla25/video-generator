@@ -31,6 +31,27 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, default=str)
 
 
+ACCESS_LOGGER = "uvicorn.access"
+_ACCESS_PATH_ARG = 2  # uvicorn logs (client, method, path, http_version, status)
+
+
+class StripQueryFilter(logging.Filter):
+    """Cut the query string from access-log paths: searches carry names and IDs (C5)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Rewrite the path argument of an access record; always keep the record."""
+        args = record.args
+        if isinstance(args, tuple) and len(args) > _ACCESS_PATH_ARG:
+            path = args[_ACCESS_PATH_ARG]
+            if isinstance(path, str):
+                record.args = (
+                    *args[:_ACCESS_PATH_ARG],
+                    path.partition("?")[0],
+                    *args[_ACCESS_PATH_ARG + 1 :],
+                )
+        return True
+
+
 def configure_logging(level: int = logging.INFO) -> None:
     """Install the JSON handler on the root logger (idempotent)."""
     root = logging.getLogger()
@@ -40,6 +61,9 @@ def configure_logging(level: int = logging.INFO) -> None:
     setattr(handler, _HANDLER_MARK, True)
     root.addHandler(handler)
     root.setLevel(level)
+    access = logging.getLogger(ACCESS_LOGGER)
+    if not any(isinstance(f, StripQueryFilter) for f in access.filters):
+        access.addFilter(StripQueryFilter())
 
 
 def log_event(

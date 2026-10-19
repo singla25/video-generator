@@ -2,6 +2,44 @@
 
 Newest first. One entry per task.
 
+## 2026-10-20 — T14 round 2 (DD-10 layering)
+- `RowRenderer` takes `row_store_factory` (new `RowStore`/`PreviewSink` exports in `vidgen.ports`); the label band comes from `RenderConfig.label_band_share` (setting `label_band_share`, default 0.10, minimum 0.10). No `vidgen.infrastructure` import remains in `vidgen/services` (test_layering).
+- `worker/runner.py` builds the store factory; only `run()` is marked `# pragma: no cover`. Open: `render_config`/`build_renderer` need a unit test (module shows 0 % until then).
+
+## 2026-10-20 — T14 (render pipeline, worker, queue adapter)
+- Pipeline: `services/render_row.py` (RowRenderer: claim, tts -> lipsync -> encode -> check -> publish, retry classification, previews, manifest), `claim_rules.py` and `manifest.py` (pure), `infrastructure/db/row_store.py` (claim with `FOR UPDATE SKIP LOCKED`, batch completion under a batch row lock), ports `rows.py`, domain `outcomes.py`.
+- Queue and worker: `infrastructure/queue/dramatiq_queue.py` (ids only in messages, `depth()`), `worker/actors.py` (retries and busy/paused rows are re-sent with a delay; a busy row is re-checked until its worker finishes or the row goes stale), `worker/runner.py` (`python -m vidgen.worker`).
+- Defaults: `infrastructure/fakes` (STT, tone voice, pass-through lip sync, accept-all checker) wired when `ai_backend=fake`; `DramatiqJobQueue` on Redis is the default queue.
+- Privacy: `StripQueryFilter` on `uvicorn.access` removes query strings (DD-9); batch deletion now also removes `manifest.csv`.
+- Domain: `plan_timing` snaps float noise below 1e-9 s to zero padding (needed for exact plan equality in tests).
+- Layering note: `RowRenderer` takes a `session_factory` (the T13 contract) and builds `SqlRowStore` itself, so `services/render_row.py` imports one infrastructure class.
+- Tests: 1186 fast + 6 slow pass; 6 fast and 2 slow fail because of test defects (reported).
+- Open: tests for `infrastructure/fakes` and `worker/runner.py`; a transactional outbox for queue sends (M2).
+
+## 2026-10-20 — T12 (batch services + endpoints)
+- Ports: `JobQueue`, `BatchStore` and batch records (`ports/batches.py`), `Storage.folder_exists`, `UnitOfWork.batches`. Domain: `BatchAction.RETRY`, `DRAFT -> CANCEL` transitions (D-19).
+- Infrastructure: `SqlBatchStore` (Core bulk inserts, row locks, grouped counts), `LocalStorage.folder_exists` and `remove_stale_temp`.
+- Services (no FastAPI): `batch_create`, `batch_flow`, `batch_queries`, `batch_downloads` (streamed ZIP + manifest), `batch_retention`, pure `batch_rules`, facade `batches.BatchService`.
+- API: `/batches/*`, `/batches/{id}/download.zip`, `failures.csv`, `/stats/daily`; sheet uploads streamed with size limit (413); missing job queue fails loudly (`_NotConfiguredQueue`) until T14.
+- No migration 0002: preview state, mapping and sheet name live in the JSON `batches.column_mapping`.
+- Choices: jobs are queued after the commit (an outbox would be safer, M2); resume does not re-queue (worker must defer jobs while paused); `httpx` logger is set to WARNING because URLs can hold search text.
+- Tests: 1064 pass; 7 fail because of test defects (session TTL 8 h vs clock advances of days). Verified green with VIDGEN_SESSION_TTL_MINUTES=999999.
+
+## 2026-10-19 — T10 round 2 (D-17)
+- Login protection state moved to Postgres: new table `login_attempts` (campaign_id, client_key [resolved IP or `*` for the global row], window_started_at, failure_count, locked_until, last_allowed_at; PK campaign_id + client_key). `services/login_guard.py` is now pure decision functions plus a thin `LoginGuard` over a `LoginStateStore`; `infrastructure/db/login_state.py` implements it. Every attempt locks the global row (`SELECT ... FOR UPDATE`), so instances never lose updates; stale client rows are pruned on each write.
+- Partial unique index `uq_batch_rows_batch_id_voter_id_index_live` (status <> 'SKIPPED') and `ix_batches_finished_at`. Migration 0001 amended in place (create-only upgrade, reverse downgrade, no data); migration tests (schema diff empty, round trip) pass.
+- The repository does NOT map IntegrityError to DUPLICATE_ID: the T10b tests expect the raw IntegrityError. Window counting is now a fixed window from the first failure.
+- Open: `test_models::test_all_expected_tables_are_defined` expects exactly six tables; it needs `login_attempts` added (tester).
+
+## 2026-10-19 — T10 (persistence, migration 0001, auth, templates, audit)
+- DB: `infrastructure/db/{models,repositories,uow}.py` (SQLAlchemy 2 typed models, naming convention, PII only as ciphertext + blind index). Ports gained `TemplateRepository`, `AuditRepository`, `UnitOfWork`, `TemplateRecord`, `AuditEntry`.
+- Migration `0001_initial` (hand-written, create-only; downgrade drops the six tables in reverse). `env.py` needs only a DB URL (`-x db_url`, `sqlalchemy.url`, or `VIDGEN_DATABASE_URL`), no Settings. Checked offline (`--sql`) against the models' DDL: same statements, only constraint order differs. Never run against a database.
+- API: `create_app(settings, deps=AppDeps(...))`, signed session cookie + CSRF header, login guard (D-15), client-address resolution, streaming uploads with size limits (413 before storing), consent type by content, template/slot/audit endpoints, uniform `{code, message}` errors.
+- Services: `login_guard`, `templates`, `audit` (no FastAPI imports). Settings gained cookie/session/login/trusted_proxies/encryption_key_id and hex key helpers.
+- Choices: routers are mounted flat (FastAPI 0.146 `include_router` hides routes from `app.routes`); login-guard state is in-process (a multi-instance deployment needs Redis); sessions are stateless signed cookies (logout clears cookies, no server-side revocation; bump `session_version` to revoke all); `batch_rows.voter_id_index` index is NOT unique (duplicate IDs are stored as skipped rows); no `unique` on campaign names (tests create several), default campaign has a fixed id; default speech-to-text is a placeholder that fails with STT_FAILED until T14.
+- Tests: 837 pass, 1 fails (see report: `test_crossing_the_global_cap_writes_exactly_one_alert_per_window` conflicts with D-15 item 2); slow 4 pass.
+- Open: that one test; the migration round-trip test is for the tester.
+
 ## 2026-10-18 — T8 (FFmpeg engine + label)
 - Added `infrastructure/ffmpeg/{encoder,graph,facts,loudness,runner,label}.py`. `graph.py` and `loudness.py` are pure builders (TimingPlan to filter graph). The engine executes the plan only.
 - Speech stretch uses `atempo` (this ffmpeg build has no `rubberband`). Crossfade uses `acrossfade` (qsin, configured ms) at both joints. Loudness: ebur128 on template slot and new audio, then `volume` gain (clamped to 24 dB).

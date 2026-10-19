@@ -2,6 +2,38 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 — T15 (VERIFY M1)
+- Added runner tests, 17 tree cases (extra batch/API, ffmpeg VFR and colour, log helper, architecture rules), strict xfails for range requests and two oversize files; tree annotated with a verification table; COVERAGE.md written (98.2 %, domain and render_row 100 %, 1597 passed, 3 xfailed).
+- Findings: V1 two files over 300 lines, V2 no range requests, V3 stateless cookie (by ADR). No functional defect.
+
+## 2026-10-19 — T13c (DD-10)
+- Fixed 8 test defects (manifest in folder, decoded queue messages, collision-suffix check). Contract change: RowRenderer takes row_store_factory (no session_factory, no cipher) and RenderConfig.label_band_share. Added layering test (services must not import infrastructure), tests for domain outcomes, timing snap and the fake AI adapters.
+
+## 2026-10-19 — T15a (RED: end-to-end)
+- Added tests/e2e/{conftest,test_synthetic_batch_e2e}.py: P1 (10-row batch, probe, manifest, downloads, PII logs), E1 (one injected crash, one retry), E2 (delete, no PII). Real app, Postgres test DB, FFmpeg, local storage, Pillow label; fake STT, voice, lip sync, quality. Queue: Dramatiq StubBroker with an in-process worker (no Redis).
+- Fails now on the missing worker modules; with throw-away stubs the flow reached the worker wait (template, consent, slot, batch, report, preview request all work).
+
+## 2026-10-19 — T13 round 2 (DD-6)
+- Stage order is now tts, lipsync, encode, check, publish. Lip sync sees the original template plus the new audio; its output feeds the single final encode. Added a chain test; FakeLipSync records inputs and can append a marker.
+
+## 2026-10-19 — T13 (RED: worker pipeline)
+- Added tests/integration/worker/{world,conftest,test_render_row,test_row_states,test_completion,test_preview_job,test_worker,test_render_row_real_engine}.py, tests/unit/services/test_manifest.py, tests/integration/storage/test_stale_temp.py; fakes in tests/fixtures/pipeline_fakes.py; InMemoryStorage.fail_next.
+- Contract modules: vidgen.services.render_row (RowRenderer, RenderConfig, RowOutcomeKind), vidgen.services.manifest, vidgen.worker.actors (WorkerConfig, register_actors), vidgen.infrastructure.queue.dramatiq_queue (DramatiqJobQueue), LocalStorage.remove_stale_temp.
+- 123 tests (1 slow). Verified the bodies run with throw-away stubs (not committed).
+
+## 2026-10-19 — T11 (RED: batch API)
+- Added tests/integration/api/test_batches_{create,start,control,status,downloads,delete_retention}.py, batch_helpers.py; doubles FakeJobQueue and ChunkSpyStorage; Env.queue. The auth route sweep now fills any path parameter.
+- Contract: AppDeps.job_queue (enqueue_preview, enqueue_rows), Container.batches (preview_rendered, preview_failed, run_retention), batch routes plus the daily stats route. API codes added: PREVIEW_NOT_READY, PREVIEW_NOT_APPROVED, INVALID_STATE.
+- 193 new tests; 182 fail on missing routes, 11 pass trivially (404 cases); the 871 earlier tests pass.
+
+## 2026-10-19 — T10b
+- Fixed the global-cap alert test (429 inside the gap). Added tests/integration/api/test_login_persistence.py (two app instances, restart), tests/integration/db/test_duplicate_guard.py (partial unique index), tests/integration/db/test_migrations.py (own DB vidgen_migration_test), tests/unit/infra/test_system_clock.py.
+
+## 2026-10-19 — T9 (RED: db, auth, templates, audit)
+- Added tests/integration/{conftest.py,db/*,api/*}, fixtures tests/fixtures/doubles.py. Test DB fixture uses VIDGEN_TEST_DATABASE_URL (default vidgen_test, name must end in _test), create_all from models, tables emptied per test; no Alembic.
+- 126 test functions. Contract modules: vidgen.api.app, vidgen.api.deps, vidgen.infrastructure.db.models, vidgen.infrastructure.db.repositories. Template carries original_name (the spoken name to replace); Settings gains cookie_secure, session_ttl_minutes, session_version.
+- 649 earlier tests pass; new ones fail on ModuleNotFoundError.
+
 ## 2026-10-19 — T7b
 - Fixed float window arithmetic (window_n) and the three metadata tests (generated_on/batch_id required). Added unit tests for graph.py, loudness.py, facts.py (100 % line+branch). Added test_complex_text_shaping_is_active_for_devanagari (fails until Pillow has raqm).
 

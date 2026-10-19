@@ -8,12 +8,13 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import BinaryIO, Protocol
+from typing import Any, BinaryIO, Protocol
 from uuid import UUID
 
 from vidgen.domain.timing import TimingPlan
 from vidgen.domain.values import TextRegion, Word
-from vidgen.ports.models import SheetRow, VideoInfo
+from vidgen.ports.batches import BatchStore
+from vidgen.ports.models import AuditEntry, SheetRow, TemplateRecord, VideoInfo
 
 
 class SpeechToText(Protocol):
@@ -124,6 +125,10 @@ class Storage(Protocol):
         """Return True if ``key`` exists."""
         ...
 
+    def folder_exists(self, folder: str) -> bool:
+        """Return True if ``folder`` already exists, so a new batch must not reuse it (R6.2)."""
+        ...
+
 
 class SheetReader(Protocol):
     """Streams rows from a spreadsheet file."""
@@ -161,32 +166,71 @@ class Cipher(Protocol):
         ...
 
 
-# TODO(T10): replace ``object`` with the real entity types.
 class TemplateRepository(Protocol):
-    """Persistence for template profiles."""
+    """Persistence for template profiles and their consent records."""
 
-    def get(self, template_id: UUID) -> object | None:
+    def get(self, template_id: UUID) -> TemplateRecord | None:
         """Return the template or None."""
         ...
 
-    def add(self, template: object) -> None:
+    def list(self) -> list[TemplateRecord]:
+        """Return all templates, oldest first."""
+        ...
+
+    def add(self, campaign_id: UUID, template: TemplateRecord) -> None:
         """Persist a new template."""
         ...
 
-
-class BatchRepository(Protocol):
-    """Persistence for batches and their rows."""
-
-    def get(self, batch_id: UUID) -> object | None:
-        """Return the batch or None."""
+    def save(self, template: TemplateRecord) -> None:
+        """Persist changes to an existing template."""
         ...
 
-    def add(self, batch: object) -> None:
-        """Persist a new batch."""
+    def add_consent(
+        self, campaign_id: UUID, template_id: UUID, file_key: str, content_type: str
+    ) -> None:
+        """Record a confirmed consent file for a template."""
         ...
 
-    def delete(self, batch_id: UUID) -> None:
-        """Delete a batch with its rows."""
+
+class AuditRepository(Protocol):
+    """Append-only audit trail."""
+
+    def add(
+        self, *, campaign_id: UUID, actor: str, action: str, at: datetime, details: dict[str, Any]
+    ) -> None:
+        """Append an entry."""
+        ...
+
+    def list(self, *, campaign_id: UUID, action: str | None = None) -> list[AuditEntry]:
+        """Return entries oldest first, optionally only one action."""
+        ...
+
+
+class UnitOfWork(Protocol):
+    """One database transaction with the repositories that share it."""
+
+    @property
+    def campaign_id(self) -> UUID:
+        """The campaign all writes belong to."""
+        ...
+
+    @property
+    def templates(self) -> TemplateRepository:
+        """Template persistence."""
+        ...
+
+    @property
+    def audit(self) -> AuditRepository:
+        """Audit persistence."""
+        ...
+
+    @property
+    def batches(self) -> BatchStore:
+        """Batch and row persistence."""
+        ...
+
+    def commit(self) -> None:
+        """Commit the transaction."""
         ...
 
 

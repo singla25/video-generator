@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
-import logo from '../assets/logo.svg';
+import logo from '../assets/logo-mark.svg';
 import { useReducedMotion } from '../hooks';
 import { SecurityBanner } from './SecurityBanner';
 
@@ -98,7 +98,7 @@ export function AppShell() {
       </a>
       <nav aria-label="Primary" className="w-60 shrink-0 border-r bg-card p-4">
         <div className="mb-4 flex items-center gap-2 px-3">
-          <img src={logo} alt="" className="size-8" />
+          <img src={logo} alt="" className="size-7" />
           <span className="font-bold">VidGen Studio</span>
         </div>
         <GroupLabel>MENU</GroupLabel>

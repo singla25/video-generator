@@ -50,3 +50,8 @@ export function deltaText(days: DailyStat[], period: Period): string {
   const percent = Math.round(((current - previous) / previous) * 100);
   return `${percent >= 0 ? '+' : '-'}${formatNumber(Math.abs(percent))} % ${suffix}`;
 }
+
+/** True when the data reaches back far enough to compare with an earlier period. */
+export function hasPreviousPeriod(days: DailyStat[]): boolean {
+  return days.length > DAYS_PER_WEEK;
+}

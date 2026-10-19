@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { ApiError, apiFetch } from '../api/client';
-import logo from '../assets/logo.svg';
+import logo from '../assets/logo-mark.svg';
 
 type Problem = { kind: 'error'; text: string } | { kind: 'wait'; until: number } | null;
 

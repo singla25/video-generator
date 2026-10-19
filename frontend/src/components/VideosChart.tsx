@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from 'recharts';
 
 import { useDailyStats } from '../api/queries';
 import { formatNumber } from '../format';
 import { useReducedMotion } from '../hooks';
-import { PERIOD_DAYS, deltaText, toBars, type Period } from './chartData';
+import { PERIOD_DAYS, deltaText, hasPreviousPeriod, toBars, type Period } from './chartData';
+import { BarValue, HatchPattern, HatchedBar, type BarShapeProps } from './chartParts';
 import { Skeleton } from './states';
 
-const EMERALD = '#1e7a5a';
-const MINT = '#e6f6ee';
 const CHART_HEIGHT = 240;
 const INITIAL_WIDTH = 640;
 const PERIODS: { id: Period; label: string }[] = [
@@ -55,7 +54,6 @@ export function VideosChart() {
   const days = query.data?.days ?? [];
   const bars = toBars(days, period);
   const total = days.reduce((sum, d) => sum + d.videos, 0);
-  const peak = bars.reduce((best, b, i) => (b.videos > (bars[best]?.videos ?? -1) ? i : best), 0);
 
   return (
     <section className="min-w-0 rounded-card border bg-card p-5">
@@ -75,6 +73,7 @@ export function VideosChart() {
             </p>
             <span
               data-testid="chart-delta"
+              hidden={!hasPreviousPeriod(days)}
               className="rounded-full bg-mint px-2.5 py-0.5 text-xs font-semibold text-emerald"
             >
               {deltaText(days, period)}
@@ -91,16 +90,7 @@ export function VideosChart() {
               >
                 <BarChart data={bars} width={width} height={CHART_HEIGHT} margin={{ top: 24 }}>
                   <defs>
-                    <pattern
-                      id="hatch"
-                      width="5"
-                      height="5"
-                      patternUnits="userSpaceOnUse"
-                      patternTransform="rotate(45)"
-                    >
-                      <rect width="5" height="5" fill={MINT} />
-                      <line x1="0" y1="0" x2="0" y2="5" stroke={EMERALD} strokeWidth="2" />
-                    </pattern>
+                    <HatchPattern />
                   </defs>
                   <CartesianGrid
                     vertical
@@ -109,14 +99,25 @@ export function VideosChart() {
                     stroke="#e4e7ec"
                   />
                   <XAxis dataKey="label" axisLine={false} tickLine={false} />
-                  <Bar dataKey="videos" radius={6} isAnimationActive={!reduced}>
-                    {bars.map((bar, i) => (
-                      <Cell key={bar.label + i} fill={i === peak ? EMERALD : 'url(#hatch)'} />
-                    ))}
+                  <Bar
+                    dataKey="videos"
+                    isAnimationActive={!reduced}
+                    shape={(props: BarShapeProps) => (
+                      <HatchedBar {...props} highlighted={props.index === bars.length - 1} />
+                    )}
+                  >
                     <LabelList
                       dataKey="videos"
                       position="top"
-                      formatter={(v) => formatNumber(Number(v))}
+                      content={(props) => (
+                        <BarValue
+                          x={props.x}
+                          y={props.y}
+                          width={props.width}
+                          value={Number(props.value ?? 0)}
+                          highlighted={Number(props.index) === bars.length - 1}
+                        />
+                      )}
                     />
                   </Bar>
                 </BarChart>

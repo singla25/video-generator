@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useBatchAction, type BatchAction } from '../api/queries';
 import type { Batch, BatchStatus } from '../api/types';
 import { ApiError } from '../api/client';
-import { formatEta, formatNumber } from '../format';
+import { etaLabel, formatNumber } from '../format';
 import { ProgressRing } from './ProgressRing';
 
 const BUTTON =
@@ -25,7 +25,7 @@ export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: Bat
       <div className="my-4 flex items-center gap-5">
         <ProgressRing percent={status.progress_percent} />
         <div className="text-sm">
-          <p className="font-semibold">{formatEta(status.eta_seconds)}</p>
+          <p className="font-semibold">{etaLabel(batch.status, status.eta_seconds)}</p>
           <p className="text-muted">
             {formatNumber(counts.completed)} completed / {formatNumber(counts.total)}
           </p>

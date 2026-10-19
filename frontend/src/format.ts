@@ -36,3 +36,10 @@ const DEVANAGARI = /[ऀ-ॿ]/;
 export function hasDevanagari(text: string): boolean {
   return DEVANAGARI.test(text);
 }
+
+const FINISHED = new Set(['COMPLETED', 'CANCELLED', 'FAILED']);
+
+/** ETA line for a batch: "Done" once it has finished, otherwise the estimate. */
+export function etaLabel(batchStatus: string, seconds: number | null | undefined): string {
+  return FINISHED.has(batchStatus) ? 'Done' : formatEta(seconds);
+}

@@ -8,7 +8,7 @@ import type { FailureGroup } from '../api/types';
 import { ProgressRing } from '../components/ProgressRing';
 import { RowsTable } from '../components/RowsTable';
 import { ErrorState, Skeleton } from '../components/states';
-import { formatEta, formatNumber } from '../format';
+import { etaLabel, formatNumber } from '../format';
 import { BatchActions } from './batch/BatchActions';
 import { FailureReasons } from './batch/FailureReasons';
 
@@ -93,7 +93,9 @@ export function BatchDetailPage() {
             <p className="text-2xl font-bold">
               {STATUS_LABELS[batch.data.status] ?? batch.data.status}
             </p>
-            <p className="text-sm font-semibold">{formatEta(status.data.eta_seconds)}</p>
+            <p className="text-sm font-semibold">
+              {etaLabel(batch.data.status, status.data.eta_seconds)}
+            </p>
           </div>
           <dl className="ml-auto grid grid-cols-3 gap-x-6 gap-y-2 text-sm sm:grid-cols-6">
             <div>

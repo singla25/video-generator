@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { ApiError, apiFetch } from '../../api/client';
-import type { Batch, Template } from '../../api/types';
+import { ApiError, apiFetch, apiUrl } from '../../api/client';
+import type { Batch } from '../../api/types';
 
 const BUTTON =
   'rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint disabled:opacity-50';
@@ -11,20 +11,14 @@ function message(error: unknown): string {
 }
 
 /** Generate a preview, watch it render, watch it and approve it (the A5 gate). */
-export function PreviewPanel({ batch, template }: { batch: Batch; template: Template }) {
+export function PreviewPanel({ batch }: { batch: Batch }) {
   const client = useQueryClient();
   const refresh = () => client.invalidateQueries({ queryKey: ['batches'] });
   const state = batch.preview?.status ?? 'NONE';
   const approved = Boolean(batch.preview?.approved);
 
   const generate = useMutation({
-    mutationFn: async () => {
-      // A hand-set slot must be confirmed before a preview can use it.
-      if (template.slot && !template.slot_confirmed) {
-        await apiFetch(`/templates/${template.id}/slot/confirm`, { method: 'POST' });
-      }
-      return apiFetch(`/batches/${batch.id}/preview`, { method: 'POST' });
-    },
+    mutationFn: () => apiFetch(`/batches/${batch.id}/preview`, { method: 'POST' }),
     onSuccess: refresh,
   });
   const approve = useMutation({
@@ -46,7 +40,7 @@ export function PreviewPanel({ batch, template }: { batch: Batch; template: Temp
       {state === 'READY' && (
         <video
           data-testid="preview-video"
-          src={`/batches/${batch.id}/preview`}
+          src={apiUrl(`/batches/${batch.id}/preview`)}
           controls
           className="w-full rounded-tile bg-black"
         />

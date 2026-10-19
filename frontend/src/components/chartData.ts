@@ -12,6 +12,7 @@ export interface Bar {
 export const PERIOD_DAYS: Record<Period, number> = { day: 14, week: 56 };
 
 const DAYS_PER_WEEK = 7;
+const MS_PER_DAY = 86_400_000;
 
 function shortDate(iso: string, options: Intl.DateTimeFormatOptions): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', ...options });
@@ -22,15 +23,20 @@ export function toBars(days: DailyStat[], period: Period): Bar[] {
   if (period === 'day') {
     return days.map((d) => ({ label: shortDate(d.date, { weekday: 'short' }), videos: d.videos }));
   }
-  const bars: Bar[] = [];
-  for (let end = days.length; end > 0; end -= DAYS_PER_WEEK) {
-    const block = days.slice(Math.max(0, end - DAYS_PER_WEEK), end);
-    bars.unshift({
+  // Group by calendar distance from the newest day, so gaps in the data stay gaps.
+  const day = (iso: string) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / MS_PER_DAY);
+  const newest = days.length ? day(days[days.length - 1]!.date) : 0;
+  const blocks = new Map<number, DailyStat[]>();
+  for (const d of days) {
+    const index = Math.floor((newest - day(d.date)) / DAYS_PER_WEEK);
+    blocks.set(index, [...(blocks.get(index) ?? []), d]);
+  }
+  return [...blocks.entries()]
+    .sort(([a], [b]) => b - a)
+    .map(([, block]) => ({
       label: shortDate(block[0]!.date, { month: 'short', day: 'numeric' }),
       videos: block.reduce((sum, d) => sum + d.videos, 0),
-    });
-  }
-  return bars;
+    }));
 }
 
 /** Text for the change pill: latest 7 days (or week) against the one before. */

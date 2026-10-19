@@ -12,3 +12,6 @@ export const LOGIN_PATH = '/login';
 
 /** Name of the readable (non-HttpOnly) CSRF cookie set by the API. */
 export const CSRF_COOKIE = 'vidgen_csrf';
+
+/** All API calls and downloads live under this path (the page itself owns the other routes). */
+export const API_PREFIX = '/api';

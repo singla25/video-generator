@@ -2,6 +2,11 @@
 
 Newest first. One entry per task.
 
+## 2026-10-20 - DD-21/22/23 fixes
+- `API_PREFIX = '/api'` (client `apiUrl`, all download/video hrefs, dev proxy forwards only `/api`).
+- Slot editor with Confirm slot / "Slot confirmed" on the Templates card and wizard step 3 (explicit confirm; preview no longer auto-confirms).
+- `chipColors.ts` AA colour pairs applied inline; chart uses a fixed-width BarChart (hatch fills now render in jsdom) and weekly buckets are calendar-based.
+
 ## 2026-10-19 - F6 prep (DD-18, DD-19)
 - Removed `test-support/` and its setupFiles entry (glue now lives in tests/frontend/support).
 - RowsTable row Retry posts `/batches/{id}/rows/{n}/retry`; wizard step 3 plays the template video and marks the slot on the timeline.

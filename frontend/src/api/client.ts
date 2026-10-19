@@ -1,4 +1,4 @@
-import { CSRF_COOKIE } from '../config';
+import { API_PREFIX, CSRF_COOKIE } from '../config';
 
 /** An error returned by the API (or a network failure) in a uniform shape. */
 export class ApiError extends Error {
@@ -13,6 +13,11 @@ export class ApiError extends Error {
     this.code = code;
     this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+/** Same-origin API path for a call or a download link; never prefixes twice. */
+export function apiUrl(path: string): string {
+  return path === API_PREFIX || path.startsWith(`${API_PREFIX}/`) ? path : `${API_PREFIX}${path}`;
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD']);
@@ -65,7 +70,7 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
 
   let response: Response;
   try {
-    response = await fetch(`${window.location.origin}${path}`, {
+    response = await fetch(`${window.location.origin}${apiUrl(path)}`, {
       ...init,
       method,
       headers,

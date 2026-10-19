@@ -28,7 +28,7 @@ export function StepSlot({ batchId, onBack, onNext }: Props) {
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
         <SlotEditor key={`${t.id}-${t.slot?.start_s}-${t.slot?.end_s}`} template={t} />
-        <PreviewPanel batch={batch.data} template={t} />
+        <PreviewPanel batch={batch.data} />
       </div>
       <div className="flex justify-between">
         <button type="button" className={GHOST} onClick={onBack}>

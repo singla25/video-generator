@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 
+import { API_PREFIX } from './src/config';
+
 const BACKEND = 'http://127.0.0.1:8000';
-const PROXIED = ['/auth', '/templates', '/batches', '/stats', '/audit', '/health'];
+const PROXIED = [API_PREFIX];
 
 const FRONTEND_DIR = path.dirname(fileURLToPath(import.meta.url));
 const TESTS_DIR = path.resolve(FRONTEND_DIR, '../tests/frontend');

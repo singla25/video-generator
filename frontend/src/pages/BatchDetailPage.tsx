@@ -2,7 +2,7 @@ import { Download, FileText, X } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 
-import { ApiError } from '../api/client';
+import { ApiError, apiUrl } from '../api/client';
 import { useBatch, useBatchStatus } from '../api/queries';
 import type { FailureGroup } from '../api/types';
 import { ProgressRing } from '../components/ProgressRing';
@@ -113,13 +113,17 @@ export function BatchDetailPage() {
         <BatchActions batch={batch.data} />
         <div className="flex gap-2">
           <ExportLink
-            href={`/batches/${id}/download.zip`}
+            href={apiUrl(`/batches/${id}/download.zip`)}
             enabled={counts.completed > 0}
             icon="zip"
           >
             Download ZIP
           </ExportLink>
-          <ExportLink href={`/batches/${id}/failures.csv`} enabled={counts.failed > 0} icon="csv">
+          <ExportLink
+            href={apiUrl(`/batches/${id}/failures.csv`)}
+            enabled={counts.failed > 0}
+            icon="csv"
+          >
             Export failures CSV
           </ExportLink>
         </div>

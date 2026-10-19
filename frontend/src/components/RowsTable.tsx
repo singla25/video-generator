@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { Download, Play, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { ApiError, apiFetch } from '../api/client';
+import { ApiError, apiFetch, apiUrl } from '../api/client';
 import type { BatchRow, RowsPage } from '../api/types';
 import { formatRenderTime, hasDevanagari } from '../format';
 import { StatusChip, type RowStatus } from './StatusChip';
@@ -50,7 +50,7 @@ function RowActions({
   onRetry: () => void;
   onPreview?: (url: string, name: string) => void;
 }) {
-  const video = `/batches/${batchId}/rows/${row.row_number}/video`;
+  const video = apiUrl(`/batches/${batchId}/rows/${row.row_number}/video`);
   const icon = 'inline-grid size-8 place-items-center rounded-full border hover:bg-mint';
   return (
     <div className="flex gap-1.5">

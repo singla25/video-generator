@@ -1,13 +1,5 @@
-import { useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  ResponsiveContainer,
-  XAxis,
-} from 'recharts';
+import { useEffect, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis } from 'recharts';
 
 import { useDailyStats } from '../api/queries';
 import { formatNumber } from '../format';
@@ -47,6 +39,19 @@ export function VideosChart() {
   const [period, setPeriod] = useState<Period>('week');
   const reduced = useReducedMotion();
   const query = useDailyStats(PERIOD_DAYS[period]);
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(INITIAL_WIDTH);
+
+  // Follow the card width; where nothing can be measured (tests) keep the default.
+  useEffect(() => {
+    if (!box || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const next = Math.floor(entry?.contentRect.width ?? 0);
+      if (next > 0) setWidth(next);
+    });
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [box]);
   const days = query.data?.days ?? [];
   const bars = toBars(days, period);
   const total = days.reduce((sum, d) => sum + d.videos, 0);
@@ -79,22 +84,18 @@ export function VideosChart() {
             <p className="py-10 text-center text-muted">No videos generated in this period</p>
           ) : (
             <div className="mt-4" aria-label="Videos generated per period" role="img">
-              <ResponsiveContainer
-                width="100%"
-                height={CHART_HEIGHT}
-                initialDimension={{ width: INITIAL_WIDTH, height: CHART_HEIGHT }}
-              >
-                <BarChart data={bars} margin={{ top: 24 }}>
+              <div ref={setBox}>
+                <BarChart data={bars} width={width} height={CHART_HEIGHT} margin={{ top: 24 }}>
                   <defs>
                     <pattern
                       id="hatch"
-                      width="6"
-                      height="6"
+                      width="5"
+                      height="5"
                       patternUnits="userSpaceOnUse"
                       patternTransform="rotate(45)"
                     >
-                      <rect width="6" height="6" fill={MINT} />
-                      <line x1="0" y1="0" x2="0" y2="6" stroke={EMERALD} strokeWidth="3" />
+                      <rect width="5" height="5" fill={MINT} />
+                      <line x1="0" y1="0" x2="0" y2="5" stroke={EMERALD} strokeWidth="2" />
                     </pattern>
                   </defs>
                   <CartesianGrid
@@ -115,7 +116,7 @@ export function VideosChart() {
                     />
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
+              </div>
             </div>
           )}
         </>

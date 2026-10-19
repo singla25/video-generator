@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import type { Template } from '../../api/types';
 import { hasDevanagari } from '../../format';
+import { SlotEditor } from '../wizard/SlotEditor';
 import { ConsentForm } from './ConsentForm';
 
 function slotText(template: Template): string {
@@ -48,6 +49,15 @@ export function TemplateCard({ template }: { template: Template }) {
         >
           Upload consent
         </button>
+      )}
+      {template.consent_confirmed && !template.slot_confirmed && (
+        <div className="mt-4">
+          <SlotEditor
+            key={`${template.slot?.start_s}-${template.slot?.end_s}`}
+            template={template}
+            showVideo={false}
+          />
+        </div>
       )}
       {asking && <ConsentForm templateId={template.id} onDone={() => setAsking(false)} />}
     </article>

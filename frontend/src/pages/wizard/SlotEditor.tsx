@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
-import { ApiError, apiFetch } from '../../api/client';
+import { ApiError, apiFetch, apiUrl } from '../../api/client';
 import type { Template } from '../../api/types';
 
 const FIELD = 'w-full rounded-tile border px-3 py-2';
@@ -41,17 +41,33 @@ function Timeline({ start, end, duration }: { start: string; end: string; durati
 }
 
 /** Start/end fields for the name slot with a small timeline; saves with PUT. */
-export function SlotEditor({ template }: { template: Template }) {
+export function SlotEditor({
+  template,
+  showVideo = true,
+}: {
+  template: Template;
+  showVideo?: boolean;
+}) {
   const client = useQueryClient();
   const [start, setStart] = useState(template.slot ? String(template.slot.start_s) : '');
   const [end, setEnd] = useState(template.slot ? String(template.slot.end_s) : '');
   const [problem, setProblem] = useState<string | null>(null);
+
+  const ids = useId();
 
   const save = useMutation({
     mutationFn: (body: { start_s: number; end_s: number }) =>
       apiFetch(`/templates/${template.id}/slot`, { method: 'PUT', body: JSON.stringify(body) }),
     onSuccess: () => client.invalidateQueries(),
   });
+  // Saving a slot makes confirming it necessary again, so Confirm only acts on the saved slot.
+  const confirm = useMutation({
+    mutationFn: () => apiFetch(`/templates/${template.id}/slot/confirm`, { method: 'POST' }),
+    onSuccess: () => client.invalidateQueries(),
+  });
+  const error = save.isError ? save.error : confirm.isError ? confirm.error : null;
+  const saved = template.slot;
+  const unsavedEdit = !saved || parse(start) !== saved.start_s || parse(end) !== saved.end_s;
 
   function submit() {
     const s = parse(start);
@@ -69,21 +85,23 @@ export function SlotEditor({ template }: { template: Template }) {
           The slot could not be found automatically. Set it by hand.
         </p>
       )}
-      <video
-        data-testid="template-video"
-        src={`/templates/${template.id}/video`}
-        controls
-        preload="metadata"
-        className="w-full rounded-tile bg-black"
-      />
+      {showVideo && (
+        <video
+          data-testid="template-video"
+          src={apiUrl(`/templates/${template.id}/video`)}
+          controls
+          preload="metadata"
+          className="w-full rounded-tile bg-black"
+        />
+      )}
       <Timeline start={start} end={end} duration={template.duration_s} />
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="slot-start" className="mb-1 block text-sm font-semibold">
+          <label htmlFor={`${ids}-start`} className="mb-1 block text-sm font-semibold">
             Slot start (s)
           </label>
           <input
-            id="slot-start"
+            id={`${ids}-start`}
             type="number"
             step="0.1"
             min="0"
@@ -93,11 +111,11 @@ export function SlotEditor({ template }: { template: Template }) {
           />
         </div>
         <div>
-          <label htmlFor="slot-end" className="mb-1 block text-sm font-semibold">
+          <label htmlFor={`${ids}-end`} className="mb-1 block text-sm font-semibold">
             Slot end (s)
           </label>
           <input
-            id="slot-end"
+            id={`${ids}-end`}
             type="number"
             step="0.1"
             min="0"
@@ -108,19 +126,35 @@ export function SlotEditor({ template }: { template: Template }) {
         </div>
       </div>
       {problem && <p className="text-sm text-status-failed">{problem}</p>}
-      {save.isError && (
+      {error && (
         <p role="alert" className="text-sm text-status-failed">
-          {save.error instanceof ApiError ? save.error.message : 'Something went wrong.'}
+          {error instanceof ApiError ? error.message : 'Something went wrong.'}
         </p>
       )}
-      <button
-        type="button"
-        onClick={submit}
-        disabled={save.isPending}
-        className="rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint disabled:opacity-50"
-      >
-        Save slot
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={save.isPending}
+          className="rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint disabled:opacity-50"
+        >
+          Save slot
+        </button>
+        {saved && !template.slot_confirmed && (
+          <button
+            type="button"
+            onClick={() => confirm.mutate()}
+            disabled={confirm.isPending || unsavedEdit}
+            title={unsavedEdit ? 'Save the slot first' : undefined}
+            className="rounded-full bg-lime px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
+          >
+            Confirm slot
+          </button>
+        )}
+        {saved && template.slot_confirmed && (
+          <p className="text-sm font-semibold text-emerald">Slot confirmed</p>
+        )}
+      </div>
     </div>
   );
 }

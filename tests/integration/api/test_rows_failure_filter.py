@@ -8,7 +8,14 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import Engine
 
-from tests.integration.api.batch_helpers import people, running_batch, set_rows
+from tests.integration.api.batch_helpers import (
+    approve_preview,
+    new_batch,
+    people,
+    running_batch,
+    set_rows,
+    start,
+)
 from tests.integration.api.conftest import Env
 
 
@@ -68,9 +75,9 @@ def test_combines_with_status(env: Env, failed_batch: str) -> None:
 
 
 def test_combines_with_search(env: Env, failed_batch: str) -> None:
-    """Search narrows within the code (names are 'Person C' for row 3 and 'Person D' for row 4)."""
-    assert numbers(env, failed_batch, failure_code="TTS_FAILED", search="person d") == [4]
-    assert numbers(env, failed_batch, failure_code="TTS_FAILED", search="person e") == []
+    """Search narrows within the code: row 4 is 'Person C'; row 5 ('Person D') has another code."""
+    assert numbers(env, failed_batch, failure_code="TTS_FAILED", search="person c") == [4]
+    assert numbers(env, failed_batch, failure_code="TTS_FAILED", search="person d") == []
 
 
 def test_paging_counts_only_the_filtered_rows(env: Env, db: Engine) -> None:
@@ -96,7 +103,9 @@ def test_unknown_code_is_a_validation_error(env: Env, failed_batch: str, code: s
 
 def test_filter_is_limited_to_one_batch(env: Env, db: Engine, failed_batch: str) -> None:
     """Another batch with the same code does not leak in."""
-    other = running_batch(env, people(3))
+    other = new_batch(env, people(3))
+    approve_preview(env, other)
+    assert start(env, other, key="key-2").status_code == 200
     set_rows(db, other, [2], status="FAILED", failure_code="TTS_FAILED")
     assert numbers(env, failed_batch, failure_code="TTS_FAILED") == [3, 4]
     assert numbers(env, other, failure_code="TTS_FAILED") == [2]

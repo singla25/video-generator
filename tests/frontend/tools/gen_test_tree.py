@@ -36,7 +36,9 @@ HEADER = Path(__file__).with_name("tree_header.md")
 def collect() -> list[dict[str, object]]:
     """Find every case id in unit and e2e files."""
     rows: list[dict[str, object]] = []
-    files = sorted(glob.glob("tests/frontend/unit/*.test.tsx") + glob.glob("tests/frontend/e2e/*.ts"))
+    files = sorted(
+        glob.glob("tests/frontend/unit/*.test.tsx") + glob.glob("tests/frontend/e2e/*.ts")
+    )
     for name in files:
         level = "e2e" if "/e2e/" in name else "unit"
         for m in CASE.finditer(Path(name).read_text()):
@@ -58,18 +60,32 @@ def main() -> None:
     """Write the markdown file."""
     rows = collect()
     out = [HEADER.read_text().rstrip(), "", "## Tree", ""]
-    acs = sorted({str(r["ac"]) for r in rows}, key=lambda a: (not a.isdigit(), int(a) if a.isdigit() else 0, a))
+    acs = sorted(
+        {str(r["ac"]) for r in rows},
+        key=lambda a: (not a.isdigit(), int(a) if a.isdigit() else 0, a),
+    )
     for ac in acs:
         title = f"UI-AC{ac} {TITLES[int(ac)]}" if ac.isdigit() else "End-to-end (Playwright)"
         out += [f"### Feature: {title}", ""]
         for kind in "PNE":
-            for r in sorted((r for r in rows if r["ac"] == ac and r["kind"] == kind), key=lambda r: int(str(r["n"]))):
-                out.append(f"- {SYMBOL[kind]} `{r['id']}` [{r['level']}] {r['title']} — `{r['file']}`")
+            for r in sorted(
+                (r for r in rows if r["ac"] == ac and r["kind"] == kind),
+                key=lambda r: int(str(r["n"])),
+            ):
+                out.append(
+                    f"- {SYMBOL[kind]} `{r['id']}` [{r['level']}] {r['title']} — `{r['file']}`"
+                )
         out.append("")
     counts = collections.Counter((r["level"], r["kind"]) for r in rows)
-    out += ["## Counts (one line per case id; `it.each` expands to more runs)", "", "| Level | Positive | Negative | Edge |", "|---|---|---|---|"]
+    out += [
+        "## Counts (one line per case id; `it.each` expands to more runs)",
+        "",
+        "| Level | Positive | Negative | Edge |",
+        "|---|---|---|---|",
+    ]
     for level in ("unit", "e2e"):
-        out.append(f"| {level} | {counts[(level, 'P')]} | {counts[(level, 'N')]} | {counts[(level, 'E')]} |")
+        p, n, e = (counts[(level, k)] for k in "PNE")
+        out.append(f"| {level} | {p} | {n} | {e} |")
     Path("docs/test-tree/m3-dashboard.md").write_text("\n".join(out) + "\n")
     print(dict(counts), len(rows))
 

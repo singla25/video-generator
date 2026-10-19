@@ -8,16 +8,11 @@ local variables of one job; logs carry ids, codes and timings (C5).
 
 from __future__ import annotations
 
-import array
 import io
 import logging
-import math
-import time
-import wave
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import UUID
@@ -25,8 +20,7 @@ from uuid import UUID
 from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.domain.naming import output_file_name
 from vidgen.domain.outcomes import RowOutcomeKind
-from vidgen.domain.retry import FailureKind, RetryPolicy, classify_exception, failure_code_for
-from vidgen.domain.timing import TimingRules, plan_timing
+from vidgen.domain.timing import plan_timing
 from vidgen.domain.validation import effective_spoken_name
 from vidgen.logging import log_event
 from vidgen.ports import (
@@ -49,94 +43,21 @@ from vidgen.ports.rows import (
 )
 from vidgen.services.claim_rules import decide_claim, decide_completion
 from vidgen.services.manifest import build_manifest_csv, manifest_row
+from vidgen.services.render_support import (
+    MANIFEST_NAME,
+    PREVIEW_KEY,
+    SECONDS_DIGITS,
+    STAGE_PUBLISH,
+    RenderConfig,
+    RowOutcome,
+    Run,
+    band_height,
+    classify_failure,
+    is_silent,
+    logger,
+)
 
 __all__ = ["RenderConfig", "RowOutcome", "RowOutcomeKind", "RowRenderer"]
-
-logger = logging.getLogger(__name__)
-
-PREVIEW_KEY = "previews/{batch_id}.mp4"
-MANIFEST_NAME = "manifest.csv"
-WAV_CHUNK_FRAMES = 16384
-BAND_ROUNDING_TOLERANCE = 1e-9  # keeps 1300 * 0.10 at 130, not 131
-SECONDS_DIGITS = 6  # slot lengths are rounded to microseconds to avoid float noise
-STAGE_PUBLISH = "publish"
-_KIND_BY_DOMAIN_CODE = {
-    FailureCode.RENDER_TIMEOUT: FailureKind.TIMEOUT,
-    FailureCode.STORAGE_ERROR: FailureKind.STORAGE,
-}
-
-
-@dataclass(frozen=True)
-class RenderConfig:
-    """Everything configurable about rendering a row."""
-
-    creator_entity: str
-    pause_s: float  # DD-7: the pause after the name; per-template measurement comes later
-    timing: TimingRules = field(default_factory=TimingRules)
-    retry: RetryPolicy = field(default_factory=RetryPolicy)
-    label_band_share: float = 0.10  # share of the frame height covered by the AI label (C2)
-    stale_margin_s: float = 60.0  # a PROCESSING row older than timeout + margin is abandoned
-
-    @property
-    def stale_after(self) -> timedelta:
-        """How long a PROCESSING row may run before another worker takes it over."""
-        return timedelta(seconds=self.retry.timeout_seconds + self.stale_margin_s)
-
-
-@dataclass(frozen=True)
-class RowOutcome:
-    """What a delivery of a row job led to; ``delay_s`` tells when to deliver again."""
-
-    kind: RowOutcomeKind
-    code: FailureCode | None = None
-    delay_s: float = 0.0
-
-
-class _Run:
-    """One job's context: ids for logging and the stage that is currently running."""
-
-    def __init__(self, job: RowJob) -> None:
-        self.job = job
-        self.stage_name = ""
-
-    @contextmanager
-    def stage(self, name: str) -> Iterator[None]:
-        """Run a stage and log how long it took (also when it fails)."""
-        self.stage_name = name
-        started = time.perf_counter()
-        try:
-            yield
-        finally:
-            log_event(
-                logger,
-                "stage finished",
-                level=logging.DEBUG,
-                stage=name,
-                duration_ms=round((time.perf_counter() - started) * 1000, 1),
-                row_id=self.job.row_id,
-                batch_id=self.job.batch_id,
-                attempt=self.job.attempts,
-            )
-
-
-def _band_height(frame_height: int, share: float) -> int:
-    """Height of the label band: ``share`` of the frame height, rounded up."""
-    return math.ceil(frame_height * share - BAND_ROUNDING_TOLERANCE)
-
-
-def classify_failure(exc: Exception, *, publishing: bool) -> tuple[FailureKind, FailureCode]:
-    """Failure kind and stored code for an exception (B8, A4)."""
-    if isinstance(exc, DomainError):
-        return _KIND_BY_DOMAIN_CODE.get(exc.code, FailureKind.QUALITY), exc.code
-    kind = classify_exception(exc, during_output_write=publishing)
-    return kind, failure_code_for(kind)
-
-
-def _is_silent(path: Path) -> bool:
-    """True if a 16-bit PCM WAV file holds only zeros. Other files raise (the caller fails)."""
-    with wave.open(str(path), "rb") as handle:
-        chunks = iter(lambda: handle.readframes(WAV_CHUNK_FRAMES), b"")
-        return not any(any(array.array("h", frames)) for frames in chunks)
 
 
 class RowRenderer:
@@ -179,7 +100,7 @@ class RowRenderer:
         claim = self._store.claim(batch_id, row_id, decide, started)
         if claim.job is None:
             return RowOutcome(claim.outcome)
-        run = _Run(claim.job)
+        run = Run(claim.job)
         try:
             key = self._produce_output(run)
         except Exception as exc:
@@ -216,7 +137,7 @@ class RowRenderer:
     def _elapsed(self, started: datetime) -> float:
         return (self._clock.now() - started).total_seconds()
 
-    def _produce_output(self, run: _Run) -> str:
+    def _produce_output(self, run: Run) -> str:
         """Render a claimed row and store its output; returns the storage key."""
         job = run.job
         if job.attempts > self._config.retry.total_attempts:
@@ -245,7 +166,7 @@ class RowRenderer:
         job = self._store.preview_job(batch_id, row_id)
         if job is None:
             return RowOutcome(RowOutcomeKind.NOOP)
-        run = _Run(job)
+        run = Run(job)
         try:
             self._ensure_allowed(job)
             key = PREVIEW_KEY.format(batch_id=batch_id)
@@ -272,12 +193,12 @@ class RowRenderer:
             raise DomainError(FailureCode.CONTENT_LOCK_VIOLATION)
 
     @contextmanager
-    def _video(self, run: _Run) -> Iterator[Path]:
+    def _video(self, run: Run) -> Iterator[Path]:
         """Produce the finished video in a temporary folder that is always removed."""
         with TemporaryDirectory(prefix="vidgen-row-") as folder:
             yield self._produce_video(run, Path(folder))
 
-    def _produce_video(self, run: _Run, folder: Path) -> Path:
+    def _produce_video(self, run: Run, folder: Path) -> Path:
         """tts -> lipsync -> encode -> check. Returns the path of the checked output."""
         job = run.job
         slot = job.template.slot
@@ -302,7 +223,7 @@ class RowRenderer:
         label = folder / "label.png"
         self._labels.render_label(
             job.template.width,
-            _band_height(job.template.height, self._config.label_band_share),
+            band_height(job.template.height, self._config.label_band_share),
             label,
         )
         output = folder / "output.mp4"
@@ -322,7 +243,7 @@ class RowRenderer:
         """Create the new speech; an error, zero length or silence is TTS_FAILED (B2)."""
         try:
             seconds = self._voice.synthesize(text, sample, out)
-            unusable = seconds <= 0 or _is_silent(out)
+            unusable = seconds <= 0 or is_silent(out)
         except Exception as exc:
             raise DomainError(FailureCode.TTS_FAILED) from exc
         if unusable:

@@ -9,7 +9,7 @@ Extra batch state (column mapping, sheet name, preview) is kept as one JSON docu
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import datetime
 from itertools import islice
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -19,14 +19,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from vidgen.domain.codes import DomainError, FailureCode
-from vidgen.domain.status import ApprovalFingerprint
+from vidgen.infrastructure.db.batch_documents import apply_to_row, to_record
+from vidgen.infrastructure.db.batch_stats_store import BatchStatsMixin
 from vidgen.infrastructure.db.models import Batch, BatchRow
 from vidgen.ports.batches import (
     BatchRecord,
-    DayStat,
-    MappingRecord,
     NewBatchRow,
-    PreviewRecord,
     RowView,
 )
 
@@ -39,99 +37,7 @@ FINISHED_STATUSES = ("COMPLETED", "CANCELLED")
 FALLBACK_FAILURE_CODE = FailureCode.INTERNAL_ERROR.value
 
 
-# ---- JSON document <-> records --------------------------------------------------------
-
-
-def _fingerprint_json(fp: ApprovalFingerprint | None) -> dict[str, Any] | None:
-    if fp is None:
-        return None
-    return {
-        "slot_start_s": fp.slot_start_s,
-        "slot_end_s": fp.slot_end_s,
-        "template_id": fp.template_id,
-        "mapping": list(fp.mapping),
-    }
-
-
-def _fingerprint_from(data: dict[str, Any] | None) -> ApprovalFingerprint | None:
-    if data is None:
-        return None
-    return ApprovalFingerprint(
-        data["slot_start_s"], data["slot_end_s"], data["template_id"], tuple(data["mapping"])
-    )
-
-
-def _document(batch: BatchRecord) -> dict[str, Any]:
-    preview = batch.preview
-    mapping = batch.mapping
-    return {
-        "sheet_name": batch.sheet_name,
-        "mapping": None
-        if mapping is None
-        else {
-            "name_column": mapping.name_column,
-            "id_column": mapping.id_column,
-            "spoken_name_column": mapping.spoken_name_column,
-            "name_index": mapping.name_index,
-            "id_index": mapping.id_index,
-            "spoken_name_index": mapping.spoken_name_index,
-        },
-        "preview": {
-            "status": preview.status,
-            "key": preview.key,
-            "row_id": None if preview.row_id is None else str(preview.row_id),
-            "failure_code": preview.failure_code,
-            "requested_for": _fingerprint_json(preview.requested_for),
-            "rendered_for": _fingerprint_json(preview.rendered_for),
-            "approved_for": _fingerprint_json(preview.approved_for),
-        },
-    }
-
-
-def _record(row: Batch) -> BatchRecord:
-    document: dict[str, Any] = row.column_mapping or {}
-    mapping = document.get("mapping")
-    preview = document.get("preview") or {}
-    return BatchRecord(
-        id=row.id,
-        template_id=row.template_id,
-        status=row.status,
-        created_at=row.created_at,
-        sheet_key=row.sheet_key,
-        sheet_name=document.get("sheet_name"),
-        folder_name=row.folder_name,
-        idempotency_key=row.idempotency_key,
-        started_at=row.started_at,
-        finished_at=row.finished_at,
-        mapping=None if mapping is None else MappingRecord(**mapping),
-        preview=PreviewRecord(
-            status=preview.get("status", "NONE"),
-            key=preview.get("key"),
-            row_id=UUID(preview["row_id"]) if preview.get("row_id") else None,
-            failure_code=preview.get("failure_code"),
-            requested_for=_fingerprint_from(preview.get("requested_for")),
-            rendered_for=_fingerprint_from(preview.get("rendered_for")),
-            approved_for=_fingerprint_from(preview.get("approved_for")),
-        ),
-    )
-
-
-def _apply(row: Batch, batch: BatchRecord) -> None:
-    row.template_id = batch.template_id
-    row.status = batch.status
-    row.sheet_key = batch.sheet_key
-    row.folder_name = batch.folder_name
-    row.idempotency_key = batch.idempotency_key
-    row.created_at = batch.created_at
-    row.started_at = batch.started_at
-    row.finished_at = batch.finished_at
-    row.column_mapping = _document(batch)
-
-
-# ---- store ----------------------------------------------------------------------------
-
-
-class SqlBatchStore:
+class SqlBatchStore(BatchStatsMixin):
     """Batches and rows in Postgres."""
 
     def __init__(self, session: Session, cipher: AesGcmCipher) -> None:
@@ -143,7 +49,7 @@ class SqlBatchStore:
     def add(self, campaign_id: UUID, batch: BatchRecord) -> None:
         """Insert a new batch."""
         row = Batch(id=batch.id, campaign_id=campaign_id)
-        _apply(row, batch)
+        apply_to_row(row, batch)
         self._session.add(row)
         self._session.flush()
 
@@ -153,14 +59,14 @@ class SqlBatchStore:
         if lock:
             query = query.with_for_update()
         row = self._session.execute(query).scalar_one_or_none()
-        return None if row is None else _record(row)
+        return None if row is None else to_record(row)
 
     def save(self, batch: BatchRecord) -> None:
         """Write the batch's changes."""
         row = self._session.get(Batch, batch.id)
         if row is None:
             raise LookupError("batch does not exist")
-        _apply(row, batch)
+        apply_to_row(row, batch)
         self._session.flush()
 
     def delete(self, batch_id: UUID) -> None:
@@ -172,7 +78,7 @@ class SqlBatchStore:
         query = select(Batch).order_by(Batch.created_at.desc(), Batch.id.desc())
         rows = self._session.scalars(query.offset(offset).limit(limit))
         total = self._session.execute(select(func.count()).select_from(Batch)).scalar_one()
-        return [_record(r) for r in rows], int(total)
+        return [to_record(r) for r in rows], int(total)
 
     def by_idempotency_key(self, key: str) -> UUID | None:
         """Id of the batch that used this start key."""
@@ -330,55 +236,3 @@ class SqlBatchStore:
         )
 
     # statistics
-
-    def failure_breakdown(self, batch_id: UUID) -> list[tuple[str, int]]:
-        """(code, count) of FAILED rows, biggest group first."""
-        code = func.coalesce(BatchRow.failure_code, FALLBACK_FAILURE_CODE)
-        query = (
-            select(code, func.count())
-            .where(BatchRow.batch_id == batch_id, BatchRow.status == "FAILED")
-            .group_by(code)
-            .order_by(func.count().desc(), code)
-        )
-        return [(str(c), int(n)) for c, n in self._session.execute(query)]
-
-    def recent_render_seconds(self, batch_id: UUID, limit: int) -> list[float]:
-        """Render times of the last completed rows, oldest first."""
-        query = (
-            select(BatchRow.render_seconds)
-            .where(
-                BatchRow.batch_id == batch_id,
-                BatchRow.status == "COMPLETED",
-                BatchRow.render_seconds.is_not(None),
-            )
-            .order_by(BatchRow.finished_at.desc(), BatchRow.row_number.desc())
-            .limit(limit)
-        )
-        values = [s for s in self._session.scalars(query) if s is not None]
-        return [float(s) for s in reversed(values)]
-
-    def daily_stats(self, first_day: date, last_day: date) -> dict[date, DayStat]:
-        """Completed rows per UTC day."""
-        start = datetime.combine(first_day, time.min, tzinfo=UTC)
-        end = datetime.combine(last_day + timedelta(days=1), time.min, tzinfo=UTC)
-        day = func.date(func.timezone("UTC", BatchRow.finished_at))
-        query = (
-            select(day, func.count(), func.avg(BatchRow.render_seconds))
-            .where(
-                BatchRow.status == "COMPLETED",
-                BatchRow.finished_at >= start,
-                BatchRow.finished_at < end,
-            )
-            .group_by(day)
-        )
-        return {
-            d: DayStat(int(n), None if avg is None else float(avg))
-            for d, n, avg in self._session.execute(query)
-        }
-
-    def output_keys(self, batch_id: UUID) -> list[str]:
-        """Storage keys of every rendered output."""
-        query = select(BatchRow.output_key).where(
-            BatchRow.batch_id == batch_id, BatchRow.output_key.is_not(None)
-        )
-        return [key for key in self._session.scalars(query) if key]

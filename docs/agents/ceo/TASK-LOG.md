@@ -45,7 +45,8 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | — | **Merge gate 3** (M1 complete) | CEO | — | ✅ Merged `49f0767` (DD-12); main: 1611 pass + 1 xfail, mypy/ruff clean | Delegated (CEO) | ✅ |
 | F0 | Node.js | Admin | — | ✅ Already installed (v26.12.0, DD-2); placeholder brand DD-1 | — | — |
 | F1a | Frontend tooling scaffold (no app code) | frontend-dev | sonnet | ✅ Done & CEO-verified after 3 rounds @ b42f597 (types DD-14, Tailwind 4 DD-15); npm audit 0, build ok | Delegated (CEO) | — |
-| F1 | RED: dashboard test tree + failing UI tests | tester (fresh agent) | sonnet | Round 1 @ ae65ef6 (156 case IDs). Round 2 in progress: drop symlink, DD-17 contract + backend RED tests | Delegated (CEO) | — |
+| F1 | RED: dashboard test tree + failing UI tests | tester (fresh agent) | sonnet | ✅ Done & CEO-reviewed after 2 rounds @ e85df23 — 159 UI case IDs + 32 backend RED tests (DD-17) | Delegated (CEO) | — |
 | F1b | Vitest config resolves tests/frontend (scoped fs.allow) | frontend-dev | sonnet | ✅ Done & CEO-verified @ 9ce6bee (swept in the tester's staged symlink removal; see incident notes) | Delegated (CEO) | — |
-| B-M3 | Backend: inspect-sheet + failure_code filter (GREEN after F1 r2) | backend-dev | sonnet | Planned | Delegated (CEO) | — |
+| B-M3 | Backend: inspect-sheet + failure_code filter (GREEN) | backend-dev | sonnet | In progress (parallel with F2) | Delegated (CEO) | — |
+| F2 | App shell, auth, API client, primitives | frontend-dev | sonnet | In progress (parallel with B-M3) | Delegated (CEO) | — |
 | F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | Planned; F1 after F1a | Plan: yes (Admin); assignment: delegated | — |

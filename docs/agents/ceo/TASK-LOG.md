@@ -31,7 +31,7 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | — | Migration 0001 on dev DB `vidgen` | Admin | — | ✅ Run by Admin 2026-10-19 (after a rehearsal on `vidgen_rehearsal_test`, since dropped). CEO verified read-only: 7 tables + alembic_version @ 0001, all empty, batch_rows PII only `*_enc` bytea + `voter_id_index`, duplicate-guard and finished_at indexes present | Yes, 2026-10-19 | n/a |
 | T11 | RED: batch API | tester | sonnet | ✅ Done & CEO-reviewed (+1 follow-up: on-disk folder collision) @ a83e3e9 — 195 new tests, 184 fail on missing routes, 882 pass | Yes, 2026-10-19 | — |
 | T12 | GREEN: batch services + endpoints | backend-dev | sonnet | ✅ Done & CEO-reviewed @ c0ced81 (interrupted by usage limit, resumed) — 1064 pass; 7 failures = test clock/session defects → T11b; coverage 89–100 %; no migration 0002 (DD-8) | Yes, 2026-10-19 | — |
-| T11b | Tests: re-login after clock jumps; access-log query redaction (DD-9) | tester | sonnet | In progress | Delegated (CEO) | — |
+| T11b | Tests: re-login after clock jumps; access-log query redaction (DD-9) | tester | sonnet | ✅ Done & CEO-reviewed @ e418c64 — session TTL untouched; 4 access-log tests fail until T14 | Delegated (CEO) | — |
 | T13 | RED: worker pipeline | tester | sonnet | ✅ Done & CEO-reviewed after 1 round (stage order DD-6) @ fdb25d2 — 123+ tests; bodies verified with throwaway stubs | Delegated (CEO), 2026-10-19 | — |
 | T14 | GREEN: render pipeline, worker, Dramatiq queue, fake adapters, access-log redaction | backend-dev | sonnet | In progress (parallel with T11b) | Delegated (CEO) | — |
 | T15–T16 | Verify + E2E; CEO review → gate 3 | tester / CEO | sonnet | Planned | — | — |

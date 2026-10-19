@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 - F3
+- OverviewPage (KPI cards, Videos generated chart with hatched bars, current batch panel, polling, error/empty/loading), RowsTable, api/queries, api/types, format helpers. Typecheck is green again.
+- Open: AC9-N4 and AC12-P1 need BatchDetailPage (F4).
+
 ## 2026-10-19 - F2
 - App routing, api/client (CSRF, ApiError, 401 handler), LoginPage with 429 countdown, AppShell (sidebar, header, skip link, security banner), StatusChip, CountUp, Skeleton/ErrorState/EmptyState, useReducedMotion; other pages are placeholders.
 - `tsconfig.tests.json` type-checks `tests/frontend` (typecheck script runs both). Fails only until RowsTable exists (F4).

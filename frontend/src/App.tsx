@@ -5,6 +5,7 @@ import { setUnauthorizedHandler } from './api/client';
 import { LOGIN_PATH } from './config';
 import { AppShell } from './layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
+import { OverviewPage } from './pages/OverviewPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
 function NotFound() {
@@ -51,7 +52,8 @@ export function App() {
     <Routes>
       <Route path={LOGIN_PATH} element={<LoginPage />} />
       <Route element={<AppShell />}>
-        {PAGES.map(([path, name]) => (
+        <Route path="/" element={<OverviewPage />} />
+        {PAGES.filter(([path]) => path !== '/').map(([path, name]) => (
           <Route key={path} path={path} element={<PlaceholderPage name={name} />} />
         ))}
         <Route path="*" element={<NotFound />} />

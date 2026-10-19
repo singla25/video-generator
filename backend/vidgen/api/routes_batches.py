@@ -7,10 +7,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 
 from vidgen.api.deps import container, require_csrf
-from vidgen.api.downloads import stream_file
 from vidgen.api.errors import NOT_FOUND, VALIDATION_ERROR, ApiError
 from vidgen.api.schemas_batches import (
     MappingBody,
@@ -23,6 +22,7 @@ from vidgen.api.schemas_batches import (
     status_json,
 )
 from vidgen.api.uploads import PAYLOAD_TOO_LARGE, UploadTooLargeError, read_upload
+from vidgen.api.video_response import video_response
 from vidgen.domain.codes import FailureCode, plain_message
 from vidgen.domain.status import RowStatus
 from vidgen.services.batch_create import MappingRequest
@@ -36,7 +36,6 @@ MAX_PAGE_SIZE = 200
 MAX_SEARCH_CHARS = 200
 MAX_STATS_DAYS = 366
 DEFAULT_STATS_DAYS = 30
-PREVIEW_MEDIA_TYPE = "video/mp4"
 Page = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)]
 
@@ -174,15 +173,19 @@ def approve_preview(batch_id: UUID, request: Request) -> dict[str, Any]:
 
 
 @router.get("/{batch_id}/preview")
-def download_preview(batch_id: UUID, request: Request) -> StreamingResponse:
-    """The rendered preview video."""
+def download_preview(
+    batch_id: UUID,
+    request: Request,
+    range_header: Annotated[str | None, Header(alias="Range")] = None,
+) -> Response:
+    """The rendered preview video; byte ranges are supported."""
     app = container(request)
     key = app.batches.preview_key(batch_id)
     try:
         stream = app.storage.open(key)
     except FileNotFoundError:
         raise ApiError(404, NOT_FOUND) from None
-    return StreamingResponse(stream_file(stream), media_type=PREVIEW_MEDIA_TYPE)
+    return video_response(stream, range_header)
 
 
 @router.post("/{batch_id}/start")

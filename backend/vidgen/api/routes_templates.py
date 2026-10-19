@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Header, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from vidgen.api.deps import container, require_csrf
-from vidgen.api.errors import VALIDATION_ERROR, ApiError
+from vidgen.api.errors import NOT_FOUND, VALIDATION_ERROR, ApiError
 from vidgen.api.schemas import SlotRequest, template_json
 from vidgen.api.uploads import PAYLOAD_TOO_LARGE, UploadTooLargeError, read_upload
+from vidgen.api.video_response import video_response
 from vidgen.domain.codes import FailureCode, plain_message
 
 router = APIRouter(prefix="/templates", tags=["templates"], dependencies=[Depends(require_csrf)])
@@ -51,6 +52,22 @@ def list_templates(request: Request) -> dict[str, Any]:
 def get_template(template_id: UUID, request: Request) -> dict[str, Any]:
     """One template with its profile."""
     return template_json(container(request).templates.get(template_id))
+
+
+@router.get("/{template_id}/video")
+def template_video(
+    template_id: UUID,
+    request: Request,
+    range_header: Annotated[str | None, Header(alias="Range")] = None,
+) -> Response:
+    """The template video (for the slot editor); byte ranges are supported."""
+    app = container(request)
+    key = app.templates.get(template_id).video_key
+    try:
+        stream = app.storage.open(key)
+    except FileNotFoundError:
+        raise ApiError(404, NOT_FOUND) from None
+    return video_response(stream, range_header)
 
 
 @router.post("/{template_id}/consent")

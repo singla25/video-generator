@@ -74,6 +74,27 @@ async def create_batch(request: Request) -> dict[str, Any]:
     return batch_json(view)
 
 
+@router.post("/inspect-sheet")
+async def inspect_sheet(request: Request) -> dict[str, Any]:
+    """Headers, the first rows and the row count of a sheet; nothing is stored."""
+    app = container(request)
+    try:
+        async with read_upload(request, max_file_bytes=app.settings.max_sheet_bytes) as form:
+            sheet = form.files.get("sheet")
+            if sheet is None:
+                raise ApiError(422, VALIDATION_ERROR)
+            result = await run_in_threadpool(app.batches.inspect_sheet, sheet)
+    except UploadTooLargeError:
+        code = FailureCode.UNSUPPORTED_SHEET
+        raise ApiError(PAYLOAD_TOO_LARGE, code.value, plain_message(code)) from None
+    return {
+        "sheet_name": result.sheet_name,
+        "headers": result.headers,
+        "sample_rows": result.sample_rows,
+        "row_count": result.row_count,
+    }
+
+
 @router.get("")
 def list_batches(
     request: Request, page: Page = 1, page_size: PageSize = DEFAULT_PAGE_SIZE
@@ -113,12 +134,16 @@ def get_rows(
     request: Request,
     status: RowStatus | None = None,
     search: Annotated[str | None, Query(max_length=MAX_SEARCH_CHARS)] = None,
+    failure_code: FailureCode | None = None,
     page: Page = 1,
     page_size: PageSize = DEFAULT_PAGE_SIZE,
 ) -> dict[str, Any]:
-    """Rows with status filter, search and paging."""
+    """Rows with status and failure-code filters, search and paging."""
     status_value = None if status is None else status.value
-    result = container(request).batches.rows(batch_id, status_value, search, page, page_size)
+    code_value = None if failure_code is None else failure_code.value
+    result = container(request).batches.rows(
+        batch_id, status_value, search, page, page_size, code_value
+    )
     return rows_json(result)
 
 

@@ -62,19 +62,27 @@ class BatchQueries:
         )
 
     def rows(
-        self, batch_id: UUID, status: str | None, search: str | None, page: int, page_size: int
+        self,
+        batch_id: UUID,
+        status: str | None,
+        search: str | None,
+        page: int,
+        page_size: int,
+        failure_code: str | None = None,
     ) -> RowsPage:
         """A page of rows; search runs here on decrypted values and never leaves the service."""
         offset = (page - 1) * page_size
         with self._ctx.uow() as uow:
             load_batch(uow, batch_id)
             if not search:
-                rows, total = uow.batches.rows_page(batch_id, status, offset, page_size)
+                rows, total = uow.batches.rows_page(
+                    batch_id, status, offset, page_size, failure_code
+                )
             else:
                 statuses = [status] if status else None
                 found = [
                     r
-                    for r in uow.batches.iter_rows(batch_id, statuses)
+                    for r in uow.batches.iter_rows(batch_id, statuses, failure_code)
                     if matches_search(search, r.name, r.voter_id)
                 ]
                 total, rows = len(found), found[offset : offset + page_size]

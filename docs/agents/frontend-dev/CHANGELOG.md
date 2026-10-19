@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19 - F5
+- BatchDetail (stats, failure reasons, inline preview, exports, pause/resume/cancel/delete with dialogs), Templates (cards, consent upload, new template form), History, Security; ConfirmDialog; `useBatchAction` now guards double submits and supports cancel.
+- Open: AC5-P10 (test defect) and the DD-18 per-row retry tests (AC4-P6/P11/N2) are not wired yet.
+
 ## 2026-10-19 - F4
 - New batch wizard (4 steps, draft resume, preview gate, idempotent start) in `src/pages/WizardPage.tsx` and `src/pages/wizard/*`.
 - `test-support/node-fetch-types.ts` (Vitest setup): lets multipart uploads built from jsdom files reach MSW handlers (jsdom vs Node File/FormData mismatch).

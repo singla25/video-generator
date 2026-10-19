@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 
 import { POLL_INTERVAL_MS } from '../config';
 import { apiFetch } from './client';
@@ -60,12 +61,16 @@ export function useDailyStats(days: number) {
   });
 }
 
-export type BatchAction = 'pause' | 'resume' | 'retry-failed';
+export type BatchAction = 'pause' | 'resume' | 'retry-failed' | 'cancel';
 
-/** Pause, resume or retry-failed on a batch; refreshes the dashboard data afterwards. */
+/**
+ * Pause, resume, retry-failed or cancel a batch; refreshes the dashboard data afterwards.
+ * `run` ignores calls while a request is in flight, so a double click sends one request.
+ */
 export function useBatchAction(batchId: string) {
   const client = useQueryClient();
-  return useMutation({
+  const busy = useRef(false);
+  const mutation = useMutation({
     mutationFn: (action: BatchAction) =>
       apiFetch(`/batches/${batchId}/${action}`, { method: 'POST' }),
     onSuccess: async () => {
@@ -75,5 +80,14 @@ export function useBatchAction(batchId: string) {
         client.invalidateQueries({ queryKey: ['rows'] }),
       ]);
     },
+    onSettled: () => {
+      busy.current = false;
+    },
   });
+  const run = (action: BatchAction) => {
+    if (busy.current) return;
+    busy.current = true;
+    mutation.mutate(action);
+  };
+  return { run, isPending: mutation.isPending, isError: mutation.isError, error: mutation.error };
 }

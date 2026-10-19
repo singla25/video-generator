@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { UploadCloud } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
+import { Link } from 'react-router-dom';
 
 import { ApiError, apiFetch } from '../../api/client';
 import { useTemplates } from '../../api/queries';
@@ -53,9 +54,14 @@ export function StepUpload({ file, templateId, onChange, onInspected }: Props) {
   return (
     <section className="space-y-5 rounded-card border bg-card p-6">
       <div>
-        <label htmlFor="template" className="mb-1 block text-sm font-semibold">
-          Template
-        </label>
+        <div className="mb-1 flex items-center justify-between">
+          <label htmlFor="template" className="text-sm font-semibold">
+            Template
+          </label>
+          <Link to="/templates" className="text-sm font-semibold text-emerald underline">
+            + New template
+          </Link>
+        </div>
         {templates.isPending ? (
           <Skeleton className="h-10" />
         ) : (

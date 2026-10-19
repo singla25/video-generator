@@ -13,7 +13,7 @@ const MAIN_ACTION = 'block rounded-full bg-lime px-4 py-2.5 text-center font-sem
 /** Side panel: progress ring, ETA, counts and the batch controls. */
 export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: BatchStatus }) {
   const action = useBatchAction(batch.id);
-  const run = (name: BatchAction) => action.mutate(name);
+  const run = (name: BatchAction) => action.run(name);
   const { counts } = status;
   const isDraft = batch.status === 'DRAFT';
   const failure = action.error instanceof ApiError ? action.error.message : 'Something went wrong.';

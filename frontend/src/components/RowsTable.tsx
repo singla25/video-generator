@@ -24,6 +24,7 @@ interface Props {
   batchId: string;
   status?: RowStatus;
   failureCode?: string;
+  onPreview?: (url: string, name: string) => void;
 }
 
 function rowsUrl(batchId: string, p: Record<string, string | number | undefined>): string {
@@ -42,10 +43,12 @@ function RowActions({
   batchId,
   row,
   onRetry,
+  onPreview,
 }: {
   batchId: string;
   row: BatchRow;
   onRetry: () => void;
+  onPreview?: (url: string, name: string) => void;
 }) {
   const video = `/batches/${batchId}/rows/${row.row_number}/video`;
   const icon = 'inline-grid size-8 place-items-center rounded-full border hover:bg-mint';
@@ -59,6 +62,11 @@ function RowActions({
             rel="noreferrer"
             aria-label={`Preview video for ${row.name}`}
             className={icon}
+            onClick={(event) => {
+              if (!onPreview) return;
+              event.preventDefault();
+              onPreview(video, row.name);
+            }}
           >
             <Play aria-hidden="true" strokeWidth={1.5} className="size-4" />
           </a>
@@ -82,7 +90,7 @@ function RowActions({
 }
 
 /** Paged table of a batch's rows with search, status filter and row actions. */
-export function RowsTable({ batchId, status, failureCode }: Props) {
+export function RowsTable({ batchId, status, failureCode, onPreview }: Props) {
   const client = useQueryClient();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -192,7 +200,12 @@ export function RowsTable({ batchId, status, failureCode }: Props) {
                       <td className="px-3 py-2">{row.message ?? '-'}</td>
                       <td className="px-3 py-2">{formatRenderTime(row.render_seconds)}</td>
                       <td className="px-3 py-2">
-                        <RowActions batchId={batchId} row={row} onRetry={() => retry.mutate()} />
+                        <RowActions
+                          batchId={batchId}
+                          row={row}
+                          onRetry={() => retry.mutate()}
+                          onPreview={onPreview}
+                        />
                       </td>
                     </tr>
                   ))}

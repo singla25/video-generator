@@ -4,7 +4,11 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-r
 import { setUnauthorizedHandler } from './api/client';
 import { LOGIN_PATH } from './config';
 import { AppShell } from './layout/AppShell';
+import { BatchDetailPage } from './pages/BatchDetailPage';
+import { HistoryPage } from './pages/HistoryPage';
 import { LoginPage } from './pages/LoginPage';
+import { SecurityPage } from './pages/SecurityPage';
+import { TemplatesPage } from './pages/TemplatesPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { WizardPage } from './pages/WizardPage';
@@ -32,7 +36,14 @@ function useRedirectOnUnauthorized(): void {
   }, [navigate, location.pathname]);
 }
 
-const IMPLEMENTED = new Set(['/', '/batches/new']);
+const IMPLEMENTED = new Set([
+  '/',
+  '/batches/new',
+  '/batches/:id',
+  '/templates',
+  '/history',
+  '/security',
+]);
 
 const PAGES: [string, string][] = [
   ['/', 'Overview'],
@@ -57,6 +68,10 @@ export function App() {
       <Route element={<AppShell />}>
         <Route path="/" element={<OverviewPage />} />
         <Route path="/batches/new" element={<WizardPage />} />
+        <Route path="/batches/:id" element={<BatchDetailPage />} />
+        <Route path="/templates" element={<TemplatesPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/security" element={<SecurityPage />} />
         {PAGES.filter(([path]) => !IMPLEMENTED.has(path)).map(([path, name]) => (
           <Route key={path} path={path} element={<PlaceholderPage name={name} />} />
         ))}

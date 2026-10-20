@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-10-20 - dev_up.sh asks before migrating
+- `scripts/dev_setup.py pending` lists unapplied migrations (read-only); `dev_up.sh` shows them and asks y/N, and never applies without an answer (no terminal = refuse). Tests: `tests/unit/meta/test_dev_setup.py` (3). Open: none.
+
 ## 2026-10-20 - W-4 fixes (progress, rows snapshot)
 - `progress_percent` now counts renderable rows only (skipped excluded; nothing renderable = 0). `GET /batches/{id}/rows` also returns `counts` and `progress_percent` from the same transaction as the rows.
 - Files: `services/batch_rules.py`, `batch_queries.py`, `batch_views.py`, `api/schemas_batches.py`. Tests: 1744 Python pass. Open: none.

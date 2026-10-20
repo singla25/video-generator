@@ -35,9 +35,23 @@ with create_engine(os.environ["VIDGEN_DATABASE_URL"]).connect() as c:
 socket.create_connection(("127.0.0.1", 6379), timeout=3).close()
 PY
 
-echo "Applying database migrations (alembic upgrade head)..."
-.venv/bin/alembic -c backend/alembic.ini upgrade head >"$STATE_DIR/logs/migrate.log" 2>&1 \
-  || { echo "Migration failed, see $STATE_DIR/logs/migrate.log"; exit 1; }
+# Migrations are never applied silently: list what is pending and ask first.
+pending="$(.venv/bin/python scripts/dev_setup.py pending)"
+if [ -n "$pending" ]; then
+  echo "These database migrations are new and have NOT been applied yet:"
+  echo "$pending" | sed 's/^/  /'
+  if [ ! -t 0 ]; then
+    echo "Not applied (no terminal to ask on). Run this script from a terminal to answer."; exit 1
+  fi
+  read -r -p "Apply them to the database named in $ENV_FILE now? [y/N] " answer
+  case "$answer" in
+    [yY]|[yY][eE][sS])
+      .venv/bin/alembic -c backend/alembic.ini upgrade head >"$STATE_DIR/logs/migrate.log" 2>&1 \
+        || { echo "Migration failed, see $STATE_DIR/logs/migrate.log"; exit 1; }
+      echo "Migrations applied." ;;
+    *) echo "Not applied. Nothing was started. Run the script again when you are ready."; exit 1 ;;
+  esac
+fi
 
 start() {  # start <name> <command...>
   local name="$1"; shift

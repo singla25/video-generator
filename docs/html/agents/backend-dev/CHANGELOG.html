@@ -11,6 +11,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Backend developer — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-10-20 - dev_up.sh asks before migrating</h2>
+<ul><li><code>scripts/dev_setup.py pending</code> lists unapplied migrations (read-only); <code>dev_up.sh</code> shows them and asks y/N, and never applies without an answer (no terminal = refuse). Tests: <code>tests/unit/meta/test_dev_setup.py</code> (3). Open: none.</li></ul>
 <h2>2026-10-20 - W-4 fixes (progress, rows snapshot)</h2>
 <ul><li><code>progress_percent</code> now counts renderable rows only (skipped excluded; nothing renderable = 0). <code>GET /batches/{id}/rows</code> also returns <code>counts</code> and <code>progress_percent</code> from the same transaction as the rows.</li><li>Files: <code>services/batch_rules.py</code>, <code>batch_queries.py</code>, <code>batch_views.py</code>, <code>api/schemas_batches.py</code>. Tests: 1744 Python pass. Open: none.</li></ul>
 <h2>2026-10-20 — T14 round 2 (DD-10 layering)</h2>

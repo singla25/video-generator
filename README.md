@@ -51,7 +51,7 @@ scripts/dev_up.sh                                       # starts API, worker and
 Open **http://localhost:5173** and log in with the admin password. Stop everything with `scripts/dev_down.sh` (postgres and redis keep running).
 
 - `.env` is git-ignored and holds only local secrets. Never commit it, and never share it.
-- `dev_up.sh` runs `alembic upgrade head` on the database named in `.env` (default `vidgen`) each time it starts.
+- `dev_up.sh` never applies a migration silently: if new ones are pending it lists them and asks `y/N` first (no answer, or no terminal, means nothing is applied and nothing starts).
 - Logs and PIDs live in `.dev/` (git-ignored). If something fails, read `.dev/logs/*.log`.
 - First time on a new machine: `uv sync` and `cd frontend && npm ci`.
 

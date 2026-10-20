@@ -2,6 +2,7 @@
 
     python scripts/dev_setup.py env            create a git-ignored .env with fresh random secrets
     python scripts/dev_setup.py create-admin   set the admin password (typed twice, never stored)
+    python scripts/dev_setup.py pending        list migrations not yet applied (changes nothing)
 
 Only the argon2 HASH of the password is written to the env file. The password itself is read
 with ``getpass`` (no echo), is never put on a command line and is never logged.
@@ -18,7 +19,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from argon2 import PasswordHasher
+from sqlalchemy import create_engine
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ENV = ROOT / ".env"
@@ -69,6 +74,42 @@ def set_admin_hash(env_file: Path, password: str) -> None:
     _write_private(env_file, new)
 
 
+def _scripts() -> ScriptDirectory:
+    """The project's migration scripts."""
+    return ScriptDirectory.from_config(Config(str(ROOT / "backend" / "alembic.ini")))
+
+
+def head_revision() -> str:
+    """The newest migration revision."""
+    return str(_scripts().get_current_head())
+
+
+def pending_migrations(url: str) -> list[tuple[str, str]]:
+    """Migrations the database at ``url`` has not applied yet, oldest first, as (revision, title).
+
+    Read-only: it only looks at the ``alembic_version`` table and never creates or alters anything.
+    """
+    engine = create_engine(url)
+    try:
+        with engine.connect() as connection:
+            applied = MigrationContext.configure(connection).get_current_heads()
+    finally:
+        engine.dispose()
+    revisions = _scripts().iterate_revisions("heads", applied or "base")
+    return [(r.revision, (r.doc or "").strip().splitlines()[0] if r.doc else "") for r in reversed(list(revisions))]
+
+
+def cmd_pending(args: argparse.Namespace) -> int:
+    """Print one 'revision title' line per pending migration; nothing when up to date."""
+    url = os.environ.get("VIDGEN_DATABASE_URL", "")
+    if not url:
+        print("VIDGEN_DATABASE_URL is not set.", file=sys.stderr)
+        return 2
+    for revision, title in pending_migrations(url):
+        print(f"{revision}  {title}")
+    return 0
+
+
 def cmd_env(args: argparse.Namespace) -> int:
     """Create the env file unless it already exists (an existing one is never overwritten)."""
     path = Path(args.env_file)
@@ -106,6 +147,7 @@ def main() -> int:
     env = sub.add_parser("env")
     env.add_argument("--db-name", default="vidgen")
     env.set_defaults(func=cmd_env)
+    sub.add_parser("pending").set_defaults(func=cmd_pending)
     admin = sub.add_parser("create-admin")
     admin.set_defaults(func=cmd_create_admin)
     args = parser.parse_args()

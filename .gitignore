@@ -19,3 +19,5 @@ samples/
 
 # Local dev state (logs, PIDs)
 .dev/
+.venv-m2/
+output_m2_*.log

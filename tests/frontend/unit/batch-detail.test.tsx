@@ -29,6 +29,37 @@ import { setReducedMotion } from '../motion';
 const PATH = `/batches/${IDS.batch}`;
 const TTS = 'The voice for this name could not be created.';
 
+describe('header and rows agree (W-4b)', () => {
+  it('shows the counts of the rows snapshot, so the header cannot say Processing 0 while a row is Processing', async () => {
+    setReducedMotion(true);
+    const stale = { ...COUNTS, processing: 0, queued: 25 };
+    const fresh = { ...COUNTS, processing: 1, queued: 24 };
+    server.use(
+      http.get('*/batches/:id/status', () =>
+        HttpResponse.json(status({ counts: stale, progress_percent: 10 })),
+      ),
+      http.get('*/batches/:id/rows', () =>
+        HttpResponse.json({
+          ...rowsPage([row(1, { status: 'PROCESSING', name: 'Asha' })]),
+          counts: fresh,
+          progress_percent: 80,
+        }),
+      ),
+    );
+    renderApp(PATH);
+    const stats = await screen.findByTestId('batch-stats');
+    await screen.findByText('Asha');
+    await waitFor(() => {
+      const processing = within(stats).getByText('Processing').closest('div');
+      expect(processing).toHaveTextContent('1');
+    });
+    expect(screen.getByRole('progressbar', { name: 'Batch progress' })).toHaveAttribute(
+      'aria-valuenow',
+      '80',
+    );
+  });
+});
+
 describe('header and progress', () => {
   it('TT-UI-AC6-P1 shows the header stats, progress bar and ETA', async () => {
     setReducedMotion(true);

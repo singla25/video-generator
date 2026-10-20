@@ -1,10 +1,11 @@
 import { Download, FileText, X } from 'lucide-react';
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { ApiError, apiUrl } from '../api/client';
 import { useBatch, useBatchStatus } from '../api/queries';
-import type { FailureGroup } from '../api/types';
+import type { FailureGroup, Snapshot } from '../api/types';
 import { ProgressRing } from '../components/ProgressRing';
 import { RowsTable } from '../components/RowsTable';
 import { ErrorState, Skeleton } from '../components/states';
@@ -55,7 +56,16 @@ export function BatchDetailPage() {
   const { id = '' } = useParams();
   const batch = useBatch(id);
   const status = useBatchStatus(id);
+  const client = useQueryClient();
   const [reason, setReason] = useState<FailureGroup | null>(null);
+  // The rows page carries the counts of its own snapshot. The header shows those, so it can
+  // never say "Processing 0" while the table beside it shows a Processing row (W-4b).
+  const [rowsSnapshot, setRowsSnapshot] = useState<Snapshot | null>(null);
+  const statusUpdatedAt = status.dataUpdatedAt;
+  useEffect(() => {
+    // Each status poll also refreshes the rows, so the table follows the live batch.
+    if (statusUpdatedAt) void client.invalidateQueries({ queryKey: ['rows', id] });
+  }, [client, id, statusUpdatedAt]);
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
 
   if (batch.isError || status.isError) {
@@ -80,12 +90,12 @@ export function BatchDetailPage() {
     );
   }
 
-  const { counts } = status.data;
+  const { counts, progress_percent: progress } = rowsSnapshot ?? status.data;
   return (
     <div className="space-y-4">
       <section data-testid="batch-stats" className="rounded-card border bg-card p-5">
         <div className="flex flex-wrap items-center gap-6">
-          <ProgressRing percent={status.data.progress_percent} />
+          <ProgressRing percent={progress} />
           <div>
             <p className="text-sm text-muted">
               {batch.data.sheet_name ?? batch.data.folder_name ?? ''}
@@ -165,6 +175,7 @@ export function BatchDetailPage() {
         batchId={id}
         failureCode={reason?.code}
         onPreview={(url, name) => setPreview({ url, name })}
+        onSnapshot={setRowsSnapshot}
       />
     </div>
   );

@@ -74,6 +74,9 @@ class BatchQueries:
         offset = (page - 1) * page_size
         with self._ctx.uow() as uow:
             load_batch(uow, batch_id)
+            # Counts come from the same transaction as the rows, so a header built from
+            # them can never disagree with the table (W-4b).
+            counts = counts_from(uow.batches.counts([batch_id])[batch_id])
             if not search:
                 rows, total = uow.batches.rows_page(
                     batch_id, status, offset, page_size, failure_code
@@ -86,7 +89,8 @@ class BatchQueries:
                     if matches_search(search, r.name, r.voter_id)
                 ]
                 total, rows = len(found), found[offset : offset + page_size]
-        return RowsPage(rows, page, page_size, total, page_count(total, page_size))
+        pages = page_count(total, page_size)
+        return RowsPage(rows, page, page_size, total, pages, counts, progress_percent(counts))
 
     def row(self, batch_id: UUID, row_number: int) -> RowView:
         """One row, or not-found."""

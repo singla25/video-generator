@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-10-20 - W-4 fixes
+- Batch detail header and ring use the counts of the rows page (same snapshot as the table); rows refetch after every status poll. Current-batch panel shows completed / renderable and skipped separately.
+- Files: `BatchDetailPage.tsx`, `RowsTable.tsx`, `CurrentBatchPanel.tsx`, `api/types.ts`. Vitest 209 pass. Open: none.
+
 ## 2026-10-20 - DD-21/22/23 fixes
 - `API_PREFIX = '/api'` (client `apiUrl`, all download/video hrefs, dev proxy forwards only `/api`).
 - Slot editor with Confirm slot / "Slot confirmed" on the Templates card and wizard step 3 (explicit confirm; preview no longer auto-confirms).

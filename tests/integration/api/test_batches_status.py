@@ -63,7 +63,7 @@ def test_batch_where_every_row_is_skipped(env: Env) -> None:
     status = status_of(env, batch_id)
     assert status["counts"]["skipped"] == 2
     assert status["eta_seconds"] is None
-    assert status["progress_percent"] == 100.0
+    assert status["progress_percent"] == 0.0  # nothing is renderable, so nothing is done (W-4a)
 
 
 def test_progress_is_the_share_of_rows_that_are_no_longer_queued_or_processing(
@@ -74,6 +74,40 @@ def test_progress_is_the_share_of_rows_that_are_no_longer_queued_or_processing(
     set_rows(db, batch_id, [2, 3], status="COMPLETED")
     set_rows(db, batch_id, [4], status="FAILED")
     assert status_of(env, batch_id)["progress_percent"] == pytest.approx(75.0)
+
+
+def test_progress_counts_renderable_rows_only_so_skipped_rows_are_not_done(
+    env: Env, db: Engine
+) -> None:
+    """W-4a: 5 rows, 2 skipped, 0 completed shows 0 %, not 40 %."""
+    batch_id = running_batch(env, people(5))
+    # Data rows are numbered from 2 (row 1 is the sheet header).
+    set_rows(db, batch_id, [2, 3], status="SKIPPED", failure_code="INVALID_ROW_EMPTY_NAME")
+    assert status_of(env, batch_id)["progress_percent"] == 0.0
+    set_rows(db, batch_id, [4], status="COMPLETED")
+    assert status_of(env, batch_id)["progress_percent"] == pytest.approx(100 / 3)
+
+
+# ---- rows list carries the same-snapshot counts (W-4b) --------------------------------
+
+
+def test_rows_response_carries_counts_and_progress_from_the_same_snapshot(
+    env: Env, db: Engine
+) -> None:
+    """W-4b: a header built from the rows page's own counts cannot disagree with the table."""
+    batch_id = running_batch(env, people(5))
+    set_rows(db, batch_id, [2], status="COMPLETED")
+    set_rows(db, batch_id, [3], status="PROCESSING")
+    set_rows(db, batch_id, [4], status="SKIPPED", failure_code="INVALID_ROW_EMPTY_NAME")
+    body = env.client.get(f"/batches/{batch_id}/rows").json()
+    assert set(body["counts"]) == KEYS
+    assert (body["counts"]["processing"], body["counts"]["skipped"]) == (1, 1)
+    assert (
+        sum(1 for r in body["rows"] if r["status"] == "PROCESSING") == body["counts"]["processing"]
+    )
+    assert body["progress_percent"] == pytest.approx(25.0)  # 1 of 4 renderable rows is done
+    filtered = env.client.get(f"/batches/{batch_id}/rows", params={"status": "FAILED"}).json()
+    assert filtered["counts"] == body["counts"]  # the counts describe the batch, not the filter
 
 
 # ---- ETA (B7, C1) ---------------------------------------------------------------------

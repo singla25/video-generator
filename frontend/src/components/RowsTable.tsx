@@ -3,7 +3,7 @@ import { Download, Play, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { ApiError, apiFetch, apiUrl } from '../api/client';
-import type { BatchRow, RowsPage } from '../api/types';
+import type { BatchRow, RowsPage, Snapshot } from '../api/types';
 import { formatRenderTime, hasDevanagari } from '../format';
 import { StatusChip, type RowStatus } from './StatusChip';
 import { EmptyState, ErrorState, Skeleton } from './states';
@@ -25,6 +25,8 @@ interface Props {
   status?: RowStatus;
   failureCode?: string;
   onPreview?: (url: string, name: string) => void;
+  /** Called with the counts of each loaded page, so a header can show the same snapshot (W-4b). */
+  onSnapshot?: (snapshot: Snapshot) => void;
 }
 
 function rowsUrl(batchId: string, p: Record<string, string | number | undefined>): string {
@@ -90,7 +92,7 @@ function RowActions({
 }
 
 /** Paged table of a batch's rows with search, status filter and row actions. */
-export function RowsTable({ batchId, status, failureCode, onPreview }: Props) {
+export function RowsTable({ batchId, status, failureCode, onPreview, onSnapshot }: Props) {
   const client = useQueryClient();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -127,6 +129,11 @@ export function RowsTable({ batchId, status, failureCode, onPreview }: Props) {
   });
 
   const data = query.data;
+  useEffect(() => {
+    if (data?.counts && data.progress_percent !== undefined) {
+      onSnapshot?.({ counts: data.counts, progress_percent: data.progress_percent });
+    }
+  }, [data, onSnapshot]);
   return (
     <section className="rounded-card border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center gap-3">

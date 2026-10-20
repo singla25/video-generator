@@ -98,6 +98,15 @@ export interface RowsPage {
   page_size: number;
   total: number;
   total_pages: number;
+  /** Whole-batch counts from the same snapshot as `rows` (W-4b); absent from older servers. */
+  counts?: Counts;
+  progress_percent?: number;
+}
+
+/** Counts and progress taken from one server snapshot. */
+export interface Snapshot {
+  counts: Counts;
+  progress_percent: number;
 }
 
 export interface DailyStat {

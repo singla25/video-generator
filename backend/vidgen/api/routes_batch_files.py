@@ -2,27 +2,33 @@
 
 from __future__ import annotations
 
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import Response, StreamingResponse
 
 from vidgen.api.deps import container, require_csrf
-from vidgen.api.downloads import attachment_header, stream_file
+from vidgen.api.downloads import attachment_header
+from vidgen.api.video_response import video_response
 from vidgen.services.batch_downloads import stream_zip
 
 router = APIRouter(prefix="/batches", tags=["downloads"], dependencies=[Depends(require_csrf)])
-VIDEO_TYPE = "video/mp4"
 ZIP_TYPE = "application/zip"
 CSV_TYPE = "text/csv; charset=utf-8"
 
 
 @router.get("/{batch_id}/rows/{row_number}/video")
-def download_video(batch_id: UUID, row_number: int, request: Request) -> StreamingResponse:
-    """One rendered video."""
+def download_video(
+    batch_id: UUID,
+    row_number: int,
+    request: Request,
+    range_header: Annotated[str | None, Header(alias="Range")] = None,
+) -> Response:
+    """One rendered video; byte ranges are supported."""
     name, stream = container(request).batches.video(batch_id, row_number)
     headers = {"Content-Disposition": attachment_header(name)}
-    return StreamingResponse(stream_file(stream), media_type=VIDEO_TYPE, headers=headers)
+    return video_response(stream, range_header, headers=headers)
 
 
 @router.get("/{batch_id}/download.zip")

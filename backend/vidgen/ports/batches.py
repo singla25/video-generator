@@ -161,17 +161,28 @@ class BatchStore(Protocol):
         """Turn FAILED rows into QUEUED (clearing the failure code); returns their ids."""
         ...
 
+    def requeue_row(self, batch_id: UUID, row_number: int) -> UUID | None:
+        """Turn one FAILED row into QUEUED atomically; its id, or None if it was not FAILED."""
+        ...
+
     def get_row(self, batch_id: UUID, row_number: int) -> RowView | None:
         """One row by sheet row number."""
         ...
 
     def rows_page(
-        self, batch_id: UUID, status: str | None, offset: int, limit: int
+        self,
+        batch_id: UUID,
+        status: str | None,
+        offset: int,
+        limit: int,
+        failure_code: str | None = None,
     ) -> tuple[list[RowView], int]:
         """A page of rows in sheet order plus the number of matching rows."""
         ...
 
-    def iter_rows(self, batch_id: UUID, statuses: list[str] | None = None) -> Iterator[RowView]:
+    def iter_rows(
+        self, batch_id: UUID, statuses: list[str] | None = None, failure_code: str | None = None
+    ) -> Iterator[RowView]:
         """All (optionally filtered) rows in sheet order, fetched in chunks."""
         ...
 

@@ -4,7 +4,10 @@
 - The Admin does not run `git add` or `git commit` in the project while agents are working. If something needs committing, the Admin asks the CEO.
 - Every brief requires: stage explicit paths only; every commit carries the standard Co-Authored-By/Claude-Session trailer and a task-related Conventional Commit message (approved by the Admin).
 
+- (CEO, 2026-10-19) Because agents share one folder and one git index, every brief now requires **`git commit --only <paths>`**, not just explicit `git add`.
+
 ## Incident notes
+- 2026-10-19: frontend-dev commit `9ce6bee` (DD-16) also included the tester's staged `git rm tests/frontend/node_modules` (intended removal, content correct), swept in from the shared index. Rule above added.
 - 2026-10-19 01:01: commit `8f575e9` "chore: agent team setup" (deletion of the duplicate `video-generator-agents/CLAUDE.md`) was made by the Admin by accident: a queued setup command ran when a 6-hour-old `rm` finished. The tester was not involved. Kept as is (Admin decision).
 - 2026-10-19 01:04: an accidental `git init && git add .` by the Admin staged 6 of backend-dev's in-progress T10-round-2 files (no commit made, file contents unchanged). The CEO handles the index when backend-dev reports; CEO commits use `git commit --only <paths>` meanwhile.
 
@@ -39,4 +42,25 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T13c | Tests: 8 defect fixes, injection contract + layering guard, domain/fakes coverage | tester | sonnet | ✅ Done & CEO-reviewed @ 15b6ef0; T14 round 2 (layering) in progress | Delegated (CEO) | — |
 | T15a | RED: E2E tests (synthetic 10-row batch, retry, deletion) | tester | sonnet | ✅ Done & CEO-reviewed @ 5a1b106 — 3 e2e tests (real app/DB/storage/ffmpeg/label; fake AI; in-process StubBroker worker); probes label + creator metadata | Delegated (CEO) | — |
 | T15–T16 | Verify + coverage report; CEO review → gate 3 | tester / CEO | sonnet | Planned | — | — |
-| F0–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | Admin / tester / frontend-dev / CEO | sonnet | Plan + deps approved 2026-10-19; design reference committed (b557ff0). Waits for M1 gate 3, Node.js install and product name/logo | Plan: yes; assignment: pending | — |
+| — | **Merge gate 3** (M1 complete) | CEO | — | ✅ Merged `49f0767` (DD-12); main: 1611 pass + 1 xfail, mypy/ruff clean | Delegated (CEO) | ✅ |
+| F0 | Node.js | Admin | — | ✅ Already installed (v26.12.0, DD-2); placeholder brand DD-1 | — | — |
+| F1a | Frontend tooling scaffold (no app code) | frontend-dev | sonnet | ✅ Done & CEO-verified after 3 rounds @ b42f597 (types DD-14, Tailwind 4 DD-15); npm audit 0, build ok | Delegated (CEO) | — |
+| F1 | RED: dashboard test tree + failing UI tests | tester (fresh agent) | sonnet | ✅ Done & CEO-reviewed after 2 rounds @ e85df23 — 159 UI case IDs + 32 backend RED tests (DD-17) | Delegated (CEO) | — |
+| F1b | Vitest config resolves tests/frontend (scoped fs.allow) | frontend-dev | sonnet | ✅ Done & CEO-verified @ 9ce6bee (swept in the tester's staged symlink removal; see incident notes) | Delegated (CEO) | — |
+| B-M3 | Backend: inspect-sheet + failure_code filter (GREEN) | backend-dev | sonnet | ✅ Done & CEO-verified @ 3896422 (31/33 pass; 2 test defects + tester lint → tester fix round) | Delegated (CEO) | — |
+| F2 | App shell, auth, API client, primitives | frontend-dev | sonnet | ✅ Done & CEO-verified @ 55610bc — 44/142 UI tests pass (rest = F3–F5); lint/build ok; privacy scan clean | Delegated (CEO) | — |
+| F1c | Tester fix: 2 failure-filter fixtures + gen_test_tree lint | tester | sonnet | ✅ Done @ 2417768 — Python suite 1648 pass + 1 xfail | Delegated (CEO) | — |
+| F3 | Overview + RowsTable | frontend-dev | sonnet | ✅ Done & CEO-verified @ e262800 — 96/168 UI tests pass (rest = F4/F5), typecheck/lint green; hatch visual check → F7 | Delegated (CEO) | — |
+| F4 | New batch wizard | frontend-dev | sonnet | ✅ Done & CEO-reviewed @ 64a310a — 33/34 wizard tests (1 test defect); player + glue follow-ups (DD-19) | Delegated (CEO) | — |
+| DD-18 | Per-row retry: RED tests (tester) → backend → UI | tester → backend-dev → frontend-dev | sonnet | ✅ RED 7a210f1 · backend 230a8b7 · UI e68f75d | Delegated (CEO) | — |
+| DD-19 | Template video + HTTP Range; wizard player; test glue → tests/ | tester → backend-dev → frontend-dev | sonnet | ✅ RED b9ac43c · UI e68f75d · backend ab3e530 — CEO-verified: Python 1730 pass, Vitest 174/174, all checks green | Delegated (CEO) | — |
+| F6r2 | RED for D-F6-1..3 + hatch | tester | sonnet | ✅ @ ab15da5 (interrupted by usage limit, resumed) | Delegated (CEO) | — |
+| F6fix | GREEN: server app at /api (backend) + slot confirm, api prefix, AA chips, hatch (frontend) | backend-dev + frontend-dev | sonnet | Backend ✅ @ 3db45f7 (1745 pass); frontend ✅ @ 7c69ba1 (Vitest 207/207); E2E re-verify in progress | Delegated (CEO) | — |
+| F6rv | Re-verify on the real stack | tester | sonnet | ✅ @ 603c793 — E2E 47/48 (D-F6-4 tablet scroll), axe 0 serious, Python 1745, Vitest 207/207, 93 % lines | Delegated (CEO) | — |
+| F7a | D-F6-4 tablet fix + CEO visual polish (DD-24) | frontend-dev | sonnet | ✅ @ 099d773 + d86f49c; final verification aee22db (E2E 48/48) | Delegated (CEO) | — |
+| — | **M3 merge gate** | CEO | — | ✅ DD-25 | Delegated (CEO) | ✅ |
+| F7 | Admin visual sign-off (UI-AC1) | Admin | — | Waiting for Admin (screenshots in media/review/ui/) | — | — |
+| F6 | VERIFY M3: Playwright E2E on real stack (throwaway DB), axe, coverage, privacy | tester | sonnet | ✅ Verification done @ fd1e9ce — E2E 43/45, Vitest 178/178, frontend 93 % lines; defects D-F6-1..3 + hatch → F6 r2 (RED) → fixes (DD-21/22) | Delegated (CEO) | — |
+| DD-20 | Per-session throwaway test DBs | tester | sonnet | ✅ Done & CEO-verified @ 94e6225 (2 concurrent runs identical; protected-name guard); also fixed the tests' TS typecheck | Delegated (CEO) | — |
+| F5 | BatchDetail, Templates, History, Security | frontend-dev | sonnet | ✅ Done & CEO-verified @ 1073286 — 166/170 UI tests (4 = P10 defect + DD-18 wiring); privacy scan clean | Delegated (CEO) | — |
+| F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | Planned; F1 after F1a | Plan: yes (Admin); assignment: delegated | — |

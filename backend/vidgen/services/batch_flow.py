@@ -36,7 +36,7 @@ from vidgen.services.batch_support import (
     transition,
 )
 from vidgen.services.batch_views import BatchView
-from vidgen.services.errors import StateConflictError
+from vidgen.services.errors import BatchNotFoundError, StateConflictError
 
 
 class BatchFlow:
@@ -218,6 +218,29 @@ class BatchFlow:
             view = describe(uow, batch, retried_rows=len(row_ids))
         if row_ids:
             ctx.queue.enqueue_rows(batch_id, row_ids)
+        return view
+
+    def retry_row(self, batch_id: UUID, row_number: int) -> BatchView:
+        """Queue one failed row again; anything else is refused without side effects."""
+        ctx = self._ctx
+        with ctx.uow() as uow:
+            batch = load_batch(uow, batch_id, lock=True)
+            if uow.batches.get_row(batch_id, row_number) is None:
+                raise BatchNotFoundError
+            new_state = transition(batch, BatchAction.RETRY)
+            row_id = uow.batches.requeue_row(batch_id, row_number)
+            if row_id is None:
+                raise StateConflictError(StateConflictError.INVALID_STATE)
+            batch = replace(
+                batch,
+                status=new_state.value,
+                finished_at=None if new_state is BatchState.RUNNING else batch.finished_at,
+            )
+            uow.batches.save(batch)
+            audit(ctx, uow, "ROW_RETRY", batch_id=str(batch_id), row_number=row_number)
+            uow.commit()
+            view = describe(uow, batch, retried_rows=1)
+        ctx.queue.enqueue_rows(batch_id, [row_id])
         return view
 
     def _change(self, batch_id: UUID, action: BatchAction, event: str) -> BatchView:

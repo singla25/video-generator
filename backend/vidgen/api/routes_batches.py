@@ -7,10 +7,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 
 from vidgen.api.deps import container, require_csrf
-from vidgen.api.downloads import stream_file
 from vidgen.api.errors import NOT_FOUND, VALIDATION_ERROR, ApiError
 from vidgen.api.schemas_batches import (
     MappingBody,
@@ -23,6 +22,7 @@ from vidgen.api.schemas_batches import (
     status_json,
 )
 from vidgen.api.uploads import PAYLOAD_TOO_LARGE, UploadTooLargeError, read_upload
+from vidgen.api.video_response import video_response
 from vidgen.domain.codes import FailureCode, plain_message
 from vidgen.domain.status import RowStatus
 from vidgen.services.batch_create import MappingRequest
@@ -36,7 +36,6 @@ MAX_PAGE_SIZE = 200
 MAX_SEARCH_CHARS = 200
 MAX_STATS_DAYS = 366
 DEFAULT_STATS_DAYS = 30
-PREVIEW_MEDIA_TYPE = "video/mp4"
 Page = Annotated[int, Query(ge=1)]
 PageSize = Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)]
 
@@ -72,6 +71,27 @@ async def create_batch(request: Request) -> dict[str, Any]:
         code = FailureCode.UNSUPPORTED_SHEET
         raise ApiError(PAYLOAD_TOO_LARGE, code.value, plain_message(code)) from None
     return batch_json(view)
+
+
+@router.post("/inspect-sheet")
+async def inspect_sheet(request: Request) -> dict[str, Any]:
+    """Headers, the first rows and the row count of a sheet; nothing is stored."""
+    app = container(request)
+    try:
+        async with read_upload(request, max_file_bytes=app.settings.max_sheet_bytes) as form:
+            sheet = form.files.get("sheet")
+            if sheet is None:
+                raise ApiError(422, VALIDATION_ERROR)
+            result = await run_in_threadpool(app.batches.inspect_sheet, sheet)
+    except UploadTooLargeError:
+        code = FailureCode.UNSUPPORTED_SHEET
+        raise ApiError(PAYLOAD_TOO_LARGE, code.value, plain_message(code)) from None
+    return {
+        "sheet_name": result.sheet_name,
+        "headers": result.headers,
+        "sample_rows": result.sample_rows,
+        "row_count": result.row_count,
+    }
 
 
 @router.get("")
@@ -113,12 +133,16 @@ def get_rows(
     request: Request,
     status: RowStatus | None = None,
     search: Annotated[str | None, Query(max_length=MAX_SEARCH_CHARS)] = None,
+    failure_code: FailureCode | None = None,
     page: Page = 1,
     page_size: PageSize = DEFAULT_PAGE_SIZE,
 ) -> dict[str, Any]:
-    """Rows with status filter, search and paging."""
+    """Rows with status and failure-code filters, search and paging."""
     status_value = None if status is None else status.value
-    result = container(request).batches.rows(batch_id, status_value, search, page, page_size)
+    code_value = None if failure_code is None else failure_code.value
+    result = container(request).batches.rows(
+        batch_id, status_value, search, page, page_size, code_value
+    )
     return rows_json(result)
 
 
@@ -149,15 +173,19 @@ def approve_preview(batch_id: UUID, request: Request) -> dict[str, Any]:
 
 
 @router.get("/{batch_id}/preview")
-def download_preview(batch_id: UUID, request: Request) -> StreamingResponse:
-    """The rendered preview video."""
+def download_preview(
+    batch_id: UUID,
+    request: Request,
+    range_header: Annotated[str | None, Header(alias="Range")] = None,
+) -> Response:
+    """The rendered preview video; byte ranges are supported."""
     app = container(request)
     key = app.batches.preview_key(batch_id)
     try:
         stream = app.storage.open(key)
     except FileNotFoundError:
         raise ApiError(404, NOT_FOUND) from None
-    return StreamingResponse(stream_file(stream), media_type=PREVIEW_MEDIA_TYPE)
+    return video_response(stream, range_header)
 
 
 @router.post("/{batch_id}/start")
@@ -197,6 +225,12 @@ def cancel_batch(batch_id: UUID, request: Request) -> dict[str, Any]:
 def retry_failed(batch_id: UUID, request: Request) -> dict[str, Any]:
     """Queue the failed rows again."""
     return batch_json(container(request).batches.retry_failed(batch_id))
+
+
+@router.post("/{batch_id}/rows/{row_number}/retry")
+def retry_row(batch_id: UUID, row_number: int, request: Request) -> dict[str, Any]:
+    """Queue one failed row again."""
+    return batch_json(container(request).batches.retry_row(batch_id, row_number))
 
 
 @router.delete("/{batch_id}", status_code=204)

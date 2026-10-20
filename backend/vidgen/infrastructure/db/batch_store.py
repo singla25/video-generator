@@ -149,6 +149,20 @@ class SqlBatchStore(BatchStatsMixin):
         )
         return [row_id for row_id, _ in sorted(result.all(), key=lambda r: r[1])]
 
+    def requeue_row(self, batch_id: UUID, row_number: int) -> UUID | None:
+        """Turn one FAILED row into QUEUED in one statement; the attempt history is kept."""
+        result = self._session.execute(
+            update(BatchRow)
+            .where(
+                BatchRow.batch_id == batch_id,
+                BatchRow.row_number == row_number,
+                BatchRow.status == "FAILED",
+            )
+            .values(status="QUEUED", failure_code=None, started_at=None, finished_at=None)
+            .returning(BatchRow.id)
+        )
+        return result.scalar_one_or_none()
+
     # rows: reading
 
     def counts(self, batch_ids: list[UUID]) -> dict[UUID, dict[str, int]]:
@@ -191,12 +205,19 @@ class SqlBatchStore(BatchStatsMixin):
         return None if row is None else self._view(row)
 
     def rows_page(
-        self, batch_id: UUID, status: str | None, offset: int, limit: int
+        self,
+        batch_id: UUID,
+        status: str | None,
+        offset: int,
+        limit: int,
+        failure_code: str | None = None,
     ) -> tuple[list[RowView], int]:
         """A page of rows in sheet order plus the number of matching rows."""
         condition = [BatchRow.batch_id == batch_id]
         if status is not None:
             condition.append(BatchRow.status == status)
+        if failure_code is not None:
+            condition.append(BatchRow.failure_code == failure_code)
         total = self._session.execute(
             select(func.count()).select_from(BatchRow).where(*condition)
         ).scalar_one()
@@ -204,7 +225,9 @@ class SqlBatchStore(BatchStatsMixin):
         rows = self._session.scalars(query.offset(offset).limit(limit))
         return [self._view(r) for r in rows], int(total)
 
-    def iter_rows(self, batch_id: UUID, statuses: list[str] | None = None) -> Iterator[RowView]:
+    def iter_rows(
+        self, batch_id: UUID, statuses: list[str] | None = None, failure_code: str | None = None
+    ) -> Iterator[RowView]:
         """All matching rows in sheet order, fetched in key-ordered chunks."""
         last = -1
         while True:
@@ -213,6 +236,8 @@ class SqlBatchStore(BatchStatsMixin):
             )
             if statuses is not None:
                 query = query.where(BatchRow.status.in_(statuses))
+            if failure_code is not None:
+                query = query.where(BatchRow.failure_code == failure_code)
             chunk = list(
                 self._session.scalars(query.order_by(BatchRow.row_number).limit(FETCH_CHUNK))
             )

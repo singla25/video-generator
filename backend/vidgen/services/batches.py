@@ -16,12 +16,14 @@ from vidgen.services.batch_queries import BatchQueries
 from vidgen.services.batch_retention import BatchRetention
 from vidgen.services.batch_support import BatchContext
 from vidgen.services.batch_views import BatchReport, BatchStatus, BatchView, RowsPage
+from vidgen.services.sheet_inspect import SheetInspection, inspect_sheet
 
 
 class BatchService:
     """Everything the API and the workers can do with batches."""
 
     def __init__(self, ctx: BatchContext) -> None:
+        self._reader = ctx.reader
         self._create = BatchCreator(ctx)
         self._flow = BatchFlow(ctx)
         self._queries = BatchQueries(ctx)
@@ -86,6 +88,10 @@ class BatchService:
         """Queue failed rows again."""
         return self._flow.retry_failed(batch_id)
 
+    def retry_row(self, batch_id: UUID, row_number: int) -> BatchView:
+        """Queue one failed row again."""
+        return self._flow.retry_row(batch_id, row_number)
+
     # reads
     def get(self, batch_id: UUID) -> BatchView:
         """One batch."""
@@ -100,10 +106,20 @@ class BatchService:
         return self._queries.status(batch_id)
 
     def rows(
-        self, batch_id: UUID, status: str | None, search: str | None, page: int, page_size: int
+        self,
+        batch_id: UUID,
+        status: str | None,
+        search: str | None,
+        page: int,
+        page_size: int,
+        failure_code: str | None = None,
     ) -> RowsPage:
         """A page of rows."""
-        return self._queries.rows(batch_id, status, search, page, page_size)
+        return self._queries.rows(batch_id, status, search, page, page_size, failure_code)
+
+    def inspect_sheet(self, sheet: Path) -> SheetInspection:
+        """Headers, a sample and the row count of an uploaded sheet; nothing is stored."""
+        return inspect_sheet(self._reader, sheet)
 
     def daily(self, days: int) -> list[tuple[date, DayStat]]:
         """Videos per day."""

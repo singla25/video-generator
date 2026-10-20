@@ -16,3 +16,6 @@ output/
 # Real voter data and sample media — never commit
 samples/
 *.xlsx
+
+# Local dev state (logs, PIDs)
+.dev/

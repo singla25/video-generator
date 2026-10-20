@@ -38,6 +38,23 @@ docs/                         ← plans, ADRs, per-agent README + CHANGELOG, tes
    (or start `claude`, run `/model` → Opus, and say "Act as the ceo agent".)
 4. Tell it what you want to build. It will cross-question you with MCQs, propose approaches, write a plan, and **wait for your "yes"** before anything starts.
 
+## Run locally (Mac)
+
+The API, the worker and the dashboard all start with one script. It uses the Docker postgres and redis from `docker-compose.yml`, which must already be running, and the fake AI backend (no models, no paid services).
+
+```bash
+scripts/dev_up.sh                                       # first run creates .env with random secrets
+.venv/bin/python scripts/dev_setup.py create-admin      # once: type your admin password (hidden, only its hash is saved)
+scripts/dev_up.sh                                       # starts API, worker and dashboard
+```
+
+Open **http://localhost:5173** and log in with the admin password. Stop everything with `scripts/dev_down.sh` (postgres and redis keep running).
+
+- `.env` is git-ignored and holds only local secrets. Never commit it, and never share it.
+- `dev_up.sh` runs `alembic upgrade head` on the database named in `.env` (default `vidgen`) each time it starts.
+- Logs and PIDs live in `.dev/` (git-ignored). If something fails, read `.dev/logs/*.log`.
+- First time on a new machine: `uv sync` and `cd frontend && npm ci`.
+
 ## How a feature flows
 
 | Step | Who | You approve? |

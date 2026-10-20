@@ -2,6 +2,12 @@
 
 Newest first. One entry per task.
 
+## 2026-10-19/20 — M1 complete (gate 3) and M3 dashboard merged, under delegated authority
+- Gate 3 (`49f0767`): API, DB, auth, batches, worker, pipeline; 1611 → 1745 Python tests.
+- M3 (`4979db0`): React/TS/Vite/Tailwind 4 dashboard; Vitest 207/207, Playwright 48/48, axe 0 serious; API now under `/api` (server wrapper); new endpoints: inspect-sheet, failure_code filter, per-row retry, template video + HTTP Range.
+- Decisions DD-1…DD-25 in `DELEGATED-DECISIONS.md`; waiting for the Admin: W-1 GPU budget, W-2 real samples on GPU, W-3 drop 2 leftover test DBs, W-4 UI visual sign-off.
+- Process: per-session throwaway test DBs (DD-20); `git commit --only` rule for agents sharing one index.
+
 ## 2026-10-19 — Slices A + B reviewed (T3–T8, T7b); gate 2 prepared
 - Reviewed T3/T4 (domain) and T5–T8 (sheets, probe, storage, cipher, FFmpeg engine, label). Fix rounds: accented names (D9), invisible joiners twice, filter-name-coupled tests, 4 tester defects (T7b).
 - Decisions recorded: D-1…D-12 (label style, M1 extension, libraqm). ADR-001 now documents the macOS libraqm setup (symlinks into /usr/local/lib; DYLD vars are stripped by SIP).

@@ -38,6 +38,16 @@ function valueOf(key: string): number {
   return Number(screen.getByTestId(`kpi-${key}`).dataset.value);
 }
 
+describe('current batch panel (W-4a)', () => {
+  it('counts completed against renderable rows and shows skipped separately', async () => {
+    setReducedMotion(true);
+    renderApp('/');
+    const panel = await screen.findByTestId('current-batch');
+    expect(panel).toHaveTextContent('60 completed / 95'); // 100 rows minus 5 skipped
+    expect(panel).toHaveTextContent('5 skipped');
+  });
+});
+
 describe('KPI cards', () => {
   it('TT-UI-AC3-P1 shows six KPI cards with labels and numbers', async () => {
     setReducedMotion(true);

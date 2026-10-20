@@ -27,9 +27,11 @@ export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: Bat
         <div className="text-sm">
           <p className="font-semibold">{etaLabel(batch.status, status.eta_seconds)}</p>
           <p className="text-muted">
-            {formatNumber(counts.completed)} completed / {formatNumber(counts.total)}
+            {formatNumber(counts.completed)} completed /{' '}
+            {formatNumber(counts.total - counts.skipped)}
           </p>
           <p className="text-muted">{formatNumber(counts.failed)} failed</p>
+          <p className="text-muted">{formatNumber(counts.skipped)} skipped</p>
         </div>
       </div>
       {action.isError && (

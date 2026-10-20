@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-10-20 - W-4 tests
+- Added: progress ignores skipped rows (and all-skipped = 0), rows response carries same-snapshot counts, header follows the rows snapshot, panel shows skipped separately. TT-AC14-E2 updated (all skipped is 0, not 100). Python 1744, Vitest 209.
+
 ## 2026-10-19 — T15 (VERIFY M1)
 - Added runner tests, 17 tree cases (extra batch/API, ffmpeg VFR and colour, log helper, architecture rules), strict xfails for range requests and two oversize files; tree annotated with a verification table; COVERAGE.md written (98.2 %, domain and render_row 100 %, 1597 passed, 3 xfailed).
 - Findings: V1 two files over 300 lines, V2 no range requests, V3 stateless cookie (by ADR). No functional defect.

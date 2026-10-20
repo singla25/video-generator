@@ -34,8 +34,16 @@ def page_count(total: int, page_size: int) -> int:
 
 
 def progress_percent(counts: StatusCounts) -> float:
-    """Share of rows that are no longer waiting or running."""
-    return PERCENT * (counts.total - counts.remaining) / max(counts.total, 1)
+    """Share of renderable rows that are no longer waiting or running.
+
+    Skipped rows never render, so they are left out of both sides (W-4a): a batch of
+    5 rows with 2 skipped and nothing done is 0 %, not 40 %. With nothing renderable
+    there is nothing to be done, so the result is 0.
+    """
+    renderable = counts.total - counts.skipped
+    if renderable <= 0:
+        return 0.0
+    return PERCENT * (renderable - counts.remaining) / renderable
 
 
 def counts_from(by_status: Mapping[str, int]) -> StatusCounts:

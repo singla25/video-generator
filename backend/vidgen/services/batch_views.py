@@ -70,3 +70,5 @@ class RowsPage:
     page_size: int
     total: int
     total_pages: int
+    counts: StatusCounts
+    progress_percent: float

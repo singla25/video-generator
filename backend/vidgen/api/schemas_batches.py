@@ -126,6 +126,8 @@ def rows_json(page: RowsPage) -> dict[str, Any]:
         "page_size": page.page_size,
         "total": page.total,
         "total_pages": page.total_pages,
+        "counts": counts_json(page.counts),
+        "progress_percent": page.progress_percent,
     }
 
 

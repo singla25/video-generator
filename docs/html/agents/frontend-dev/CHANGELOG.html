@@ -11,6 +11,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Frontend developer — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-10-20 - W-4 fixes</h2>
+<ul><li>Batch detail header and ring use the counts of the rows page (same snapshot as the table); rows refetch after every status poll. Current-batch panel shows completed / renderable and skipped separately.</li><li>Files: <code>BatchDetailPage.tsx</code>, <code>RowsTable.tsx</code>, <code>CurrentBatchPanel.tsx</code>, <code>api/types.ts</code>. Vitest 209 pass. Open: none.</li></ul>
 <h2>2026-10-20 - DD-21/22/23 fixes</h2>
 <ul><li><code>API_PREFIX = '/api'</code> (client <code>apiUrl</code>, all download/video hrefs, dev proxy forwards only <code>/api</code>).</li><li>Slot editor with Confirm slot / "Slot confirmed" on the Templates card and wizard step 3 (explicit confirm; preview no longer auto-confirms).</li><li><code>chipColors.ts</code> AA colour pairs applied inline; chart uses a fixed-width BarChart (hatch fills now render in jsdom) and weekly buckets are calendar-based.</li></ul>
 <h2>2026-10-19 - F6 prep (DD-18, DD-19)</h2>

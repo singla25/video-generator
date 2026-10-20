@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-10-20 - W-4 fixes (progress, rows snapshot)
+- `progress_percent` now counts renderable rows only (skipped excluded; nothing renderable = 0). `GET /batches/{id}/rows` also returns `counts` and `progress_percent` from the same transaction as the rows.
+- Files: `services/batch_rules.py`, `batch_queries.py`, `batch_views.py`, `api/schemas_batches.py`. Tests: 1744 Python pass. Open: none.
+
 ## 2026-10-20 — T14 round 2 (DD-10 layering)
 - `RowRenderer` takes `row_store_factory` (new `RowStore`/`PreviewSink` exports in `vidgen.ports`); the label band comes from `RenderConfig.label_band_share` (setting `label_band_share`, default 0.10, minimum 0.10). No `vidgen.infrastructure` import remains in `vidgen/services` (test_layering).
 - `worker/runner.py` builds the store factory; only `run()` is marked `# pragma: no cover`. Open: `render_config`/`build_renderer` need a unit test (module shows 0 % until then).

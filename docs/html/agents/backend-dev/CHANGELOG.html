@@ -11,6 +11,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Backend developer — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-10-20 - W-4 fixes (progress, rows snapshot)</h2>
+<ul><li><code>progress_percent</code> now counts renderable rows only (skipped excluded; nothing renderable = 0). <code>GET /batches/{id}/rows</code> also returns <code>counts</code> and <code>progress_percent</code> from the same transaction as the rows.</li><li>Files: <code>services/batch_rules.py</code>, <code>batch_queries.py</code>, <code>batch_views.py</code>, <code>api/schemas_batches.py</code>. Tests: 1744 Python pass. Open: none.</li></ul>
 <h2>2026-10-20 — T14 round 2 (DD-10 layering)</h2>
 <ul><li><code>RowRenderer</code> takes <code>row_store_factory</code> (new <code>RowStore</code>/<code>PreviewSink</code> exports in <code>vidgen.ports</code>); the label band comes from <code>RenderConfig.label_band_share</code> (setting <code>label_band_share</code>, default 0.10, minimum 0.10). No <code>vidgen.infrastructure</code> import remains in <code>vidgen/services</code> (test_layering).</li><li><code>worker/runner.py</code> builds the store factory; only <code>run()</code> is marked <code># pragma: no cover</code>. Open: <code>render_config</code>/<code>build_renderer</code> need a unit test (module shows 0 % until then).</li></ul>
 <h2>2026-10-20 — T14 (render pipeline, worker, queue adapter)</h2>

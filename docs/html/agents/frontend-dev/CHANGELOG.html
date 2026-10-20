@@ -11,5 +11,21 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Frontend developer — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-10-20 - DD-21/22/23 fixes</h2>
+<ul><li><code>API_PREFIX = '/api'</code> (client <code>apiUrl</code>, all download/video hrefs, dev proxy forwards only <code>/api</code>).</li><li>Slot editor with Confirm slot / "Slot confirmed" on the Templates card and wizard step 3 (explicit confirm; preview no longer auto-confirms).</li><li><code>chipColors.ts</code> AA colour pairs applied inline; chart uses a fixed-width BarChart (hatch fills now render in jsdom) and weekly buckets are calendar-based.</li></ul>
+<h2>2026-10-19 - F6 prep (DD-18, DD-19)</h2>
+<ul><li>Removed <code>test-support/</code> and its setupFiles entry (glue now lives in tests/frontend/support).</li><li>RowsTable row Retry posts <code>/batches/{id}/rows/{n}/retry</code>; wizard step 3 plays the template video and marks the slot on the timeline.</li></ul>
+<h2>2026-10-19 - F5</h2>
+<ul><li>BatchDetail (stats, failure reasons, inline preview, exports, pause/resume/cancel/delete with dialogs), Templates (cards, consent upload, new template form), History, Security; ConfirmDialog; <code>useBatchAction</code> now guards double submits and supports cancel.</li><li>Open: AC5-P10 (test defect) and the DD-18 per-row retry tests (AC4-P6/P11/N2) are not wired yet.</li></ul>
+<h2>2026-10-19 - F4</h2>
+<ul><li>New batch wizard (4 steps, draft resume, preview gate, idempotent start) in <code>src/pages/WizardPage.tsx</code> and <code>src/pages/wizard/*</code>.</li><li><code>test-support/node-fetch-types.ts</code> (Vitest setup): lets multipart uploads built from jsdom files reach MSW handlers (jsdom vs Node File/FormData mismatch).</li><li>Open: TT-UI-AC5-P10 cannot pass (toHaveValue does not accept asymmetric matchers; test should use toHaveDisplayValue).</li></ul>
+<h2>2026-10-19 - F3</h2>
+<ul><li>OverviewPage (KPI cards, Videos generated chart with hatched bars, current batch panel, polling, error/empty/loading), RowsTable, api/queries, api/types, format helpers. Typecheck is green again.</li><li>Open: AC9-N4 and AC12-P1 need BatchDetailPage (F4).</li></ul>
+<h2>2026-10-19 - F2</h2>
+<ul><li>App routing, api/client (CSRF, ApiError, 401 handler), LoginPage with 429 countdown, AppShell (sidebar, header, skip link, security banner), StatusChip, CountUp, Skeleton/ErrorState/EmptyState, useReducedMotion; other pages are placeholders.</li><li><code>tsconfig.tests.json</code> type-checks <code>tests/frontend</code> (typecheck script runs both). Fails only until RowsTable exists (F4).</li><li>Open: AC9-N3/N4 and AC12-P1/P3 need the F3/F4 pages.</li></ul>
+<h2>2026-10-19 - F1a round 3 (DD-15)</h2>
+<ul><li>Migrated to Tailwind 4.3.3 with @tailwindcss/vite; removed tailwindcss 3, postcss, autoprefixer, postcss and tailwind configs. Tokens moved to <code>@theme</code> in <code>src/index.css</code>. npm audit: 0 findings.</li></ul>
+<h2>2026-10-19 - F1a</h2>
+<ul><li>Tooling scaffold in <code>frontend/</code>: Vite 8, React 19, TS 6 strict, Tailwind 3.4 (design tokens), Vitest 5, Playwright, ESLint 10, Prettier. Exact pinned versions.</li><li>Placeholder <code>src/main.tsx</code> (no screens), logo copied, <code>frontend/.gitignore</code>.</li><li>Tests added: none (tester next). Open: <code>@types/react</code>, <code>@types/react-dom</code>, <code>@types/node</code> are NOT approved but will be needed for TSX components; asked CEO.</li></ul>
 <h2>2026-10-18 — SETUP</h2>
 <ul><li>Agent created.</li></ul></div></body></html>

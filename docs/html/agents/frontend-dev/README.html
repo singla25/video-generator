@@ -17,4 +17,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 <h2>Definition</h2>
 <p><code>.claude/agents/frontend-dev.md</code></p>
 <h2>Current status</h2>
-<p>Not started yet.</p></div></body></html>
+<p>F1a tooling scaffold done (no screens yet).</p>
+<h2>Known advisories</h2>
+<p>None. <code>npm audit</code> reports 0 findings after the Tailwind 4 migration (DD-15). Design tokens live in <code>src/index.css</code> under <code>@theme</code>.</p>
+<h2>npm scripts (run in <code>frontend/</code>)</h2>
+<ul><li><code>dev</code> - Vite dev server; proxies the API paths (auth, templates, batches, stats, audit, health) to 127.0.0.1:8000, so the app is same-origin</li><li><code>build</code> - typecheck + production build into <code>dist</code></li><li><code>typecheck</code> - <code>tsc --noEmit</code> (strict)</li><li><code>lint</code> / <code>format:check</code> - ESLint (flat config) / Prettier</li><li><code>test</code> / <code>test:coverage</code> - Vitest (jsdom); reads <code>tests/frontend/unit</code>, setup file <code>tests/frontend/setup.ts</code></li><li><code>e2e</code> - Playwright (<code>tests/frontend/e2e</code>; projects desktop, reduced-motion, tablet; env <code>E2E_BASE_URL</code>, <code>E2E_START_SERVER</code>)</li></ul></div></body></html>

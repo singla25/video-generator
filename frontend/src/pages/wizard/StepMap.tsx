@@ -1,8 +1,9 @@
-import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { ApiError, apiFetch } from '../../api/client';
+import { apiFetch, apiUpload } from '../../api/client';
 import type { Batch, SheetInspection, SheetReport } from '../../api/types';
+import { useUpload } from '../../api/useUpload';
+import { UploadFeedback } from '../../components/UploadFeedback';
 import { hasDevanagari } from '../../format';
 
 const MAX_LISTED_PROBLEMS = 100;
@@ -71,26 +72,28 @@ export function StepMap({
   const [idColumn, setId] = useState(() => guess(headers, /\bid\b|number|क्रम/i, 1));
   const [spoken, setSpoken] = useState(() => headers.find((h) => /spoken/i.test(h)) ?? '');
 
-  const validate = useMutation({
-    mutationFn: async () => {
-      if (batchId) {
-        const body = JSON.stringify({
-          name_column: nameColumn,
-          id_column: idColumn,
-          spoken_name_column: spoken || null,
-        });
-        return apiFetch<Batch>(`/batches/${batchId}/mapping`, { method: 'PUT', body });
-      }
-      const form = new FormData();
-      form.append('sheet', file as File);
-      form.append('name_column', nameColumn);
-      form.append('id_column', idColumn);
-      form.append('template_id', templateId);
-      if (spoken) form.append('spoken_name_column', spoken);
-      return apiFetch<Batch>('/batches', { method: 'POST', body: form });
-    },
-    onSuccess: onValidated,
-  });
+  const validate = useUpload<Batch>(onValidated);
+
+  function submit() {
+    if (batchId) {
+      const body = JSON.stringify({
+        name_column: nameColumn,
+        id_column: idColumn,
+        spoken_name_column: spoken || null,
+      });
+      void validate.start(() =>
+        apiFetch<Batch>(`/batches/${batchId}/mapping`, { method: 'PUT', body }),
+      );
+      return;
+    }
+    const form = new FormData();
+    form.append('sheet', file as File);
+    form.append('name_column', nameColumn);
+    form.append('id_column', idColumn);
+    form.append('template_id', templateId);
+    if (spoken) form.append('spoken_name_column', spoken);
+    void validate.start((options) => apiUpload<Batch>('/batches', form, options));
+  }
 
   if (!inspection) {
     return (
@@ -164,23 +167,20 @@ export function StepMap({
           </tbody>
         </table>
       </div>
-      {validate.isError && (
-        <p role="alert" className="text-sm text-status-failed">
-          {validate.error instanceof ApiError ? validate.error.message : 'Something went wrong.'}
-        </p>
-      )}
+      <UploadFeedback
+        pending={validate.pending}
+        percent={validate.percent}
+        error={validate.error}
+        label="Uploading sheet"
+        onRetry={validate.retry}
+      />
       {report && <ReportView report={report} />}
       <div className="flex justify-between">
         <button type="button" className={GHOST} onClick={onBack}>
           Back
         </button>
         <div className="flex gap-3">
-          <button
-            type="button"
-            className={GHOST}
-            disabled={validate.isPending}
-            onClick={() => validate.mutate()}
-          >
+          <button type="button" className={GHOST} disabled={validate.pending} onClick={submit}>
             Validate sheet
           </button>
           <button

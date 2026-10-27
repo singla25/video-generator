@@ -45,7 +45,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['../tests/frontend/unit/**/*.test.{ts,tsx}'],
-    setupFiles: ['../tests/frontend/setup.ts'],
+    setupFiles: ['../tests/frontend/setup.ts', './test-support/xhr-formdata.ts'],
     css: false,
     coverage: { provider: 'v8', include: ['src/**'], reporter: ['text', 'html'] },
   },

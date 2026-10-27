@@ -1,12 +1,13 @@
-import { useMutation } from '@tanstack/react-query';
 import { UploadCloud } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
 import { Link } from 'react-router-dom';
 
-import { ApiError, apiFetch } from '../../api/client';
+import { apiUpload } from '../../api/client';
 import { useTemplates } from '../../api/queries';
 import type { SheetInspection } from '../../api/types';
+import { useUpload } from '../../api/useUpload';
 import { ErrorState, Skeleton } from '../../components/states';
+import { UploadFeedback } from '../../components/UploadFeedback';
 import { hasDevanagari } from '../../format';
 import { sheetProblem } from './rules';
 
@@ -25,14 +26,15 @@ export function StepUpload({ file, templateId, onChange, onInspected }: Props) {
   const [problem, setProblem] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const inspect = useMutation({
-    mutationFn: (sheet: File) => {
-      const form = new FormData();
-      form.append('sheet', sheet);
-      return apiFetch<SheetInspection>('/batches/inspect-sheet', { method: 'POST', body: form });
-    },
-    onSuccess: onInspected,
-  });
+  const inspect = useUpload<SheetInspection>(onInspected);
+
+  function send(sheet: File) {
+    const form = new FormData();
+    form.append('sheet', sheet);
+    void inspect.start((options) =>
+      apiUpload<SheetInspection>('/batches/inspect-sheet', form, options),
+    );
+  }
 
   function choose(candidate: File | undefined) {
     if (!candidate) return;
@@ -113,17 +115,19 @@ export function StepUpload({ file, templateId, onChange, onInspected }: Props) {
           {problem}
         </p>
       )}
-      {inspect.isError && (
-        <p role="alert" className="text-sm text-status-failed">
-          {inspect.error instanceof ApiError ? inspect.error.message : 'Something went wrong.'}
-        </p>
-      )}
+      <UploadFeedback
+        pending={inspect.pending}
+        percent={inspect.percent}
+        error={inspect.error}
+        label="Uploading sheet"
+        onRetry={inspect.retry}
+      />
       <div className="flex justify-end">
         <button
           type="button"
           className={BUTTON}
-          disabled={!file || !templateId || inspect.isPending}
-          onClick={() => file && inspect.mutate(file)}
+          disabled={!file || !templateId || inspect.pending}
+          onClick={() => file && send(file)}
         >
           Next
         </button>

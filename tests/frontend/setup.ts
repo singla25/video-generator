@@ -1,5 +1,6 @@
 // Global test setup: jest-dom, MSW lifecycle, matchMedia stub, clean storage.
 import './support/node-fetch-types';
+import './support/xhr-formdata';
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';

@@ -490,3 +490,26 @@ describe("upload feedback: zero-byte files and cancel", () => {
     expect(screen.queryByText("Late failure.")).not.toBeInTheDocument();
   });
 });
+
+describe.each(SURFACES)("upload feedback extras: $name", (surface) => {
+  it("TT-UP-E10 the request has a positive timeout so a hung upload ends", async () => {
+    const xhr = await startFake(surface);
+    expect(xhr.timeout).toBeGreaterThan(0);
+  });
+
+  it("TT-UP-E11 progress never shows NaN or more than 100 percent", async () => {
+    const xhr = await startFake(surface);
+    act(() => xhr.progress(150, 100));
+    const bar = await screen.findByRole("progressbar");
+    expect(Number(bar.getAttribute("aria-valuenow"))).toBeLessThanOrEqual(100);
+    expect(document.body.textContent).not.toMatch(/NaN/);
+  });
+
+  it("TT-UP-N10 a 504 gateway page gives an alert with Retry", async () => {
+    const xhr = await startFake(surface);
+    act(() => xhr.respond(504, "<html>Gateway Time-out</html>"));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    noLeftovers();
+  });
+});

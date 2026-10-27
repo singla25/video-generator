@@ -34,6 +34,29 @@ at 25 fps → upsampled to 60 fps and spliced back → AI label band added with 
   (4) the Demucs "rest" stem carries any residual of the old name and some artefacts on real music.
 - Transliteration is unresolved (S2), and names were mapped by hand; ADR-010's per-row "Spoken name" override stays essential.
 
+## S2b — Roman to Devanagari name transliteration without fairseq (2026-10-27)
+Self-written set of 40 Indian first+last names (none from `samples/`), strict scoring: "exact" = the primary spelling, "ok" = primary or a
+listed same-pronunciation variant. Several misses are probably still pronounceable (strict list), so treat "ok" as a floor.
+Script: `s2b_translit_llm.py`. Deterministic decoding, 5 few-shot examples, bf16 on MPS.
+
+| Model | Licence (HF field) | Exact | Ok | s/name | Load | Peak RSS |
+|-------|--------------------|-------|----|--------|------|----------|
+| indic-transliteration (rule-based baseline) | MIT | 0 % | 0 % | <0.01 | 0.1 s | ~0 |
+| Qwen2.5-1.5B-Instruct | Apache-2.0 | 22 % | 30 % | 0.27 | 240 s (mostly first download) | 2.2 GB |
+| **Qwen3-4B-Instruct-2507** | Apache-2.0 | **45 %** | **55 %** | 0.69 | 613 s (mostly first download) | 2.8 GB |
+| Qwen2.5-7B-Instruct | Apache-2.0 | not run | not run | n/a | n/a | n/a |
+
+- 7B: ❌ the download stalled at 0 bytes for 40 min (over the 20-min rule); not retried. Qwen2.5-3B skipped: licence is `other` (Qwen research, non-commercial).
+- Skipped for licence or provenance: `psidharth567/indic-xlit-*` and `kishankumar007/mt5-multilingual-aksharantar` (no licence field), other community
+  byT5/IndicXlit re-uploads (unknown author or licence, or other languages). The official `ai4bharat/IndicXlit` is MIT but fairseq-only.
+- Typical errors: wrong long vowels (सुनिल vs सुनील), Hinglish spelling of "sh" (रमेस्ह), stray Latin letters, a wrong word (रक्षे जयंत for "Rakesh Jain").
+  The 1.5B model is not usable; the 4B model is plausible but wrong on about 45 % of names.
+- Memory is under 3 GB and about 0.7 s per name, negligible per video.
+- **Recommendation:** use Qwen3-4B-Instruct-2507 (Apache-2.0) only to PRE-FILL a "Spoken name" column, and keep the per-row override plus a
+  preview step mandatory (as ADR-010 already requires). Expect roughly half of names to need a human fix, similar to IndicXlit's 59 % top-1.
+  Untried upgrades: a larger model (7B needs a download retry), more few-shot examples, a dictionary of common Indian names checked before the LLM.
+  Rule-based transliteration is not viable (0 %).
+
 ## Estimates on this Mac (one video at a time; 16–18 GB footprint rules out running two MuseTalk jobs in parallel)
 - As measured (~160 s per video): **100 videos ≈ 4.5 h, 1,000 videos ≈ 44 h**.
 - With obvious fixes (landmarks computed once per template slot and reused through `--use_saved_coord`, models kept loaded in a worker),

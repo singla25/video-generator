@@ -109,3 +109,9 @@ Newest first. One entry per task.
 
 ## 2026-10-20 - final M3 verification
 - E2E 48/48, Python 1745, Vitest 207 (93 percent lines), checks clean; screenshots refreshed; UI-AC2 now green.
+
+## 2026-10-28 - FIX-UPLOAD-1 RED
+- Tree docs/test-tree/fix-upload-feedback.md. Vitest upload-feedback.test.tsx (4 upload surfaces, fake XHR helper in tests/frontend/support/fake-xhr.ts, setup.ts now unstubs globals) and pytest tests/unit/api/test_dependency_outage.py (DB_UNAVAILABLE / QUEUE_UNAVAILABLE 503). Red: Vitest 55 fail / 13 pass (guards), pytest 7 fail / 3 pass (guards). Needs: XHR upload with progressbar, Retry button, 503 mapping.
+
+## 2026-10-28 - FIX-UPLOAD-4 verify
+- Moved the XHR FormData shim to tests/frontend/support/xhr-formdata.ts (imported by setup.ts). Added TT-UP-E10/E11/N10 (timeout set, progress clamp, 504). Vitest 289 pass; pytest unit 903 pass.

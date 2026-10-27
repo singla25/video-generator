@@ -80,3 +80,7 @@ Newest first. One entry per task.
 
 ## 2026-10-18 — SETUP
 - Agent created.
+
+## 2026-10-28 — FIX-UPLOAD-2
+- `vidgen/api/errors.py`: SQLAlchemy OperationalError/InterfaceError -> 503 `DB_UNAVAILABLE`; redis errors and ConnectionRefusedError -> 503 `QUEUE_UNAVAILABLE`. Fixed plain messages, logged at error level (exception type only, no DSN). Other errors stay 500.
+- Tests: tests/unit/api/test_dependency_outage.py (written by tester). Open: none.

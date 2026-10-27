@@ -19,5 +19,9 @@ samples/
 
 # Local dev state (logs, PIDs)
 .dev/
+
+# M2 spike scratch (models, real-sample outputs) - never commit
+backend/spikes/m2_mac/work/
 .venv-m2/
 output_m2_*.log
+.DS_Store

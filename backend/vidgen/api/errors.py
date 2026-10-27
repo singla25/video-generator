@@ -13,6 +13,8 @@ from typing import cast
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from redis.exceptions import RedisError
+from sqlalchemy.exc import InterfaceError, OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from vidgen.domain.codes import DomainError, FailureCode, plain_message
@@ -35,6 +37,9 @@ METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
 INVALID_STATE = "INVALID_STATE"
 PREVIEW_NOT_READY = "PREVIEW_NOT_READY"
 PREVIEW_NOT_APPROVED = "PREVIEW_NOT_APPROVED"
+DB_UNAVAILABLE = "DB_UNAVAILABLE"
+QUEUE_UNAVAILABLE = "QUEUE_UNAVAILABLE"
+HTTP_UNAVAILABLE = 503
 
 API_MESSAGES: Mapping[str, str] = {
     UNAUTHENTICATED: "Please log in to continue.",
@@ -47,6 +52,8 @@ API_MESSAGES: Mapping[str, str] = {
     INVALID_STATE: "This action is not possible in the batch's current state.",
     PREVIEW_NOT_READY: "The preview is not ready for the current settings yet.",
     PREVIEW_NOT_APPROVED: "Approve a preview of the current settings before starting.",
+    DB_UNAVAILABLE: "The database is not reachable right now. Please try again in a moment.",
+    QUEUE_UNAVAILABLE: "The job queue is not reachable right now. Please try again in a moment.",
 }
 
 HTTP_UNPROCESSABLE = 422
@@ -121,6 +128,20 @@ def _http_error(_: Request, exc: Exception) -> JSONResponse:
     return error_response(error.status_code, VALIDATION_ERROR, API_MESSAGES[VALIDATION_ERROR])
 
 
+def _unavailable(code: str, exc: Exception) -> JSONResponse:
+    # Only the type is logged: the text can hold the connection string with its password.
+    logger.error("dependency unavailable", extra={"error_type": type(exc).__name__, "code": code})
+    return error_response(HTTP_UNAVAILABLE, code, API_MESSAGES[code])
+
+
+def _db_unavailable(_: Request, exc: Exception) -> JSONResponse:
+    return _unavailable(DB_UNAVAILABLE, exc)
+
+
+def _queue_unavailable(_: Request, exc: Exception) -> JSONResponse:
+    return _unavailable(QUEUE_UNAVAILABLE, exc)
+
+
 def _unexpected(_: Request, exc: Exception) -> JSONResponse:
     # Only the type is logged: the text may contain names or IDs (C5).
     logger.error("unhandled error", extra={"error_type": type(exc).__name__})
@@ -137,4 +158,8 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(InvalidInputError, _invalid_input)
     app.add_exception_handler(RequestValidationError, _invalid_input)
     app.add_exception_handler(StarletteHTTPException, _http_error)
+    app.add_exception_handler(OperationalError, _db_unavailable)
+    app.add_exception_handler(InterfaceError, _db_unavailable)
+    app.add_exception_handler(RedisError, _queue_unavailable)
+    app.add_exception_handler(ConnectionRefusedError, _queue_unavailable)
     app.add_exception_handler(Exception, _unexpected)

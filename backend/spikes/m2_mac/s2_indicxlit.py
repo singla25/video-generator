@@ -1,3 +1,6 @@
+# ruff: noqa
+# mypy: ignore-errors
+# Throwaway M2 spike script: exempt from the project lint and type gates.
 """S2: IndicXlit Roman -> Devanagari on CPU."""
 
 import resource

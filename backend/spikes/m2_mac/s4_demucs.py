@@ -1,3 +1,6 @@
+# ruff: noqa
+# mypy: ignore-errors
+# Throwaway M2 spike script: exempt from the project lint and type gates.
 """S4: Demucs htdemucs vocal/accompaniment split on MPS."""
 
 import resource

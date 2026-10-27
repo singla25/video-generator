@@ -1,3 +1,6 @@
+# ruff: noqa
+# mypy: ignore-errors
+# Throwaway M2 spike script: exempt from the project lint and type gates.
 """S3: Chatterbox-Multilingual Hindi, voice cloned from a Lekha clip (MPS)."""
 
 import resource

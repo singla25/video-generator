@@ -1,3 +1,6 @@
+# ruff: noqa
+# mypy: ignore-errors
+# Throwaway M2 spike script: exempt from the project lint and type gates.
 """S6: real-sample end-to-end personalisation, local Mac only.
 
 Usage: s6_real.py <template.mp4> <sheet.xlsx> <out_dir> <musetalk_dir> <name_map.json> <rows>
@@ -47,8 +50,22 @@ def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
 def separate_template(template: Path, out: Path, device: str) -> tuple[np.ndarray, np.ndarray]:
     """Demucs the template audio; returns (vocals, rest) as (2, n) float32 arrays."""
     wav = out / "tpl_44k.wav"
-    run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(template), "-vn", "-ar", str(SR),
-         "-ac", "2", str(wav)])
+    run(
+        [
+            "ffmpeg",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(template),
+            "-vn",
+            "-ar",
+            str(SR),
+            "-ac",
+            "2",
+            str(wav),
+        ]
+    )
     model = get_model("htdemucs").to(device).eval()
     data, _ = sf.read(wav, dtype="float32")
     x = torch.from_numpy(data.T)
@@ -99,10 +116,28 @@ def musetalk_slot(mt: Path, slot_mp4: Path, audio16k: Path, name: str) -> tuple[
     t = time.time()
     log = open(mt.parent / "real" / f"mt_{name}.log", "w")
     res = subprocess.run(
-        ["/usr/bin/time", "-l", py, "scripts/inference.py", "--inference_config", str(cfg),
-         "--unet_config", "./models/musetalkV15/musetalk.json", "--result_dir", "./results",
-         "--version", "v15", "--output_vid_name", f"{name}.mp4"],
-        cwd=mt, env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, check=True,
+        [
+            "/usr/bin/time",
+            "-l",
+            py,
+            "scripts/inference.py",
+            "--inference_config",
+            str(cfg),
+            "--unet_config",
+            "./models/musetalkV15/musetalk.json",
+            "--result_dir",
+            "./results",
+            "--version",
+            "v15",
+            "--output_vid_name",
+            f"{name}.mp4",
+        ],
+        cwd=mt,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        check=True,
     )
     wall = time.time() - t
     log.close()
@@ -122,10 +157,41 @@ def assemble(template: Path, lip25: Path, audio: Path, label_png: Path, out: Pat
         f"[a][b]concat=n=2:v=1:a=0[c];[c][2:v]overlay=0:0[v]"
     )
     # Input 0 is the slot rendered at SRC_FPS; resampled to OUT_FPS by the fps filter.
-    run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(lip25), "-i", str(template),
-         "-i", str(label_png), "-i", str(audio), "-filter_complex", fc, "-map", "[v]",
-         "-map", "3:a", "-r", str(OUT_FPS), "-c:v", "libx264", "-crf", "18", "-c:a", "aac",
-         "-b:a", "192k", "-movflags", "+faststart", str(out)])
+    run(
+        [
+            "ffmpeg",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(lip25),
+            "-i",
+            str(template),
+            "-i",
+            str(label_png),
+            "-i",
+            str(audio),
+            "-filter_complex",
+            fc,
+            "-map",
+            "[v]",
+            "-map",
+            "3:a",
+            "-r",
+            str(OUT_FPS),
+            "-c:v",
+            "libx264",
+            "-crf",
+            "18",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-movflags",
+            "+faststart",
+            str(out),
+        ]
+    )
 
 
 def main() -> None:
@@ -152,13 +218,29 @@ def main() -> None:
     print(f"chatterbox load: {time.time() - t:.1f}s")
 
     label_png = out / "label.png"
-    probe = json.loads(subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-         "stream=width,height", "-of", "json", str(template)], capture_output=True, text=True,
-        check=True).stdout)["streams"][0]
+    probe = json.loads(
+        subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "json",
+                str(template),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )["streams"][0]
     w, h = probe["width"], probe["height"]
-    PillowLabelRenderer(FONTS / "NotoSansDevanagari-Bold.ttf", FONTS / "NotoSans-Bold.ttf"
-                        ).render_label(w, label_band_height(h), label_png)
+    PillowLabelRenderer(
+        FONTS / "NotoSansDevanagari-Bold.ttf", FONTS / "NotoSans-Bold.ttf"
+    ).render_label(w, label_band_height(h), label_png)
 
     for i, (name, vid) in enumerate(people, start=1):
         tm: dict = {}
@@ -175,13 +257,43 @@ def main() -> None:
         sf.write(mix_wav, mix.T, SR)
         v16 = out / f"row{i}_voc16k.wav"
         sf.write(out / f"row{i}_voc44k.wav", new_voc[:, : int(SLOT_VIDEO_S * SR)].mean(0), SR)
-        run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(out / f"row{i}_voc44k.wav"),
-             "-ar", "16000", "-ac", "1", str(v16)])
+        run(
+            [
+                "ffmpeg",
+                "-loglevel",
+                "error",
+                "-y",
+                "-i",
+                str(out / f"row{i}_voc44k.wav"),
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
+                str(v16),
+            ]
+        )
         slot = out / "slot_25.mp4"
         if not slot.exists():
-            run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(template), "-t",
-                 str(SLOT_VIDEO_S), "-vf", f"fps={SRC_FPS}", "-an", "-c:v", "libx264",
-                 "-crf", "10", str(slot)])
+            run(
+                [
+                    "ffmpeg",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-i",
+                    str(template),
+                    "-t",
+                    str(SLOT_VIDEO_S),
+                    "-vf",
+                    f"fps={SRC_FPS}",
+                    "-an",
+                    "-c:v",
+                    "libx264",
+                    "-crf",
+                    "10",
+                    str(slot),
+                ]
+            )
         lip, stats = musetalk_slot(mt, slot, v16, f"row{i}")
         tm.update(stats)
         t = time.time()

@@ -2,6 +2,12 @@
 
 Newest first. One entry per task.
 
+## 2026-10-28 - FIX-UPLOAD-3
+- Uploads (wizard sheet, Validate sheet, new template, consent) go through one XHR helper `apiUpload` in `src/api/client.ts` (CSRF, 401, error envelope, plain-words messages for 413/500/503/network/timeout) and the `useUpload` hook (progress, error, Retry, cancel, abort on unmount, one request at a time).
+- `UploadFeedback` shows role=progressbar or the error via `ErrorState` (new `retryLabel` prop). Consent refuses 0-byte files.
+- `test-support/xhr-formdata.ts` (Vitest setup in `vite.config.ts`): jsdom XHR cannot send the Node FormData that tests/setup installs, so it is encoded as multipart. Test-only.
+- Tests: upload-feedback.test.tsx green, Vitest 277/277. Playwright not run (needs the backend).
+
 ## 2026-10-20 - W-4 fixes
 - Batch detail header and ring use the counts of the rows page (same snapshot as the table); rows refetch after every status poll. Current-batch panel shows completed / renderable and skipped separately.
 - Files: `BatchDetailPage.tsx`, `RowsTable.tsx`, `CurrentBatchPanel.tsx`, `api/types.ts`. Vitest 209 pass. Open: none.

@@ -12,7 +12,15 @@ export function Skeleton({ className = 'h-24' }: { className?: string }) {
 }
 
 /** Human error message with an optional retry button. */
-export function ErrorState({ title, onRetry }: { title: string; onRetry?: () => void }) {
+export function ErrorState({
+  title,
+  onRetry,
+  retryLabel = 'Try again',
+}: {
+  title: string;
+  onRetry?: () => void;
+  retryLabel?: string;
+}) {
   return (
     <div role="alert" className="rounded-card border bg-card p-6 text-center">
       <p className="font-semibold text-status-failed">{title}</p>
@@ -22,7 +30,7 @@ export function ErrorState({ title, onRetry }: { title: string; onRetry?: () => 
           onClick={onRetry}
           className="mt-3 rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint"
         >
-          Try again
+          {retryLabel}
         </button>
       )}
     </div>

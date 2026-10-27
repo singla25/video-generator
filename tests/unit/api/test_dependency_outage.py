@@ -17,6 +17,7 @@ from fastapi import Request
 from fastapi.testclient import TestClient
 from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy.exc import InterfaceError, OperationalError
+from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 
 from tests.fixtures.doubles import (
     VALID_VIDEO,
@@ -184,3 +185,11 @@ def test_queue_unreachable_is_logged_at_error_level(
         client.post("/_probe/enqueue")
     assert [r for r in caplog.records if r.levelno >= logging.ERROR]
     assert SECRET not in caplog.text
+
+
+def test_connection_pool_timeout_returns_503_db_unavailable(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A saturated or unreachable pool (QueuePool limit reached) is also DB_UNAVAILABLE."""
+    _db_down(monkeypatch, PoolTimeoutError(f"QueuePool limit reached, {DSN}"))
+    _assert_unavailable(client.get("/templates"), "DB_UNAVAILABLE")

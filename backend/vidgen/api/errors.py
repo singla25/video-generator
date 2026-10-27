@@ -15,6 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from redis.exceptions import RedisError
 from sqlalchemy.exc import InterfaceError, OperationalError
+from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from vidgen.domain.codes import DomainError, FailureCode, plain_message
@@ -160,6 +161,7 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, _http_error)
     app.add_exception_handler(OperationalError, _db_unavailable)
     app.add_exception_handler(InterfaceError, _db_unavailable)
+    app.add_exception_handler(PoolTimeoutError, _db_unavailable)
     app.add_exception_handler(RedisError, _queue_unavailable)
     app.add_exception_handler(ConnectionRefusedError, _queue_unavailable)
     app.add_exception_handler(Exception, _unexpected)

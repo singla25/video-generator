@@ -10,6 +10,9 @@
 - Licence check before each install: commercial-use compatible (code + weights), as in ADR-010. If a component is non-commercial, skip it and note why.
 - Timebox: if a component won't install or run after 2 attempts, mark it ❌ with the error and move on.
 
+## Scope change (Admin, 2026-10-20)
+After the synthetic checks, also run the **real sample, on this Mac only**: `samples/template_video.mp4` plus 2–3 names from `samples/source_list.xlsx`. The data never leaves this Mac, and all outputs stay git-ignored under `backend/spikes/m2_mac/work/`. The spike produces 2–3 real personalized videos (lip-synced, "Krishan" replaced). RESULTS.md also gives estimates for 100 and 1,000 videos and a recommendation: Mac is enough / rent a GPU / buy a GPU. (W-2 is resolved for local use only; W-2 for a GPU box is still open.)
+
 ## Checks (one per component)
 | # | Component | Device | Pass = |
 |---|-----------|--------|--------|

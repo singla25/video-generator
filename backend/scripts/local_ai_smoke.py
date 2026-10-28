@@ -20,6 +20,7 @@ import resource
 import subprocess
 import sys
 import time
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -204,6 +205,11 @@ def main() -> int:
     label = tmp / "label.png"
     labels.render_label(int(info["width"]), band, label)
     failures = 0
+    metadata = {
+        "creator_entity": "Local smoke test",
+        "generated_on": date.today().isoformat(),
+        "batch_id": "local-smoke",
+    }
     for index, ((_, voter_id), (wav, seconds)) in enumerate(zip(people, speech, strict=True)):
         started = time.perf_counter()
         synced = tmp / f"synced{index}.mp4"
@@ -224,7 +230,7 @@ def main() -> int:
             (slot.start_s, slot.end_s),
             plan,
             label,
-            {"creator_entity": "Local smoke test"},
+            metadata,
             out,
         )
         timer.stage("encode", started)

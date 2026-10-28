@@ -9,19 +9,17 @@ from fastapi import APIRouter, Depends, Request
 from redis.exceptions import RedisError
 
 from vidgen.api.deps import container, require_session
+from vidgen.ports import JobQueue
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/system", tags=["system"], dependencies=[Depends(require_session)])
 
 
-def _queue_depth(queue: Any) -> int | None:
-    """Jobs waiting, or None when the queue cannot say (no support or Redis error)."""
-    depth = getattr(queue, "depth", None)
-    if depth is None:
-        return None
+def _queue_depth(queue: JobQueue) -> int | None:
+    """Jobs waiting, or None when Redis cannot answer."""
     try:
-        return int(depth())
+        return queue.depth()
     except RedisError as exc:
         logger.warning("queue depth unavailable", extra={"error_type": type(exc).__name__})
         return None

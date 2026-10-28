@@ -213,3 +213,7 @@ class JobQueue(Protocol):
     def enqueue_rows(self, batch_id: UUID, row_ids: list[UUID]) -> None:
         """Queue one render job per row."""
         ...
+
+    def depth(self) -> int:
+        """Messages waiting in the queue."""
+        ...

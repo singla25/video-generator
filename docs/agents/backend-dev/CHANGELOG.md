@@ -108,3 +108,10 @@ Newest first. One entry per task.
 - `SqlRowStore._job`: preview row speaks the confirmed spoken name (preview.spoken_name_enc), else the row's own, else the name.
 - Peak memory 16-18 GB, one render at a time (SingleRenderGuard). Lip-sync window starts at 0 s of the template (port has no slot argument).
 - Tests: none added (tester's job). Open: real-weights run not verified here.
+
+## 2026-10-28 - L7 local AI smoke run (partial: blocked at lip sync)
+- Added `backend/scripts/local_ai_smoke.py` (2 rows through the factory adapters, stage by stage, with timings/memory).
+- `release()` on the four local adapters (LazyModel.release) so models can run one stage at a time in 24 GB.
+- `tts.trim_to_first_utterance`: Chatterbox babbled ~4 s after a 1 s name; clip is cut after the first utterance.
+- Weights dir `work/local_ai_weights` built with symlinks; MuseTalk clone patch re-applied on 3 files.
+- Open: 2DFAN4 face-landmark weights are not inside the project (spike cached them in the home folder); lip sync cannot run offline until they are in `work/torch/hub/checkpoints/`. No tests added (tester to cover trim and release).

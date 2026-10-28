@@ -122,10 +122,16 @@ export function StepUpload({ file, templateId, onChange, onInspected }: Props) {
         label="Uploading sheet"
         onRetry={inspect.retry}
       />
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {!templateId && (
+          <p id="next-hint" className="text-sm text-muted">
+            Choose a template to continue
+          </p>
+        )}
         <button
           type="button"
           className={BUTTON}
+          aria-describedby={templateId ? undefined : 'next-hint'}
           disabled={!file || !templateId || inspect.pending}
           onClick={() => file && send(file)}
         >

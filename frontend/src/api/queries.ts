@@ -71,6 +71,19 @@ export function useDailyStats(days: number) {
   });
 }
 
+/** Save the confirmed spoken name of a batch preview (local AI mode). */
+export function useConfirmSpelling(batchId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (spokenName: string) =>
+      apiFetch(`/batches/${batchId}/preview/confirm-spelling`, {
+        method: 'POST',
+        body: JSON.stringify({ spoken_name: spokenName }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['batches'] }),
+  });
+}
+
 export type BatchAction = 'pause' | 'resume' | 'retry-failed' | 'cancel';
 
 /**

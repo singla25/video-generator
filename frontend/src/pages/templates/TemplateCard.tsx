@@ -1,6 +1,7 @@
 import { BadgeCheck, Film, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 
+import { useSystemStatus } from '../../api/queries';
 import type { Template } from '../../api/types';
 import { hasDevanagari } from '../../format';
 import { SlotEditor } from '../wizard/SlotEditor';
@@ -15,6 +16,7 @@ function slotText(template: Template): string {
 /** One template: placeholder thumbnail, name, slot, consent badge and usable state. */
 export function TemplateCard({ template }: { template: Template }) {
   const [asking, setAsking] = useState(false);
+  const fakeAi = useSystemStatus().data?.ai_mode === 'fake';
   const Badge = template.consent_confirmed ? BadgeCheck : ShieldAlert;
   return (
     <article data-testid="template-card" className="rounded-card border bg-card p-5">
@@ -31,6 +33,11 @@ export function TemplateCard({ template }: { template: Template }) {
         </span>
       </h2>
       <p className="text-sm text-muted">{slotText(template)}</p>
+      {fakeAi && template.needs_manual_slot && (
+        <p className="text-sm text-muted">
+          Automatic detection needs real AI, so set the slot by hand.
+        </p>
+      )}
       <p
         data-testid="consent-badge"
         className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${template.consent_confirmed ? 'bg-mint text-status-completed' : 'bg-amber-50 text-status-skipped'}`}

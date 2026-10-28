@@ -16,6 +16,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import logo from '../assets/logo-mark.svg';
 import { useReducedMotion } from '../hooks';
+import { AiModeBadge } from './AiModeBadge';
 import { SecurityBanner } from './SecurityBanner';
 import { WorkerBanner } from './WorkerBanner';
 
@@ -139,6 +140,7 @@ export function AppShell() {
           </div>
         </header>
         <main id="main" className="p-6">
+          <AiModeBadge />
           <SecurityBanner />
           <WorkerBanner />
           <Outlet />

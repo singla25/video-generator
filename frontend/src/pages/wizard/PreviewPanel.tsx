@@ -2,10 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { ApiError, apiFetch, apiUrl } from '../../api/client';
-import { useSystemStatus } from '../../api/queries';
+import { useConfirmSpelling, useSystemStatus } from '../../api/queries';
 import type { Batch } from '../../api/types';
 import { SLOW_PREVIEW_MS } from '../../config';
 
+const FIELD_ID = 'spoken-name';
 const BUTTON =
   'rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint disabled:opacity-50';
 
@@ -25,12 +26,61 @@ function useSlowPending(pending: boolean, restart: number): boolean {
   return pending && timedOut === restart;
 }
 
+interface SpokenNameProps {
+  batch: Batch;
+  text: string;
+  onText: (value: string) => void;
+}
+
+/** Editable spoken name; Approve stays locked until this exact text is confirmed. */
+function SpokenName({ batch, text, onText }: SpokenNameProps) {
+  const confirm = useConfirmSpelling(batch.id);
+  const trimmed = text.trim();
+  return (
+    <div className="space-y-2">
+      <label htmlFor={FIELD_ID} className="block text-sm font-semibold">
+        Spoken name
+      </label>
+      <div className="flex gap-2">
+        <input
+          id={FIELD_ID}
+          type="text"
+          lang="hi"
+          value={text}
+          onChange={(e) => onText(e.target.value)}
+          className="flex-1 rounded-tile border px-3 py-1.5 text-sm"
+        />
+        <button
+          type="button"
+          className={BUTTON}
+          disabled={!trimmed || confirm.isPending}
+          onClick={() => confirm.mutate(trimmed)}
+        >
+          Confirm spelling
+        </button>
+      </div>
+      {confirm.error && (
+        <p role="alert" className="text-sm text-status-failed">
+          {message(confirm.error)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Generate a preview, watch it render, watch it and approve it (the A5 gate). */
 export function PreviewPanel({ batch }: { batch: Batch }) {
   const client = useQueryClient();
   const refresh = () => client.invalidateQueries({ queryKey: ['batches'] });
   const state = batch.preview?.status ?? 'NONE';
   const approved = Boolean(batch.preview?.approved);
+  const localAi = useSystemStatus().data?.ai_mode === 'local';
+  const [spoken, setSpoken] = useState(
+    batch.preview?.spoken_name ?? batch.preview?.suggested_spoken_name ?? '',
+  );
+  const spellingOk =
+    !localAi ||
+    (Boolean(batch.preview?.spoken_name_confirmed) && spoken.trim() === batch.preview?.spoken_name);
 
   const generate = useMutation({
     mutationFn: () => apiFetch(`/batches/${batch.id}/preview`, { method: 'POST' }),
@@ -79,6 +129,9 @@ export function PreviewPanel({ batch }: { batch: Batch }) {
           className="w-full rounded-tile bg-black"
         />
       )}
+      {state === 'READY' && localAi && !approved && (
+        <SpokenName batch={batch} text={spoken} onText={setSpoken} />
+      )}
       {state === 'READY' && approved && (
         <p className="text-sm font-semibold text-emerald">Preview approved</p>
       )}
@@ -99,7 +152,7 @@ export function PreviewPanel({ batch }: { batch: Batch }) {
         <button
           type="button"
           className={BUTTON}
-          disabled={state !== 'READY' || approved || approve.isPending}
+          disabled={state !== 'READY' || approved || approve.isPending || !spellingOk}
           onClick={() => approve.mutate()}
         >
           Approve preview

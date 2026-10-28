@@ -55,3 +55,8 @@ Newest first. One entry per task.
 
 ## 2026-10-18 — SETUP
 - Agent created.
+
+## 2026-10-28 - L5
+- AI-mode badge in AppShell, Next hint, fake-mode template note, Spoken name + Confirm spelling gating Approve preview (local mode).
+- Files: api/queries.ts, api/types.ts, layout/AiModeBadge.tsx, layout/AppShell.tsx, pages/wizard/{PreviewPanel,StepUpload}.tsx, pages/templates/TemplateCard.tsx.
+- Tests: ai-mode.test.tsx 17 pass; full Vitest 330/330.

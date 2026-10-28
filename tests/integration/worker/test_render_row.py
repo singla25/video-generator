@@ -116,9 +116,14 @@ def test_the_plan_follows_the_length_of_the_synthesised_name(
 
 
 def test_label_is_a_full_width_band_of_at_least_ten_percent_of_the_frame_height(
-    world: World,
+    make_world: WorldFactory,
 ) -> None:
-    """TT-AC10-P1 (D-10): sized from the template (320x240)."""
+    """TT-AC10-P1 (D-10): sized from the template (320x240); band style (DD-32)."""
+    from vidgen.services.render_row import RenderConfig
+
+    world = make_world(
+        config=RenderConfig(creator_entity=CREATOR, pause_s=PAUSE_S, label_style="band")
+    )
     render(world)
     assert world.labels.sizes == [(320, label_band_height(240))]
 
@@ -128,7 +133,9 @@ def test_the_label_band_share_comes_from_the_render_config(make_world: WorldFact
     from vidgen.services.render_row import RenderConfig
 
     world = make_world(
-        config=RenderConfig(creator_entity=CREATOR, pause_s=PAUSE_S, label_band_share=0.2)
+        config=RenderConfig(
+            creator_entity=CREATOR, pause_s=PAUSE_S, label_band_share=0.2, label_style="band"
+        )
     )
     render(world)
     assert world.labels.sizes == [(320, 48)]

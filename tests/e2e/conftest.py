@@ -119,7 +119,9 @@ def stack(db: Engine, test_db_url: str, tmp_path: Path) -> Iterator[Stack]:  # n
         quality=FakeQuality(),
         labels=PillowLabelRenderer(devanagari_font=devanagari_font(), latin_font=latin_font()),
         clock=clock,
-        config=RenderConfig(creator_entity=settings.creator_entity, pause_s=0.6),
+        config=RenderConfig(
+            creator_entity=settings.creator_entity, pause_s=0.6, label_style="band"
+        ),
         preview_sink=app.state.container.batches,
     )
     register_actors(broker, renderer, WorkerConfig(queue_name=QUEUE, retry_delay_ms=50))

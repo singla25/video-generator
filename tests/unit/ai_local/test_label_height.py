@@ -42,5 +42,5 @@ def test_local_pipeline_never_shrinks_the_band_below_ten_percent(
     tmp_path: Path, frame_h: int
 ) -> None:
     """The local assembler must size the band with the same rule as the fake path."""
-    settings = make_settings(tmp_path, ai_mode="local")
+    settings = make_settings(tmp_path, ai_mode="local", label_style="band")
     assert local_label_band_height(settings, frame_h) >= 0.10 * frame_h

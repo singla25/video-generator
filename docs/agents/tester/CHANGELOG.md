@@ -129,3 +129,9 @@ Newest first. One entry per task.
 
 ## 2026-10-28 - L1b RED (UI mode and spoken-name confirmation)
 - test_system_status.py now expects ai_mode (7 fail). New tests/frontend/unit/ai-mode.test.tsx (17 tests, 11 red, 6 guards pass). Contract in docs/test-tree/m2-local-real-ai.md.
+
+## 2026-10-29 - LB-RED (DD-32 AI label style: bubble default, band option)
+- Tree docs/test-tree/label-style.md (defaults and names recorded there). New tests: unit/infra/test_label_style_setting.py, unit/infra/test_bubble_renderer.py, integration/ffmpeg/test_label_bubble_overlay.py (real ffmpeg), integration/worker/test_render_row_label_style.py, unit/worker/test_runner_label_style.py, unit/ai_local/test_label_style_local.py.
+- Existing band-by-default assertions made explicit with `label_style="band"`: integration/worker/test_render_row.py (2 tests), e2e/conftest.py, unit/ai_local/test_label_height.py.
+- Names for backend-dev: `Settings.label_style`, `RenderConfig.label_style`, `PillowBubbleRenderer`, `bubble_diameter`, `bubble_box`, `build_label_renderer` (label.py), `local_label_band_height` returns 0 for bubble. Bubble PNG = transparent RGBA of full frame size.
+- Red: 26 failed + 2 modules fail at import + 3 e2e error (TypeError label_style on RenderConfig); everything else unchanged (2023 pass; tests/unit/infra/ai still red from G3).

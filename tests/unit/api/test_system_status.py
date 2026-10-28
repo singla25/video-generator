@@ -111,7 +111,12 @@ def test_requires_a_session(build: Build) -> None:
 def test_reports_a_live_worker_and_the_queue_depth(build: Build) -> None:
     response = build(Beat(True), DepthQueue(7)).get("/system/status")
     assert response.status_code == 200
-    assert response.json() == {"worker_alive": True, "queue_depth": 7, "redis_ok": True, "ai_mode": "fake"}
+    assert response.json() == {
+        "worker_alive": True,
+        "queue_depth": 7,
+        "redis_ok": True,
+        "ai_mode": "fake",
+    }
 
 
 def test_reports_a_stopped_worker(build: Build) -> None:
@@ -147,7 +152,12 @@ def test_redis_down_answers_200_with_redis_ok_false(build: Build) -> None:
     down = RedisConnectionError(f"Error 111 connecting to {DSN}. Connection refused.")
     response = build(Beat(down), DepthQueue(down)).get("/system/status")
     assert response.status_code == 200
-    assert response.json() == {"worker_alive": False, "queue_depth": None, "redis_ok": False, "ai_mode": "fake"}
+    assert response.json() == {
+        "worker_alive": False,
+        "queue_depth": None,
+        "redis_ok": False,
+        "ai_mode": "fake",
+    }
     for marker in (SECRET, "redis-host", "redis://", "Traceback"):
         assert marker not in response.text
 

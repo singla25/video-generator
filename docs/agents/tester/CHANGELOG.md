@@ -126,3 +126,6 @@ Newest first. One entry per task.
 - Tree docs/test-tree/m2-real-ai.md (8 scenarios). New tests/unit/infra/ai/: STT, Qwen transliterator, Chatterbox cloner, MuseTalk lip-syncer (real ffmpeg on tiny clips, stub model), Demucs separator + VocalSeparator port/fake, package rules (lazy imports, ModelLoadError, AdapterTimeoutError), ai_backend setting, label band >= 10 % guards.
 - Seams proposed: `engine_factory`, `timeout_s`, `vidgen.infrastructure.ai.errors`, `FailureCode.PRONUNCIATION_UNCERTAIN`, `transliterate_checked`, `FakeVocalSeparator`.
 - Red: 5 modules fail at collection (ModuleNotFoundError vidgen.infrastructure.ai) + 7 failing in test_ai_package; 39 guards (settings, label) pass. Existing unit suite 939 pass. Note: tests/unit/ai_local (commit a26a5a5, other RED set) still fails on missing vidgen.infrastructure.local_ai.
+
+## 2026-10-28 - L1b RED (UI mode and spoken-name confirmation)
+- test_system_status.py now expects ai_mode (7 fail). New tests/frontend/unit/ai-mode.test.tsx (17 tests, 11 red, 6 guards pass). Contract in docs/test-tree/m2-local-real-ai.md.

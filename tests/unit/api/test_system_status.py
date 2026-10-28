@@ -2,7 +2,8 @@
 
 CONTRACT
   GET /system/status (session required, no CSRF needed for GET) -> 200
-      {"worker_alive": bool, "queue_depth": int | null, "redis_ok": bool}
+      {"worker_alive": bool, "queue_depth": int | null, "redis_ok": bool,
+      "ai_mode": "fake" | "local"}   (L1b: ai_mode is Settings.ai_mode; never needs Redis or the DB)
   AppDeps gains ``worker_heartbeat`` (a WorkerHeartbeat); queue depth is ``job_queue.depth()``
   when the queue has it. Redis down: still 200 with worker_alive=false, redis_ok=false,
   queue_depth=null (NOT the 503 QUEUE_UNAVAILABLE envelope). The route never touches the
@@ -35,7 +36,7 @@ from vidgen.api.deps import AppDeps
 from vidgen.infrastructure.db.uow import SqlUnitOfWork
 
 SECRET = "s3cret-redis-pw"  # noqa: S105 - marker that must never leak
-KEYS = {"worker_alive", "queue_depth", "redis_ok"}
+KEYS = {"worker_alive", "queue_depth", "redis_ok", "ai_mode"}
 
 
 class DepthQueue(FakeJobQueue):
@@ -72,7 +73,11 @@ Build = Callable[..., TestClient]
 @pytest.fixture
 def build(tmp_path: Path) -> Iterator[Build]:
     def factory(
-        heartbeat: Any, queue: FakeJobQueue | None = None, *, login: bool = True
+        heartbeat: Any,
+        queue: FakeJobQueue | None = None,
+        *,
+        login: bool = True,
+        **settings_overrides: Any,
     ) -> TestClient:
         fields = {f.name for f in dataclasses.fields(AppDeps)}
         args: dict[str, Any] = {
@@ -84,7 +89,7 @@ def build(tmp_path: Path) -> Iterator[Build]:
         }
         if "worker_heartbeat" in fields:  # missing today: the route test then fails on 404
             args["worker_heartbeat"] = heartbeat
-        settings = make_settings("sqlite://", tmp_path, redis_url=DSN)
+        settings = make_settings("sqlite://", tmp_path, redis_url=DSN, **settings_overrides)
         app = create_app(settings, deps=AppDeps(**args))
         box = app.state.container
         api = TestClient(app, raise_server_exceptions=False)
@@ -106,12 +111,12 @@ def test_requires_a_session(build: Build) -> None:
 def test_reports_a_live_worker_and_the_queue_depth(build: Build) -> None:
     response = build(Beat(True), DepthQueue(7)).get("/system/status")
     assert response.status_code == 200
-    assert response.json() == {"worker_alive": True, "queue_depth": 7, "redis_ok": True}
+    assert response.json() == {"worker_alive": True, "queue_depth": 7, "redis_ok": True, "ai_mode": "fake"}
 
 
 def test_reports_a_stopped_worker(build: Build) -> None:
     body = build(Beat(False), DepthQueue(3)).get("/system/status").json()
-    assert body == {"worker_alive": False, "queue_depth": 3, "redis_ok": True}
+    assert body == {"worker_alive": False, "queue_depth": 3, "redis_ok": True, "ai_mode": "fake"}
 
 
 def test_the_answer_follows_the_heartbeat_over_time(build: Build) -> None:
@@ -142,7 +147,7 @@ def test_redis_down_answers_200_with_redis_ok_false(build: Build) -> None:
     down = RedisConnectionError(f"Error 111 connecting to {DSN}. Connection refused.")
     response = build(Beat(down), DepthQueue(down)).get("/system/status")
     assert response.status_code == 200
-    assert response.json() == {"worker_alive": False, "queue_depth": None, "redis_ok": False}
+    assert response.json() == {"worker_alive": False, "queue_depth": None, "redis_ok": False, "ai_mode": "fake"}
     for marker in (SECRET, "redis-host", "redis://", "Traceback"):
         assert marker not in response.text
 
@@ -188,3 +193,16 @@ def test_post_is_not_allowed(build: Build) -> None:
     response = build(Beat(True)).post("/system/status")
     assert response.status_code == 405
     assert response.json()["code"] == "METHOD_NOT_ALLOWED"
+
+
+@pytest.mark.parametrize("mode", ["fake", "local"])
+def test_reports_the_configured_ai_mode(build: Build, mode: str) -> None:
+    body = build(Beat(True), ai_mode=mode).get("/system/status").json()
+    assert body["ai_mode"] == mode
+
+
+def test_ai_mode_is_reported_even_when_redis_is_down(build: Build) -> None:
+    down = RedisConnectionError("down")
+    body = build(Beat(down), DepthQueue(down), ai_mode="local").get("/system/status").json()
+    assert body["redis_ok"] is False
+    assert body["ai_mode"] == "local"

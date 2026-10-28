@@ -74,3 +74,25 @@ Feature: Run real AI locally
 AC1 mode switch; AC2 lazy import + default install; AC3 adapter contracts; AC4 name slot; AC5 transliterator
 pre-fill (human confirmation tested in L5/L6); AC6 label; AC7 guard, concurrency, isolation; AC8 offline;
 AC9 `describe_mode` (UI part in L5).
+
+## L1b: UI and status contract (tests/frontend/unit/ai-mode.test.tsx, tests/unit/api/test_system_status.py)
+
+API fields assumed (backend-dev adds, frontend-dev consumes):
+- The system status endpoint (GET, session required) gains `ai_mode: "fake" | "local"` from `Settings.ai_mode`, independent of Redis and the DB.
+- `batch.preview` gains optional `suggested_spoken_name: string | null`, `spoken_name: string | null`, `spoken_name_confirmed: boolean` (local mode).
+- POST on the batch preview path `confirm-spelling` with JSON `{spoken_name}` stores the human-confirmed spelling.
+- In local mode the API should refuse approve until the spelling is confirmed; the UI test only pins the disabled button.
+
+```
+Feature: UI says which AI is on and a human confirms the spoken name
+├── Scenario: Mode badge (AC9)      TT-AM-P1..P3, N1, E1
+│   ├── ✅ fake -> "Fake AI: a beep stands in for the name until real AI is on"; local -> "Local AI"; on every page
+│   ├── ❌ status call fails -> no badge
+│   └── ⚠️ old server without ai_mode -> no badge, no crash
+├── Scenario: Next hint             TT-AM-P4, P5   "Choose a template to continue" under disabled Next; gone after choosing
+├── Scenario: Template card note    TT-AM-P6, N2, N3   fake mode + manual slot -> "Automatic detection needs real AI ... set the slot by hand"; not in local mode or with a detected slot
+└── Scenario: Spoken name confirmation (AC5)   TT-AM-P7, P8, N4, N5, E2, E3, E4
+    ├── ✅ pre-filled textbox "Spoken name"; "Confirm spelling" posts the edited text and unlocks Approve
+    ├── ❌ fake mode has no field; failed confirm -> alert, Approve stays disabled; confirmed text alone never auto-approves
+    └── ⚠️ editing after confirming re-locks Approve; empty suggestion -> empty field, Confirm disabled
+```

@@ -49,3 +49,6 @@
 
 ## DD-30 (2026-10-28) M2-local real AI on the Mac
 Admin approved local Metal GPU. Plan `docs/plans/m2-local-real-ai.md`. Optional extra, `AI_MODE` switch, fake stays default. Licence check (L0) gates the weights. Undo: set `AI_MODE=fake`.
+
+## DD-31 (2026-10-28) Pilot-only weights on this Mac
+Admin accepted Demucs, face-parse-bisent and S3FD/FAN weights for pilot use on this Mac only. Not for production or commercial use until replaced or licensed (ADR-012). Nothing leaves the Mac. Undo: `AI_MODE=fake`.

@@ -118,3 +118,6 @@ Newest first. One entry per task.
 
 ## 2026-10-28 - FIX-WORKER-1 RED
 - Tree docs/test-tree/fix-worker-health.md; heartbeat adapter and route pytest, redis_double fixture, Vitest worker-health (default status handler added to mocks).
+
+## 2026-10-28 - L1 RED (local real AI)
+- Tree docs/test-tree/m2-local-real-ai.md (with the expected API table). Tests in tests/unit/ai_local/ (mode switch, adapters with stub models, name slot, guards and offline, label height). `local_ai` marker registered in that conftest and skipped unless RUN_LOCAL_AI=1. Red: 5 modules fail at collection (vidgen.infrastructure.local_ai missing).

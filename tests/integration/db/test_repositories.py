@@ -23,6 +23,7 @@ from vidgen.infrastructure.db.repositories import (
 )
 
 DEV_NAME = "\u0930\u093e\u091c\u0947\u0936 \u0915\u0941\u092e\u093e\u0930"
+ID_CANARY_2 = "ZQ-CANARY-ID-7731"  # long on purpose: a short needle can match random ciphertext
 
 
 def make_cipher(key_id: str = "k1", key: bytes | None = None) -> AesGcmCipher:
@@ -165,7 +166,7 @@ def test_raw_table_contents_hold_no_plaintext_names_or_ids(
         cipher,
         [
             NewRow(2, CANARY_NAME, CANARY_ID, spoken_name=CANARY_NAME + " Ji"),
-            NewRow(3, DEV_NAME, "Z9"),
+            NewRow(3, DEV_NAME, ID_CANARY_2),
         ],
     )
     with db.connect() as conn:
@@ -174,7 +175,7 @@ def test_raw_table_contents_hold_no_plaintext_names_or_ids(
             text("SELECT name_enc, spoken_name_enc, voter_id_enc FROM batch_rows")
         ).all()
     haystack = "\n".join(as_text)
-    for secret in (CANARY_NAME, CANARY_ID, DEV_NAME, "Z9"):
+    for secret in (CANARY_NAME, CANARY_ID, DEV_NAME, ID_CANARY_2):
         assert secret not in haystack
         assert secret.encode("utf-8") not in haystack.encode("utf-8")
         for row in binary:

@@ -2,6 +2,11 @@
 
 Newest first. One entry per task.
 
+## 2026-10-27 — M2 Mac feasibility spike (branch spike/m2-mac-feasibility)
+- Merged feat/dev-migration-prompt (dev_up.sh asks y/N before migrations); suite 1750 pass.
+- Spike S1–S6: whisper ✅, IndicXlit ❌ (fairseq vs Py3.11), Chatterbox ✅, Demucs ✅, MuseTalk ✅ (patched landmarks), real sample ✅ (3 local videos, 158–189 s each, 16–18 GB peak). Results: backend/spikes/m2_mac/RESULTS.md.
+- Open: Admin quality review of the 3 videos; AI-label band looks ~9 % of height (spec ≥10 %, spike only); G1 licence check for face-alignment + face-parse weights.
+
 ## 2026-10-19/20 — M1 complete (gate 3) and M3 dashboard merged, under delegated authority
 - Gate 3 (`49f0767`): API, DB, auth, batches, worker, pipeline; 1611 → 1745 Python tests.
 - M3 (`4979db0`): React/TS/Vite/Tailwind 4 dashboard; Vitest 207/207, Playwright 48/48, axe 0 serious; API now under `/api` (server wrapper); new endpoints: inspect-sheet, failure_code filter, per-row retry, template video + HTTP Range.

@@ -31,6 +31,14 @@ class FakeSpeechToText:
         return list(self._words)
 
 
+class FakeTransliterator:
+    """Returns the text unchanged (the spoken name is then the written name)."""
+
+    def transliterate(self, text: str, target_script: str) -> str:
+        """Return ``text`` as given."""
+        return text
+
+
 class FakeVoiceCloner:
     """Writes a square-wave tone whose length grows with the length of the text."""
 

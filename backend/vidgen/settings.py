@@ -29,7 +29,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen"
     redis_url: str = "redis://127.0.0.1:6379/0"
     storage_root: Path = Path("./media")
-    ai_backend: Literal["fake", "real"] = "fake"
+    ai_backend: Literal["fake", "real"] = "fake"  # legacy M1 switch; superseded by ai_mode
+    ai_mode: Literal["fake", "local"] = "fake"
+    local_ai_weights_dir: Path = Path("./models")
 
     # Upload limits
     max_video_bytes: int = Field(default=500 * 1024 * 1024, gt=0)

@@ -23,9 +23,14 @@ from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.row_store import SqlRowStore
 from vidgen.infrastructure.db.uow import get_engine
-from vidgen.infrastructure.fakes import FakeLipSyncer, FakeQualityChecker, FakeVoiceCloner
+from vidgen.infrastructure.fakes import FakeQualityChecker
 from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
 from vidgen.infrastructure.ffmpeg.label import PillowLabelRenderer
+from vidgen.infrastructure.local_ai.factory import (
+    build_ai_adapters,
+    effective_worker_threads,
+    log_startup_warning,
+)
 from vidgen.infrastructure.queue.redis_heartbeat import HeartbeatLoop
 from vidgen.infrastructure.storage.local import LocalStorage
 from vidgen.logging import configure_logging
@@ -60,9 +65,10 @@ def render_config(settings: Settings) -> RenderConfig:
 
 
 def build_renderer(settings: Settings, sink: PreviewSink) -> RowRenderer:
-    """The row renderer with fake AI adapters (``ai_backend=fake``) and the real engine."""
+    """The row renderer; AI adapters follow ``ai_mode`` (fake or local), the engine is real."""
     if settings.ai_backend != "fake":
-        raise RuntimeError("Real AI adapters arrive in M2; set VIDGEN_AI_BACKEND=fake.")
+        raise RuntimeError("Real AI adapters arrive in M2; set VIDGEN_AI_MODE=local instead.")
+    ai = build_ai_adapters(settings)
     factory = sessionmaker(get_engine(settings.database_url), expire_on_commit=False)
     cipher = AesGcmCipher(
         keys={settings.encryption_key_id: settings.encryption_key_bytes()},
@@ -72,8 +78,8 @@ def build_renderer(settings: Settings, sink: PreviewSink) -> RowRenderer:
     return RowRenderer(
         row_store_factory=lambda: SqlRowStore(factory, cipher),
         storage=LocalStorage(settings.storage_root),
-        voice=FakeVoiceCloner(),
-        lipsync=FakeLipSyncer(),
+        voice=ai.voice,
+        lipsync=ai.lipsync,
         encoder=FfmpegVideoEncoder(
             ffmpeg_path=FFMPEG,
             timeout_seconds=settings.row_timeout_seconds,
@@ -93,11 +99,12 @@ def run() -> None:  # pragma: no cover
     """Start the worker threads and wait for SIGINT or SIGTERM."""
     settings = get_settings()
     configure_logging()
+    log_startup_warning(settings)
     broker = RedisBroker(url=settings.redis_url)  # type: ignore[no-untyped-call]
     dramatiq.set_broker(broker)
     sink = build_container(settings, AppDeps()).batches
     register_actors(broker, build_renderer(settings, sink), WorkerConfig.from_settings(settings))
-    worker = Worker(broker, worker_threads=settings.worker_threads)
+    worker = Worker(broker, worker_threads=effective_worker_threads(settings))
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
         signal.signal(signum, lambda *_: stop.set())

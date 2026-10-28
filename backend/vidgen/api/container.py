@@ -18,6 +18,7 @@ from vidgen.infrastructure.db.login_state import SqlLoginStateStore
 from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.fakes import FakeSpeechToText
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
+from vidgen.infrastructure.local_ai.factory import build_ai_adapters
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
 from vidgen.infrastructure.queue.redis_heartbeat import RedisWorkerHeartbeat
 from vidgen.infrastructure.sheets.reader import FileSheetReader
@@ -78,7 +79,9 @@ class Container:
 
 
 def _default_stt(settings: Settings) -> SpeechToText:
-    """The fake transcriber while ``ai_backend=fake``; real models arrive in M2."""
+    """Whisper in local mode, else the fake transcriber."""
+    if settings.ai_mode == "local":
+        return build_ai_adapters(settings).stt
     if settings.ai_backend == "fake":
         return FakeSpeechToText()
     return _NotConfiguredSpeechToText()  # type: ignore[return-value]

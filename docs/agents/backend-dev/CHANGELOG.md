@@ -90,3 +90,8 @@ Newest first. One entry per task.
 - Files: ports/interfaces.py, ports/__init__.py, settings.py, api/container.py, api/app.py, api/routes_system.py, infrastructure/queue/redis_heartbeat.py, worker/runner.py.
 - Tests: test_worker_heartbeat.py and test_system_status.py (25) pass; full suite 1794 passed.
 - Open: plain mypy also checks backend/spikes/m2_mac (988 pre-existing errors, none in vidgen).
+
+## 2026-10-28 — L2+L3 (local real AI adapters)
+- New package `vidgen/infrastructure/local_ai/`: errors, guard (SingleRenderGuard), offline (offline_only), name_slot, stt (faster-whisper), transliterate (Qwen), tts (Chatterbox), lipsync (MuseTalk, runtime loader is a stub until L4), loaders (heavy imports only here), factory (build_ai_adapters, effective_worker_threads, describe_mode, log_startup_warning, local_label_band_height). Weights live in `<local_ai_weights_dir>/{whisper,qwen,chatterbox,musetalk}`.
+- Settings: `ai_mode` (fake|local), `local_ai_weights_dir`. Legacy `ai_backend` kept because tests/unit/worker/test_runner.py still pins it. `FakeTransliterator` added. Runner and container use the factory; worker threads forced to 1 in local mode; local mode logs the ADR-012 unverified-weights warning and sets HF_HUB_OFFLINE / TRANSFORMERS_OFFLINE.
+- Tests: tests/unit/ai_local (80 pass, smoke skipped). Open: status route does not return ai_mode (test_system_status pins exact keys); MuseTalk runtime (L4); Chatterbox `from_local` call unverified without weights.

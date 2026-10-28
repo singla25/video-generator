@@ -121,3 +121,8 @@ Newest first. One entry per task.
 
 ## 2026-10-28 - L1 RED (local real AI)
 - Tree docs/test-tree/m2-local-real-ai.md (with the expected API table). Tests in tests/unit/ai_local/ (mode switch, adapters with stub models, name slot, guards and offline, label height). `local_ai` marker registered in that conftest and skipped unless RUN_LOCAL_AI=1. Red: 5 modules fail at collection (vidgen.infrastructure.local_ai missing).
+
+## 2026-10-28 - G3 RED (M2 real-AI adapters)
+- Tree docs/test-tree/m2-real-ai.md (8 scenarios). New tests/unit/infra/ai/: STT, Qwen transliterator, Chatterbox cloner, MuseTalk lip-syncer (real ffmpeg on tiny clips, stub model), Demucs separator + VocalSeparator port/fake, package rules (lazy imports, ModelLoadError, AdapterTimeoutError), ai_backend setting, label band >= 10 % guards.
+- Seams proposed: `engine_factory`, `timeout_s`, `vidgen.infrastructure.ai.errors`, `FailureCode.PRONUNCIATION_UNCERTAIN`, `transliterate_checked`, `FakeVocalSeparator`.
+- Red: 5 modules fail at collection (ModuleNotFoundError vidgen.infrastructure.ai) + 7 failing in test_ai_package; 39 guards (settings, label) pass. Existing unit suite 939 pass. Note: tests/unit/ai_local (commit a26a5a5, other RED set) still fails on missing vidgen.infrastructure.local_ai.

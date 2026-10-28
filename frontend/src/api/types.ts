@@ -114,3 +114,9 @@ export interface DailyStat {
   videos: number;
   avg_render_seconds: number;
 }
+
+export interface SystemStatus {
+  worker_alive: boolean;
+  queue_depth: number | null;
+  redis_ok: boolean;
+}

@@ -18,3 +18,6 @@ export const API_PREFIX = '/api';
 
 /** An upload that has not finished after this long is stopped (milliseconds). */
 export const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** A preview still pending after this long is reported as slow (milliseconds). */
+export const SLOW_PREVIEW_MS = 30 * 1000;

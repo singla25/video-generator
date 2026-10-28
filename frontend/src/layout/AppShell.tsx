@@ -17,6 +17,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import logo from '../assets/logo-mark.svg';
 import { useReducedMotion } from '../hooks';
 import { SecurityBanner } from './SecurityBanner';
+import { WorkerBanner } from './WorkerBanner';
 
 interface NavItem {
   label: string;
@@ -139,6 +140,7 @@ export function AppShell() {
         </header>
         <main id="main" className="p-6">
           <SecurityBanner />
+          <WorkerBanner />
           <Outlet />
         </main>
       </div>

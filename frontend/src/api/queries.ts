@@ -3,7 +3,7 @@ import { useRef } from 'react';
 
 import { POLL_INTERVAL_MS } from '../config';
 import { apiFetch } from './client';
-import type { Batch, BatchList, BatchStatus, DailyStat, Template } from './types';
+import type { Batch, BatchList, BatchStatus, DailyStat, SystemStatus, Template } from './types';
 
 /** One batch; polled while its preview is being generated. */
 export function useBatch(batchId: string | undefined) {
@@ -36,10 +36,20 @@ export function useTemplate(templateId: string | undefined) {
 const LIST_PAGE_SIZE = 50;
 
 /** Newest batches, for picking the current one. */
-export function useBatchList() {
+export function useBatchList(options: { poll?: boolean } = {}) {
   return useQuery({
     queryKey: ['batches', 'list'],
     queryFn: () => apiFetch<BatchList>(`/batches?page=1&page_size=${LIST_PAGE_SIZE}`),
+    refetchInterval: options.poll ? POLL_INTERVAL_MS : false,
+  });
+}
+
+/** Background worker health, polled every POLL_INTERVAL_MS; data stays undefined while loading or failing. */
+export function useSystemStatus() {
+  return useQuery({
+    queryKey: ['system', 'status'],
+    queryFn: () => apiFetch<SystemStatus>('/system/status'),
+    refetchInterval: POLL_INTERVAL_MS,
   });
 }
 

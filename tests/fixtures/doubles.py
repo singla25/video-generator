@@ -107,6 +107,10 @@ class FakeJobQueue:
         """Record row render jobs, one entry per row."""
         self.rows.extend((batch_id, row_id) for row_id in row_ids)
 
+    def depth(self) -> int:
+        """Jobs waiting (everything enqueued; the double never consumes)."""
+        return len(self.previews) + len(self.rows)
+
 
 class ChunkSpyStorage(InMemoryStorage):
     """Storage whose ``open`` returns streams that record how they are read."""

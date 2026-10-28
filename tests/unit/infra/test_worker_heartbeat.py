@@ -147,3 +147,30 @@ def test_the_stored_value_holds_no_secret_or_personal_data(redis: FakeRedis) -> 
     value = redis.get(DEFAULT_KEY)
     assert value is not None and len(value) < 100
     assert b"redis://" not in value
+
+
+def test_heartbeat_loop_beats_at_start_repeatedly_and_stops() -> None:
+    """HeartbeatLoop: one beat at once, more on the interval, none after stop()."""
+    import threading
+    import time
+
+    from vidgen.infrastructure.queue.redis_heartbeat import HeartbeatLoop
+
+    beats: list[int] = []
+    enough = threading.Event()
+
+    class Counter:
+        def beat(self) -> None:
+            beats.append(1)
+            if len(beats) >= 3:
+                enough.set()
+
+    loop = HeartbeatLoop(Counter(), 0.01)
+    loop.start()
+    assert len(beats) >= 1
+    assert enough.wait(timeout=2)
+    loop.stop()
+    settled = len(beats)
+    time.sleep(0.05)
+    assert len(beats) == settled
+    loop.stop()  # a second stop is harmless

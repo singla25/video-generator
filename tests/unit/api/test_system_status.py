@@ -15,6 +15,7 @@ import dataclasses
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -152,9 +153,18 @@ def test_queue_depth_failure_alone_gives_null_depth(build: Build) -> None:
     assert body["worker_alive"] is True
 
 
-def test_a_queue_without_depth_gives_null(build: Build) -> None:
-    body = build(Beat(True), FakeJobQueue()).get("/system/status").json()
-    assert body["queue_depth"] is None
+def test_depth_is_the_number_the_queue_reports(build: Build) -> None:
+    queue = FakeJobQueue()
+    queue.enqueue_preview(uuid4(), uuid4())
+    queue.enqueue_rows(uuid4(), [uuid4(), uuid4()])
+    body = build(Beat(True), queue).get("/system/status").json()
+    assert body["queue_depth"] == 3
+
+
+def test_depth_raising_a_redis_error_gives_null_and_200(build: Build) -> None:
+    response = build(Beat(True), DepthQueue(RedisConnectionError("down"))).get("/system/status")
+    assert response.status_code == 200
+    assert response.json()["queue_depth"] is None
 
 
 def test_exactly_the_documented_keys_and_no_secrets(build: Build) -> None:

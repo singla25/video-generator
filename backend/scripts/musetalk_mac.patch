@@ -1,0 +1,93 @@
+diff --git a/musetalk/utils/face_parsing/resnet.py b/musetalk/utils/face_parsing/resnet.py
+index e2e5d87..91ce59d 100755
+--- a/musetalk/utils/face_parsing/resnet.py
++++ b/musetalk/utils/face_parsing/resnet.py
+@@ -80,6 +80,9 @@ class Resnet18(nn.Module):
+         return feat8, feat16, feat32
+ 
+     def init_weight(self, model_path):
++        import os
++        if not os.path.exists(model_path):
++            return  # spike: ImageNet init is overwritten by 79999_iter.pth anyway
+         state_dict = torch.load(model_path) #modelzoo.load_url(resnet18_url)
+         self_state_dict = self.state_dict()
+         for k, v in state_dict.items():
+diff --git a/musetalk/utils/preprocessing.py b/musetalk/utils/preprocessing.py
+index 978480c..7714067 100755
+--- a/musetalk/utils/preprocessing.py
++++ b/musetalk/utils/preprocessing.py
+@@ -7,21 +7,26 @@ import cv2
+ import pickle
+ import os
+ import json
+-from mmpose.apis import inference_topdown, init_model
+-from mmpose.structures import merge_data_samples
++import face_alignment as _fan
+ import torch
+ from tqdm import tqdm
+ 
+ # initialize the mmpose model
+ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+-config_file = './musetalk/utils/dwpose/rtmpose-l_8xb32-270e_coco-ubody-wholebody-384x288.py'
+-checkpoint_file = './models/dwpose/dw-ll_ucoco_384.pth'
+-model = init_model(config_file, checkpoint_file, device=device)
++_lm = _fan.FaceAlignment(_fan.LandmarksType.TWO_D, flip_input=False, device='cpu')  # spike: replaces DWPose (mmcv ops unavailable on Mac)
+ 
+ # initialize the face detection model
+ device = "cuda" if torch.cuda.is_available() else "cpu"
+ fa = FaceAlignment(LandmarksType._2D, flip_input=False,device=device)
+ 
++
++class _R:
++    pass
++
++def _kp(img):
++    pts = _lm.get_landmarks(img)
++    return None if not pts else pts[0]
++
+ # maker if the bbox is not sufficient 
+ coord_placeholder = (0.0,0.0,0.0,0.0)
+ 
+@@ -53,10 +58,10 @@ def get_bbox_range(img_list,upperbondrange =0):
+     average_range_minus = []
+     average_range_plus = []
+     for fb in tqdm(batches):
+-        results = inference_topdown(model, np.asarray(fb)[0])
+-        results = merge_data_samples(results)
+-        keypoints = results.pred_instances.keypoints
+-        face_land_mark= keypoints[0][23:91]
++        face_land_mark = _kp(np.asarray(fb)[0])
++        if face_land_mark is None:
++            coords_list += [coord_placeholder]
++            continue
+         face_land_mark = face_land_mark.astype(np.int32)
+         
+         # get bounding boxes by face detetion
+@@ -94,10 +99,10 @@ def get_landmark_and_bbox(img_list,upperbondrange =0):
+     average_range_minus = []
+     average_range_plus = []
+     for fb in tqdm(batches):
+-        results = inference_topdown(model, np.asarray(fb)[0])
+-        results = merge_data_samples(results)
+-        keypoints = results.pred_instances.keypoints
+-        face_land_mark= keypoints[0][23:91]
++        face_land_mark = _kp(np.asarray(fb)[0])
++        if face_land_mark is None:
++            coords_list += [coord_placeholder]
++            continue
+         face_land_mark = face_land_mark.astype(np.int32)
+         
+         # get bounding boxes by face detetion
+diff --git a/scripts/inference.py b/scripts/inference.py
+index 428afb9..c7bde8c 100644
+--- a/scripts/inference.py
++++ b/scripts/inference.py
+@@ -39,7 +39,7 @@ def main(args):
+             print("Warning: Unable to find ffmpeg, please ensure ffmpeg is properly installed")
+     
+     # Set computing device
+-    device = torch.device(f"cuda:{args.gpu_id}" if torch.cuda.is_available() else "cpu")
++    device = torch.device(os.environ.get("MT_DEVICE", "mps"))
+     # Load model weights
+     vae, unet, pe = load_all_model(
+         unet_model_path=args.unet_model_path, 

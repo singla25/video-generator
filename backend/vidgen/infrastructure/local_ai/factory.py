@@ -26,7 +26,11 @@ logger = logging.getLogger(__name__)
 LOCAL_WORKER_THREADS = 1
 MIN_LABEL_SHARE = 0.10  # C2: the AI label covers at least 10 % of the frame height
 ROUNDING_TOLERANCE = 1e-9
-OFFLINE_ENV = {"HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"}
+OFFLINE_ENV = {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "PYTORCH_ENABLE_MPS_FALLBACK": "1",
+}
 WHISPER_DIR, QWEN_DIR, CHATTERBOX_DIR, MUSETALK_DIR = "whisper", "qwen", "chatterbox", "musetalk"
 FAKE_BANNER = "Fake AI: beep stands in"
 LOCAL_BANNER = "Local AI"

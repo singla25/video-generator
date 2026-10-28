@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from vidgen.domain.outcomes import RowOutcomeKind
+from vidgen.infrastructure.db.batch_documents import to_record
 from vidgen.infrastructure.db.batch_store import SqlBatchStore
 from vidgen.infrastructure.db.models import Batch, BatchRow, Template
 from vidgen.ports.rows import (
@@ -127,13 +128,12 @@ class SqlRowStore:
         template = session.get(Template, batch.template_id)
         assert template is not None  # noqa: S101 - the batch's foreign key guarantees it
         start, end = template.slot_start_s, template.slot_end_s
-        spoken = row.spoken_name_enc
         return RowJob(
             batch_id=batch.id,
             row_id=row.id,
             row_number=row.row_number,
             name=self._cipher.decrypt(bytes(row.name_enc)),
-            spoken_name=None if spoken is None else self._cipher.decrypt(bytes(spoken)),
+            spoken_name=self._spoken_name(batch, row),
             voter_id=self._cipher.decrypt(bytes(row.voter_id_enc)),
             attempts=row.attempts,
             folder_name=batch.folder_name or "",
@@ -146,6 +146,17 @@ class SqlRowStore:
                 consent_confirmed=template.consent_confirmed,
             ),
         )
+
+    def _spoken_name(self, batch: Batch, row: BatchRow) -> str | None:
+        """The text to speak: the human-confirmed spelling for the preview row, else the row's own.
+
+        ``None`` means "use the name". Never logged.
+        """
+        preview = to_record(batch, self._cipher).preview
+        if preview.row_id == row.id and (preview.spoken_name or "").strip():
+            return preview.spoken_name
+        sealed = row.spoken_name_enc
+        return None if sealed is None else self._cipher.decrypt(bytes(sealed))
 
     def _complete(
         self,

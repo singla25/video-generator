@@ -100,3 +100,11 @@ Newest first. One entry per task.
 - System status response now returns `ai_mode`.
 - Spoken-name confirmation: POST on the batch preview path `confirm-spelling` with `{spoken_name}`. The preview JSON gains `suggested_spoken_name`, `spoken_name`, `spoken_name_confirmed` (local mode only). Approve is refused with 409 `SPELLING_NOT_CONFIRMED` in local mode until confirmed. Stored AES-GCM encrypted (base64) in the existing batch JSON document; no migration.
 - Open: the confirmed name is not yet fed into the render of the preview or rows.
+
+## 2026-10-28 - L4 real MuseTalk lip-sync (AI_MODE=local, Mac MPS)
+- `loaders.py`: real `load_musetalk` (in-process, models loaded once, float32 MPS, heavy imports only here).
+- `musetalk_support.py` (new, no heavy imports): ffmpeg frame extract/assemble, template fingerprint, `LandmarkCache` (face boxes per template, JSON on disk).
+- `backend/scripts/setup_musetalk.py` + `musetalk_mac.patch`: one-time clone (pinned 0a89dec), patch, weights, face-detector warm-up. Never run by the app.
+- `SqlRowStore._job`: preview row speaks the confirmed spoken name (preview.spoken_name_enc), else the row's own, else the name.
+- Peak memory 16-18 GB, one render at a time (SingleRenderGuard). Lip-sync window starts at 0 s of the template (port has no slot argument).
+- Tests: none added (tester's job). Open: real-weights run not verified here.

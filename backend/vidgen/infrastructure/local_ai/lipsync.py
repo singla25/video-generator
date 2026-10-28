@@ -1,4 +1,9 @@
-"""Lip sync with MuseTalk. The runtime is wired in L4; the contract is complete here."""
+"""Lip sync with MuseTalk v1.5 (Apple silicon, MPS).
+
+One render at a time: a run peaks at 16-18 GB of the 24 GB (M2 spike), so ``SingleRenderGuard``
+refuses a second one. The models load on the first call and stay loaded; face boxes are cached
+per template. Set up with ``backend/scripts/setup_musetalk.py``.
+"""
 
 from __future__ import annotations
 

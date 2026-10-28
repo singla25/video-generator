@@ -115,3 +115,12 @@ Newest first. One entry per task.
 - `tts.trim_to_first_utterance`: Chatterbox babbled ~4 s after a 1 s name; clip is cut after the first utterance.
 - Weights dir `work/local_ai_weights` built with symlinks; MuseTalk clone patch re-applied on 3 files.
 - Open: 2DFAN4 face-landmark weights are not inside the project (spike cached them in the home folder); lip sync cannot run offline until they are in `work/torch/hub/checkpoints/`. No tests added (tester to cover trim and release).
+
+## 2026-10-29 - L8 lip sync keeps the face (mouth-only compositing)
+- Problem: MuseTalk's blend replaced the whole lower face; beard came out smooth and lighter.
+- New `local_ai/compositing.py` (`composite_mouth`): generated pixels only inside a feathered mouth ellipse; around the lips the original's high-frequency texture is re-added to the colour-matched generated low-pass; the inner core (lips/teeth) stays generated. Outside the ellipse the frame equals the original.
+- `loaders._MuseTalkModel._paste`: uses `composite_mouth` for real image arrays, MuseTalk's own blend for non-arrays (keeps the existing fake-based unit tests green).
+- New `local_ai/fidelity.py` (SSIM, mean abs diff, Laplacian-variance retention, lower face minus mouth); smoke script prints it per row.
+- Measured row 0 (28 frames): SSIM 0.81 -> 0.96, mean abs diff 6.08 -> 3.42, texture retention 0.52 -> 0.89. Row 1: 0.96 / 3.73 / 0.92. Duration 26.2 s, 1080x1300, band 10 %.
+- Tests added: none (tester). Suggested: `mouth_masks` (shape, range, core inside outer), `composite_mouth` (pixels outside ellipse unchanged, identical face -> identical frame, colour shift clamped), `lower_face_mask` (excludes mouth rect), `frame_fidelity` (identical -> SSIM 1, ratio 1; blurred -> ratio < 1), `mean_fidelity`; update model fakes so `_paste` can drop the fallback.
+- Open: lips look slightly low-contrast; ellipse geometry is fixed fractions of the face box (tuned on this template).

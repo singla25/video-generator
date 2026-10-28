@@ -12,6 +12,7 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 from vidgen.infrastructure.local_ai import musetalk_support as support
+from vidgen.infrastructure.local_ai.compositing import composite_mouth
 from vidgen.infrastructure.local_ai.errors import LocalAiError
 
 WHISPER_COMPUTE_TYPE = "int8"
@@ -252,13 +253,24 @@ class _MuseTalkModel:
                 original = copy.deepcopy(frames_cycle[index % len(frames_cycle)])
                 y2 = min(y2 + MUSETALK_EXTRA_MARGIN, original.shape[0])
                 face = cv2.resize(result.astype(np.uint8), (x2 - x1, y2 - y1))
-                merged = self._get_image(
-                    original, face, [x1, y1, x2, y2], mode=MUSETALK_PARSING_MODE, fp=self._parser
-                )
+                merged = self._paste(original, face, (x1, y1, x2, y2))
                 cv2.imwrite(str(blended / f"{index:08d}.png"), merged)
                 index += 1
         if index != len(chunks):
             raise LocalAiError("lip sync produced an unexpected number of frames")
+
+    def _paste(self, original: Any, face: Any, box: support.Box) -> Any:
+        """Put the generated face into the frame: only the mouth changes (L8).
+
+        MuseTalk's own blend replaces the whole lower face (beard comes out smooth and lighter),
+        so real images go through ``composite_mouth``. Anything that is not an image array
+        (the unit-test fakes) keeps MuseTalk's own blend.
+        """
+        if hasattr(original, "astype"):
+            return composite_mouth(original, face, box)
+        return self._get_image(
+            original, face, list(box), mode=MUSETALK_PARSING_MODE, fp=self._parser
+        )
 
     def _release_memory(self) -> None:
         """Give the MPS cache back between renders (the models stay loaded)."""

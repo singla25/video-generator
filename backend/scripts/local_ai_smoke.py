@@ -97,6 +97,36 @@ def _probe(path: Path) -> dict[str, float]:
     }
 
 
+def _fidelity_report(template: Path, synced: Path, tmp: Path) -> str:
+    """Lower-face (without the mouth) similarity of the lip-synced frames to the template."""
+    import cv2  # type: ignore[import-not-found,unused-ignore]
+
+    from vidgen.infrastructure.local_ai import musetalk_support as support
+    from vidgen.infrastructure.local_ai.fidelity import frame_fidelity, mean_fidelity
+
+    cached = WEIGHTS / "musetalk" / support.CACHE_DIR_NAME / f"{support.video_fingerprint(template)}.json"
+    boxes = [tuple(int(v) for v in box) for box in json.loads(cached.read_text())]
+    folders = {}
+    for name, video in (("orig", template), ("sync", synced)):
+        folders[name] = tmp / f"fid_{name}"
+        folders[name].mkdir(exist_ok=True)
+        support.extract_frames(video, folders[name], len(boxes))
+    scores = [
+        frame_fidelity(
+            cv2.imread(str(folders["orig"] / f"{i:08d}.png")),
+            cv2.imread(str(folders["sync"] / f"{i:08d}.png")),
+            box,
+        )
+        for i, box in enumerate(boxes)
+    ]
+    mean = mean_fidelity(scores)
+    return (
+        f"lower-face (mouth excluded, {len(scores)} frames): SSIM {mean.ssim:.3f}, "
+        f"mean abs diff {mean.mean_abs_diff:.2f}/255, texture retention {mean.texture_ratio:.2f} "
+        f"(target >= 0.85)"
+    )
+
+
 class Timer:
     """Prints how long each stage took and the memory high-water marks so far."""
 
@@ -215,6 +245,7 @@ def main() -> int:
         synced = tmp / f"synced{index}.mp4"
         adapters.lipsync.sync(template, wav, synced)
         timer.stage("lipsync", started)
+        print(f"row {index}: {_fidelity_report(template, synced, tmp)}")
         started = time.perf_counter()
         out = OUT_DIR / f"{voter_id}.mp4"
         out.unlink(missing_ok=True)

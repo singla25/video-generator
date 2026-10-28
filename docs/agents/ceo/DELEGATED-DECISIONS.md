@@ -52,3 +52,6 @@ Admin approved local Metal GPU. Plan `docs/plans/m2-local-real-ai.md`. Optional 
 
 ## DD-31 (2026-10-28) Pilot-only weights on this Mac
 Admin accepted Demucs, face-parse-bisent and S3FD/FAN weights for pilot use on this Mac only. Not for production or commercial use until replaced or licensed (ADR-012). Nothing leaves the Mac. Undo: `AI_MODE=fake`.
+
+## DD-32 (2026-10-28) AI label: small bottom-right bubble by default
+Admin confirmed the legal side and asked for a small "AI" bubble at the bottom-right instead of the full band. This changes requirement C2 (label at top, at least 10 % of the frame, every frame); the Admin accepts that change. Plan: a label style setting with `bubble` (default) and `band` (today's behaviour, kept as an option); the bubble does not add height to the frame. Tests first (tester), then backend-dev; ADR to follow. Starts after the M2-local session finishes its render run, because both touch `ffmpeg/label.py`, `local_ai/factory.py`, `render_row.py` and the label tests. Undo: set the label style to `band`.

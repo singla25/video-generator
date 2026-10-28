@@ -35,6 +35,7 @@
 | DD-26 | 2026-10-28 | Merge `feat/dev-migration-prompt` (dev_up.sh asks y/N before migrations) | merge · hold | **Merge `--no-ff`** | Tests 1750 green on the merged spike branch, lint/types clean, diff reviewed; Admin had asked for this change. |
 | DD-27 | 2026-10-28 | Push to GitHub (private `singla25/video-generator`; main + fix/upload-feedback + spike/m2-mac-feasibility) | — | **Admin asked, chose private + these branches** | History scanned first: no .env/keys/samples/media/large files. Undo: Admin runs `gh repo delete`. |
 | DD-28 | 2026-10-28 | CI on GitHub Actions: scope A / B / C | A fast · **B full** · C CI+CD | **B (Admin chose)**; CD deferred | See ADR-011 + docs/plans/ci-github-actions.md. New `.github/workflows/` folder. Free tier, $0 limit, no secrets. |
+| DD-29 | 2026-10-28 | Worker health: silent 'Queued forever' when the worker is dead | banner only · **heartbeat + status route + banner** | **Heartbeat in Redis (TTL ~15 s), a system status route, dashboard banner + slow-preview message** | Admin lost 5 h to a dead worker with no error. Port `WorkerHeartbeat`, `JobQueue.depth()`. Branch fix/worker-health; tests 1796 py / 313 ui. |
 | DD-2 | 2026-10-19 | F0 (Node.js) for M3 | Install · use existing | **Use the existing Node v26.12.0** at /opt/homebrew/bin/node; no install needed | Already present; F0 counts as satisfied. If any approved npm package doesn't support Node 26, frontend-dev pins an LTS via `engines` and reports it. |
 
 ## Waiting for Admin

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import gc
 import os
+import sys
 import threading
 import wave
 from collections.abc import Callable, Iterator
@@ -35,6 +37,18 @@ class LazyModel(Generic[M]):
                 with offline_only():
                     self._model = self._loader(self._weights_dir)
             return self._model
+
+    def release(self) -> None:
+        """Drop the loaded model and give its memory back (the next ``get`` reloads it).
+
+        Lets a caller run the models one stage at a time on a machine too small to hold all four.
+        """
+        with self._lock:
+            self._model = None
+        gc.collect()
+        torch = sys.modules.get("torch")
+        if torch is not None and torch.backends.mps.is_available():
+            torch.mps.empty_cache()
 
     def _check_weights(self) -> None:
         folder = self._weights_dir

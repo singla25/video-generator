@@ -34,3 +34,7 @@ class FasterWhisperSpeechToText:
             for segment in segments
             for raw in (segment.words or [])
         ]
+
+    def release(self) -> None:
+        """Unload the model to free memory; it loads again on the next use."""
+        self._model.release()

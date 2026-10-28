@@ -39,3 +39,7 @@ class MuseTalkLipSyncer:
             model = self._model.get()
             with atomic_output(out) as tmp:
                 model.run(video, audio, tmp)
+
+    def release(self) -> None:
+        """Unload the model to free memory; it loads again on the next use."""
+        self._model.release()

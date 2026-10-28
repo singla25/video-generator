@@ -44,3 +44,7 @@ class QwenTransliterator:
         if not text.strip():
             return ""
         return clean_answer(self._model.get().generate(build_prompt(text.strip(), target_script)))
+
+    def release(self) -> None:
+        """Unload the model to free memory; it loads again on the next use."""
+        self._model.release()

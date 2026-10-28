@@ -3,7 +3,7 @@
 Personal data is encrypted on the way in and decrypted only when a row is read for the admin.
 Bulk writes use Core statements, so 100,000 rows never sit in the ORM identity map.
 Extra batch state (column mapping, sheet name, preview) is kept as one JSON document in
-``batches.column_mapping``: it holds column names and ids only, never personal data.
+``batches.column_mapping``: column names and ids, plus the confirmed spoken name as ciphertext.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ class SqlBatchStore(BatchStatsMixin):
     def add(self, campaign_id: UUID, batch: BatchRecord) -> None:
         """Insert a new batch."""
         row = Batch(id=batch.id, campaign_id=campaign_id)
-        apply_to_row(row, batch)
+        apply_to_row(row, batch, self._cipher)
         self._session.add(row)
         self._session.flush()
 
@@ -59,14 +59,14 @@ class SqlBatchStore(BatchStatsMixin):
         if lock:
             query = query.with_for_update()
         row = self._session.execute(query).scalar_one_or_none()
-        return None if row is None else to_record(row)
+        return None if row is None else to_record(row, self._cipher)
 
     def save(self, batch: BatchRecord) -> None:
         """Write the batch's changes."""
         row = self._session.get(Batch, batch.id)
         if row is None:
             raise LookupError("batch does not exist")
-        apply_to_row(row, batch)
+        apply_to_row(row, batch, self._cipher)
         self._session.flush()
 
     def delete(self, batch_id: UUID) -> None:
@@ -78,7 +78,7 @@ class SqlBatchStore(BatchStatsMixin):
         query = select(Batch).order_by(Batch.created_at.desc(), Batch.id.desc())
         rows = self._session.scalars(query.offset(offset).limit(limit))
         total = self._session.execute(select(func.count()).select_from(Batch)).scalar_one()
-        return [to_record(r) for r in rows], int(total)
+        return [to_record(r, self._cipher) for r in rows], int(total)
 
     def by_idempotency_key(self, key: str) -> UUID | None:
         """Id of the batch that used this start key."""
@@ -201,6 +201,12 @@ class SqlBatchStore(BatchStatsMixin):
         query = select(BatchRow).where(
             BatchRow.batch_id == batch_id, BatchRow.row_number == row_number
         )
+        row = self._session.execute(query).scalar_one_or_none()
+        return None if row is None else self._view(row)
+
+    def get_row_by_id(self, batch_id: UUID, row_id: UUID) -> RowView | None:
+        """One row by its id."""
+        query = select(BatchRow).where(BatchRow.batch_id == batch_id, BatchRow.id == row_id)
         row = self._session.execute(query).scalar_one_or_none()
         return None if row is None else self._view(row)
 

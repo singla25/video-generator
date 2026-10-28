@@ -47,6 +47,7 @@ class PreviewRecord:
     requested_for: ApprovalFingerprint | None = None
     rendered_for: ApprovalFingerprint | None = None
     approved_for: ApprovalFingerprint | None = None
+    spoken_name: str | None = None  # human-confirmed spelling; plaintext here, encrypted at rest
 
 
 @dataclass
@@ -167,6 +168,10 @@ class BatchStore(Protocol):
 
     def get_row(self, batch_id: UUID, row_number: int) -> RowView | None:
         """One row by sheet row number."""
+        ...
+
+    def get_row_by_id(self, batch_id: UUID, row_id: UUID) -> RowView | None:
+        """One row by its id (the preview row)."""
         ...
 
     def rows_page(

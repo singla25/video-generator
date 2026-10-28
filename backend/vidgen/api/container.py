@@ -141,6 +141,7 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         throttle_gap=timedelta(seconds=settings.login_throttle_seconds),
     )
     queue = deps.job_queue or _default_queue(settings)
+    ai = build_ai_adapters(settings)
     batches = BatchService(
         BatchContext(
             uow=open_uow,
@@ -151,6 +152,8 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
             max_sheet_rows=settings.max_sheet_rows,
             max_name_graphemes=settings.max_name_graphemes,
             retention_days=settings.retention_days,
+            transliterator=ai.transliterator,
+            require_spelling=settings.ai_mode == "local",
         )
     )
     return Container(

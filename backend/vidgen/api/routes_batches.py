@@ -13,6 +13,7 @@ from vidgen.api.deps import container, require_csrf
 from vidgen.api.errors import NOT_FOUND, VALIDATION_ERROR, ApiError
 from vidgen.api.schemas_batches import (
     MappingBody,
+    SpellingBody,
     StartRequest,
     TemplateBody,
     batch_json,
@@ -170,6 +171,12 @@ def request_preview(batch_id: UUID, request: Request) -> dict[str, Any]:
 def approve_preview(batch_id: UUID, request: Request) -> dict[str, Any]:
     """Approve the rendered preview."""
     return batch_json(container(request).batches.approve_preview(batch_id))
+
+
+@router.post("/{batch_id}/preview/confirm-spelling")
+def confirm_spelling(batch_id: UUID, body: SpellingBody, request: Request) -> dict[str, Any]:
+    """Store the spoken-name spelling a human confirmed."""
+    return batch_json(container(request).batches.confirm_spelling(batch_id, body.spoken_name))
 
 
 @router.get("/{batch_id}/preview")

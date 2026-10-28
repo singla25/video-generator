@@ -95,3 +95,8 @@ Newest first. One entry per task.
 - New package `vidgen/infrastructure/local_ai/`: errors, guard (SingleRenderGuard), offline (offline_only), name_slot, stt (faster-whisper), transliterate (Qwen), tts (Chatterbox), lipsync (MuseTalk, runtime loader is a stub until L4), loaders (heavy imports only here), factory (build_ai_adapters, effective_worker_threads, describe_mode, log_startup_warning, local_label_band_height). Weights live in `<local_ai_weights_dir>/{whisper,qwen,chatterbox,musetalk}`.
 - Settings: `ai_mode` (fake|local), `local_ai_weights_dir`. Legacy `ai_backend` kept because tests/unit/worker/test_runner.py still pins it. `FakeTransliterator` added. Runner and container use the factory; worker threads forced to 1 in local mode; local mode logs the ADR-012 unverified-weights warning and sets HF_HUB_OFFLINE / TRANSFORMERS_OFFLINE.
 - Tests: tests/unit/ai_local (80 pass, smoke skipped). Open: status route does not return ai_mode (test_system_status pins exact keys); MuseTalk runtime (L4); Chatterbox `from_local` call unverified without weights.
+
+## 2026-10-28 - L4a
+- System status response now returns `ai_mode`.
+- Spoken-name confirmation: POST on the batch preview path `confirm-spelling` with `{spoken_name}`. The preview JSON gains `suggested_spoken_name`, `spoken_name`, `spoken_name_confirmed` (local mode only). Approve is refused with 409 `SPELLING_NOT_CONFIRMED` in local mode until confirmed. Stored AES-GCM encrypted (base64) in the existing batch JSON document; no migration.
+- Open: the confirmed name is not yet fed into the render of the preview or rows.

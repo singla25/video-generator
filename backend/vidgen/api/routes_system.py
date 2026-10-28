@@ -35,4 +35,9 @@ def system_status(request: Request) -> dict[str, Any]:
         logger.warning("redis unreachable", extra={"error_type": type(exc).__name__})
         worker_alive, redis_ok = False, False
     depth = _queue_depth(app.queue)
-    return {"worker_alive": worker_alive, "queue_depth": depth, "redis_ok": redis_ok}
+    return {
+        "worker_alive": worker_alive,
+        "queue_depth": depth,
+        "redis_ok": redis_ok,
+        "ai_mode": app.settings.ai_mode,
+    }

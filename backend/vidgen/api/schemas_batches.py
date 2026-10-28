@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from vidgen.domain.stats import StatusCounts
 from vidgen.ports.batches import DayStat, RowView
@@ -14,6 +14,7 @@ from vidgen.services.batch_views import BatchReport, BatchStatus, BatchView, Row
 
 MAX_FOLDER_INPUT_CHARS = 1000
 MAX_COLUMN_CHARS = 500
+MAX_SPOKEN_NAME_CHARS = 200
 
 
 class StartRequest(BaseModel):
@@ -28,6 +29,15 @@ class MappingBody(BaseModel):
     name_column: str = Field(min_length=1, max_length=MAX_COLUMN_CHARS)
     id_column: str = Field(min_length=1, max_length=MAX_COLUMN_CHARS)
     spoken_name_column: str | None = Field(default=None, max_length=MAX_COLUMN_CHARS)
+
+
+class SpellingBody(BaseModel):
+    """Body of the spoken-name confirmation (trimmed, 1 to ``MAX_SPOKEN_NAME_CHARS`` chars)."""
+
+    spoken_name: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_SPOKEN_NAME_CHARS),
+    ]
 
 
 class TemplateBody(BaseModel):
@@ -66,6 +76,19 @@ def _iso(value: datetime | None) -> str | None:
     return None if value is None else value.isoformat()
 
 
+def _preview_json(view: BatchView) -> dict[str, Any]:
+    """Preview state; the spoken-name fields are the human-confirmation step (local mode)."""
+    body: dict[str, Any] = {"status": view.preview_status, "approved": view.preview_approved}
+    if not view.spelling_required:
+        return body
+    spoken = view.record.preview.spoken_name
+    return body | {
+        "suggested_spoken_name": view.suggested_spoken_name,
+        "spoken_name": spoken,
+        "spoken_name_confirmed": spoken is not None,
+    }
+
+
 def batch_json(view: BatchView) -> dict[str, Any]:
     """A batch with counts and its preview state."""
     record = view.record
@@ -78,7 +101,7 @@ def batch_json(view: BatchView) -> dict[str, Any]:
         "finished_at": _iso(record.finished_at),
         "folder_name": record.folder_name,
         "sheet_name": record.sheet_name,
-        "preview": {"status": view.preview_status, "approved": view.preview_approved},
+        "preview": _preview_json(view),
         "counts": counts_json(view.counts),
         "success_rate": view.success_rate,
     }

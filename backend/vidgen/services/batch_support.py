@@ -16,7 +16,7 @@ from vidgen.domain.status import (
     apply_batch_action,
     can_start,
 )
-from vidgen.ports import Clock, SheetReader, Storage, TemplateRecord, UnitOfWork
+from vidgen.ports import Clock, SheetReader, Storage, TemplateRecord, Transliterator, UnitOfWork
 from vidgen.ports.batches import PREVIEW_READY, BatchRecord, JobQueue
 from vidgen.services.audit import ACTOR_ADMIN, UowFactory
 from vidgen.services.batch_rules import counts_from, fingerprint_for
@@ -43,6 +43,9 @@ class BatchContext:
     max_sheet_rows: int
     max_name_graphemes: int
     retention_days: int
+    transliterator: Transliterator | None = None  # suggests the spoken name for the preview row
+    require_spelling: bool = False  # local mode: a human confirms the spelling before approval
+    spoken_script: str = "devanagari"
 
 
 def load_batch(uow: UnitOfWork, batch_id: UUID, *, lock: bool = False) -> BatchRecord:
@@ -105,6 +108,8 @@ def describe(
     report: BatchReport | None = None,
     queued_rows: int | None = None,
     retried_rows: int | None = None,
+    suggested_spoken_name: str | None = None,
+    spelling_required: bool = False,
 ) -> BatchView:
     """A batch with counts, success rate and the preview state as the user sees it."""
     counts = counts or counts_from(uow.batches.counts([batch.id])[batch.id])
@@ -123,4 +128,32 @@ def describe(
         report=report,
         queued_rows=queued_rows,
         retried_rows=retried_rows,
+        suggested_spoken_name=suggested_spoken_name,
+        spelling_required=spelling_required,
     )
+
+
+def describe_preview(ctx: BatchContext, uow: UnitOfWork, batch: BatchRecord) -> BatchView:
+    """A batch view that also carries the spoken-name suggestion for the preview row."""
+    if not ctx.require_spelling:
+        return describe(uow, batch)  # fake mode: the preview keeps its original shape
+    return describe(
+        uow,
+        batch,
+        suggested_spoken_name=suggest_spoken_name(ctx, uow, batch),
+        spelling_required=True,
+    )
+
+
+def suggest_spoken_name(ctx: BatchContext, uow: UnitOfWork, batch: BatchRecord) -> str | None:
+    """The transliterator's guess for the preview row (never logged), or None."""
+    preview = batch.preview
+    if ctx.transliterator is None or preview.row_id is None or preview.status != PREVIEW_READY:
+        return None
+    if preview.spoken_name is not None:
+        return None  # already confirmed: no need to run the model again
+    row = uow.batches.get_row_by_id(batch.id, preview.row_id)
+    if row is None:
+        return None
+    base = (row.spoken_name or row.name).strip()
+    return ctx.transliterator.transliterate(base, ctx.spoken_script) or None

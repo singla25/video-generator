@@ -30,6 +30,7 @@ from vidgen.services.batch_support import (
     BatchContext,
     audit,
     describe,
+    describe_preview,
     load_batch,
     load_template,
     preview_gate,
@@ -82,6 +83,8 @@ class BatchFlow:
             current = fingerprint_for(load_template(uow, batch.template_id), batch.mapping)
             gate = preview_gate(batch)
             if not can_start(gate, current):
+                if ctx.require_spelling and batch.preview.spoken_name is None:
+                    raise StateConflictError(StateConflictError.SPELLING_NOT_CONFIRMED)
                 try:
                     gate = approve_preview(gate, current)
                 except PreviewNotReadyError:
@@ -92,7 +95,23 @@ class BatchFlow:
                 uow.batches.save(batch)
                 audit(ctx, uow, "PREVIEW_APPROVED", batch_id=str(batch_id))
                 uow.commit()
-            return describe(uow, batch)
+            return describe_preview(ctx, uow, batch)
+
+    def confirm_spelling(self, batch_id: UUID, spoken_name: str) -> BatchView:
+        """Store the human-confirmed spoken name; any earlier approval is withdrawn."""
+        ctx = self._ctx
+        with ctx.uow() as uow:
+            batch = load_batch(uow, batch_id, lock=True)
+            if batch.status != BatchState.DRAFT.value:
+                raise StateConflictError(StateConflictError.INVALID_STATE)
+            if batch.preview.status != PREVIEW_READY:
+                raise StateConflictError(StateConflictError.PREVIEW_NOT_READY)
+            preview = replace(batch.preview, spoken_name=spoken_name, approved_for=None)
+            batch = replace(batch, preview=preview)
+            uow.batches.save(batch)
+            audit(ctx, uow, "SPOKEN_NAME_CONFIRMED", batch_id=str(batch_id))  # name never logged
+            uow.commit()
+            return describe_preview(ctx, uow, batch)
 
     def preview_rendered(self, batch_id: UUID, key: str) -> None:
         """Worker hook: the preview file is stored at ``key``."""

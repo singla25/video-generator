@@ -28,6 +28,7 @@ from vidgen.ports.interfaces import (
     VideoEncoder,
     VideoProbe,
     VoiceCloner,
+    WorkerHeartbeat,
 )
 from vidgen.ports.models import (
     AuditEntry,
@@ -71,4 +72,5 @@ __all__ = [
     "VideoLimits",
     "VideoProbe",
     "VoiceCloner",
+    "WorkerHeartbeat",
 ]

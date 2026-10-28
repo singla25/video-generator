@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     queue_name: str = Field(default="vidgen", min_length=1)
     pause_poll_seconds: int = Field(default=5, gt=0)
     worker_threads: int = Field(default=2, gt=0)
+    heartbeat_key: str = Field(default="vidgen:worker:heartbeat", min_length=1)
+    heartbeat_ttl_seconds: int = Field(default=15, gt=0)
+    heartbeat_interval_seconds: float = Field(default=5.0, gt=0)
     pause_seconds: float = Field(default=0.5, ge=0)  # DD-7: pause after the name, until measured
 
     # Retention

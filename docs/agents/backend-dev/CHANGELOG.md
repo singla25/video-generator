@@ -84,3 +84,9 @@ Newest first. One entry per task.
 ## 2026-10-28 — FIX-UPLOAD-2
 - `vidgen/api/errors.py`: SQLAlchemy OperationalError/InterfaceError -> 503 `DB_UNAVAILABLE`; redis errors and ConnectionRefusedError -> 503 `QUEUE_UNAVAILABLE`. Fixed plain messages, logged at error level (exception type only, no DSN). Other errors stay 500.
 - Tests: tests/unit/api/test_dependency_outage.py (written by tester). Open: none.
+
+## 2026-10-28 — FIX-WORKER-2
+- Added WorkerHeartbeat port, RedisWorkerHeartbeat and HeartbeatLoop (redis_heartbeat.py), AppDeps.worker_heartbeat, the system status route (routes_system.py), heartbeat settings (key, ttl, interval); the worker process beats every 5 s and stops the loop on shutdown.
+- Files: ports/interfaces.py, ports/__init__.py, settings.py, api/container.py, api/app.py, api/routes_system.py, infrastructure/queue/redis_heartbeat.py, worker/runner.py.
+- Tests: test_worker_heartbeat.py and test_system_status.py (25) pass; full suite 1794 passed.
+- Open: plain mypy also checks backend/spikes/m2_mac (988 pre-existing errors, none in vidgen).

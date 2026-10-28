@@ -16,7 +16,7 @@ from dramatiq.brokers.redis import RedisBroker
 from sqlalchemy.orm import sessionmaker
 
 import vidgen
-from vidgen.api.container import AppDeps, build_container
+from vidgen.api.container import AppDeps, build_container, default_heartbeat
 from vidgen.domain.retry import RetryPolicy
 from vidgen.domain.timing import TimingRules
 from vidgen.infrastructure.clock import SystemClock
@@ -26,6 +26,7 @@ from vidgen.infrastructure.db.uow import get_engine
 from vidgen.infrastructure.fakes import FakeLipSyncer, FakeQualityChecker, FakeVoiceCloner
 from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
 from vidgen.infrastructure.ffmpeg.label import PillowLabelRenderer
+from vidgen.infrastructure.queue.redis_heartbeat import HeartbeatLoop
 from vidgen.infrastructure.storage.local import LocalStorage
 from vidgen.logging import configure_logging
 from vidgen.ports.rows import PreviewSink
@@ -100,6 +101,11 @@ def run() -> None:  # pragma: no cover
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
         signal.signal(signum, lambda *_: stop.set())
+    beat = HeartbeatLoop(default_heartbeat(settings), settings.heartbeat_interval_seconds)
     worker.start()
-    stop.wait()
-    worker.stop()
+    beat.start()
+    try:
+        stop.wait()
+    finally:
+        beat.stop()
+        worker.stop()

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 
+import redis
 from argon2 import PasswordHasher
 from dramatiq.brokers.redis import RedisBroker
 
@@ -18,9 +19,18 @@ from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.fakes import FakeSpeechToText
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
+from vidgen.infrastructure.queue.redis_heartbeat import RedisWorkerHeartbeat
 from vidgen.infrastructure.sheets.reader import FileSheetReader
 from vidgen.infrastructure.storage.local import LocalStorage
-from vidgen.ports import Clock, JobQueue, SpeechToText, Storage, VideoLimits, VideoProbe
+from vidgen.ports import (
+    Clock,
+    JobQueue,
+    SpeechToText,
+    Storage,
+    VideoLimits,
+    VideoProbe,
+    WorkerHeartbeat,
+)
 from vidgen.ports.models import TemplateRecord
 from vidgen.services.audit import AuditTrail
 from vidgen.services.batch_support import BatchContext
@@ -39,6 +49,7 @@ class AppDeps:
     video_probe: VideoProbe | None = None
     storage: Storage | None = None
     job_queue: JobQueue | None = None
+    worker_heartbeat: WorkerHeartbeat | None = None
 
 
 class _NotConfiguredSpeechToText:
@@ -62,6 +73,8 @@ class Container:
     templates: TemplateService
     batches: BatchService
     storage: Storage
+    queue: JobQueue
+    heartbeat: WorkerHeartbeat
 
 
 def _default_stt(settings: Settings) -> SpeechToText:
@@ -75,6 +88,15 @@ def _default_queue(settings: Settings) -> JobQueue:
     """The Dramatiq queue on the configured Redis (the connection opens on first use)."""
     broker = RedisBroker(url=settings.redis_url)  # type: ignore[no-untyped-call]
     return DramatiqJobQueue(broker, queue_name=settings.queue_name)
+
+
+def default_heartbeat(settings: Settings) -> RedisWorkerHeartbeat:
+    """The Redis heartbeat on the configured Redis (the connection opens on first use)."""
+    return RedisWorkerHeartbeat(
+        redis.Redis.from_url(settings.redis_url),
+        key=settings.heartbeat_key,
+        ttl_seconds=settings.heartbeat_ttl_seconds,
+    )
 
 
 def build_container(settings: Settings, deps: AppDeps) -> Container:
@@ -115,12 +137,13 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         lockout=timedelta(minutes=settings.login_lockout_minutes),
         throttle_gap=timedelta(seconds=settings.login_throttle_seconds),
     )
+    queue = deps.job_queue or _default_queue(settings)
     batches = BatchService(
         BatchContext(
             uow=open_uow,
             storage=storage,
             clock=clock,
-            queue=deps.job_queue or _default_queue(settings),
+            queue=queue,
             reader=FileSheetReader(),
             max_sheet_rows=settings.max_sheet_rows,
             max_name_graphemes=settings.max_name_graphemes,
@@ -142,6 +165,8 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         templates=templates,
         batches=batches,
         storage=storage,
+        queue=queue,
+        heartbeat=deps.worker_heartbeat or default_heartbeat(settings),
     )
 
 

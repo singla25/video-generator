@@ -115,3 +115,6 @@ Newest first. One entry per task.
 
 ## 2026-10-28 - FIX-UPLOAD-4 verify
 - Moved the XHR FormData shim to tests/frontend/support/xhr-formdata.ts (imported by setup.ts). Added TT-UP-E10/E11/N10 (timeout set, progress clamp, 504). Vitest 289 pass; pytest unit 903 pass.
+
+## 2026-10-28 - FIX-WORKER-1 RED
+- Tree docs/test-tree/fix-worker-health.md; heartbeat adapter and route pytest, redis_double fixture, Vitest worker-health (default status handler added to mocks).

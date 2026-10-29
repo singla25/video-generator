@@ -89,7 +89,7 @@ def _is_queue_error(exc: Exception) -> bool:
 
 
 def _requeue_page(queue: JobQueue, page: list[StuckRow], tally: _Tally) -> None:
-    """Enqueue the page's rows without a live job, counting as it goes (survives a mid-page error)."""
+    """Enqueue the page's rows without a live job, counting as it goes (kept on error)."""
     by_batch: dict[UUID, list[UUID]] = defaultdict(list)
     for item in page:
         if queue.has_live_job(item.row_id):

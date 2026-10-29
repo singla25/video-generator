@@ -88,8 +88,10 @@ def frame_fidelity(original: Any, result: Any, box: Box) -> Fidelity:
 
 
 def mean_fidelity(items: list[Fidelity]) -> Fidelity:
-    """Average of per-frame metrics; ``items`` must not be empty."""
+    """Average of per-frame metrics; no frames gives the neutral result (identical, no change)."""
     count = len(items)
+    if count == 0:
+        return Fidelity(ssim=1.0, mean_abs_diff=0.0, texture_ratio=1.0)
     return Fidelity(
         sum(i.ssim for i in items) / count,
         sum(i.mean_abs_diff for i in items) / count,

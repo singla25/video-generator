@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import UUID
 
 from vidgen.domain.status import ApprovalFingerprint
@@ -101,6 +101,15 @@ class DayStat:
 
     videos: int
     avg_render_seconds: float | None
+
+
+@dataclass(frozen=True)
+class StuckRow:
+    """A row that may have lost its queue message; ids only, no personal data."""
+
+    batch_id: UUID
+    row_id: UUID
+    kind: Literal["row", "preview"]
 
 
 class BatchStore(Protocol):
@@ -203,6 +212,13 @@ class BatchStore(Protocol):
         """Completed rows per UTC day, previews excluded."""
         ...
 
+    def stuck_candidates(self, cutoff: datetime, after: UUID | None, limit: int) -> list[StuckRow]:
+        """QUEUED rows of RUNNING batches started before ``cutoff`` and pending DRAFT previews.
+
+        Ordered by row id; ``after`` is the last row id of the previous page.
+        """
+        ...
+
     def output_keys(self, batch_id: UUID) -> list[str]:
         """Storage keys of every rendered output file."""
         ...
@@ -221,4 +237,8 @@ class JobQueue(Protocol):
 
     def depth(self) -> int:
         """Messages waiting in the queue."""
+        ...
+
+    def has_live_job(self, row_id: UUID) -> bool:
+        """True while a message for this row is queued or running."""
         ...

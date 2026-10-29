@@ -129,3 +129,8 @@ Newest first. One entry per task.
 - Added AI label style `bubble` (default) | `band`: `Settings.label_style` (`VIDGEN_LABEL_STYLE`), `RenderConfig.label_style` (validated), `PillowBubbleRenderer`, `bubble_diameter`, `bubble_box`, `build_label_renderer` in `infrastructure/ffmpeg/label.py`.
 - `RowRenderer` requests a full-frame label for bubble; `local_label_band_height` returns 0 for bubble; runner picks the renderer by style. Band behaviour unchanged.
 - Files: backend/vidgen/{settings.py, services/render_support.py, services/render_row.py, worker/runner.py, infrastructure/ffmpeg/label.py, infrastructure/local_ai/factory.py}.
+
+## 2026-10-29 - L10
+- mean_fidelity([]) returns the neutral Fidelity(1.0, 0.0, 1.0).
+- Lost-queue recovery without a migration: StuckRow, BatchStore.stuck_candidates, JobQueue.has_live_job (Redis marker key per row, 6 h TTL), services/requeue.py, Settings.stuck_after_seconds/requeue_interval_seconds, worker/periodic.PeriodicTask wired into the worker.
+- Open: the Redis marker can outlive a finished job (harmless, row is no longer QUEUED).

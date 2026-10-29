@@ -66,6 +66,8 @@ class Settings(BaseSettings):
     heartbeat_key: str = Field(default="vidgen:worker:heartbeat", min_length=1)
     heartbeat_ttl_seconds: int = Field(default=15, gt=0)
     heartbeat_interval_seconds: float = Field(default=5.0, gt=0)
+    stuck_after_seconds: int = Field(default=600, gt=0)  # QUEUED this long = message likely lost
+    requeue_interval_seconds: float = Field(default=300.0, gt=0)
     pause_seconds: float = Field(default=0.5, ge=0)  # DD-7: pause after the name, until measured
 
     # Retention

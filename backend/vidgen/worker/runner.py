@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import signal
 import threading
+from collections.abc import Callable
 from pathlib import Path
 
 import dramatiq
@@ -22,7 +23,7 @@ from vidgen.domain.timing import TimingRules
 from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.row_store import SqlRowStore
-from vidgen.infrastructure.db.uow import get_engine
+from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.fakes import FakeQualityChecker
 from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
 from vidgen.infrastructure.ffmpeg.label import build_label_renderer
@@ -31,13 +32,16 @@ from vidgen.infrastructure.local_ai.factory import (
     effective_worker_threads,
     log_startup_warning,
 )
+from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
 from vidgen.infrastructure.queue.redis_heartbeat import HeartbeatLoop
 from vidgen.infrastructure.storage.local import LocalStorage
 from vidgen.logging import configure_logging
 from vidgen.ports.rows import PreviewSink
 from vidgen.services.render_row import RenderConfig, RowRenderer
+from vidgen.services.requeue import requeue_stuck_rows
 from vidgen.settings import Settings, get_settings
 from vidgen.worker.actors import WorkerConfig, register_actors
+from vidgen.worker.periodic import PeriodicTask
 
 FONT_DIR = Path(vidgen.__file__).parent / "assets" / "fonts"
 DEVANAGARI_FONT = "NotoSansDevanagari-Bold.ttf"
@@ -98,6 +102,30 @@ def build_renderer(settings: Settings, sink: PreviewSink) -> RowRenderer:
     )
 
 
+def build_requeue_job(
+    settings: Settings, broker: RedisBroker
+) -> Callable[[], object]:  # pragma: no cover
+    """The lost-message recovery pass, ready to run on a timer."""
+    cipher = AesGcmCipher(
+        keys={settings.encryption_key_id: settings.encryption_key_bytes()},
+        active_key_id=settings.encryption_key_id,
+        index_key=settings.index_key_bytes(),
+    )
+    factory = uow_factory(settings.database_url)
+    queue = DramatiqJobQueue(broker, queue_name=settings.queue_name)
+    clock = SystemClock()
+
+    def job() -> object:
+        return requeue_stuck_rows(
+            lambda: SqlUnitOfWork(factory, cipher),
+            queue,
+            clock,
+            stuck_after_seconds=settings.stuck_after_seconds,
+        )
+
+    return job
+
+
 def run() -> None:  # pragma: no cover
     """Start the worker threads and wait for SIGINT or SIGTERM."""
     settings = get_settings()
@@ -114,8 +142,11 @@ def run() -> None:  # pragma: no cover
     beat = HeartbeatLoop(default_heartbeat(settings), settings.heartbeat_interval_seconds)
     worker.start()
     beat.start()
+    recovery = PeriodicTask(build_requeue_job(settings, broker), settings.requeue_interval_seconds)
+    recovery.start()
     try:
         stop.wait()
     finally:
+        recovery.stop()
         beat.stop()
         worker.stop()

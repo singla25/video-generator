@@ -16,6 +16,8 @@ ROW_ACTOR_NAME = "render_row"
 PREVIEW_ACTOR_NAME = "render_preview"
 DEFAULT_QUEUE = "vidgen"
 REDIS_NAMESPACE = "dramatiq"
+LIVE_KEY_PREFIX = "vidgen:job:"
+LIVE_TTL_SECONDS = 6 * 3600  # long enough for a full queue wait plus render; a flush clears it too
 
 
 class DramatiqJobQueue:
@@ -25,6 +27,7 @@ class DramatiqJobQueue:
         self._broker = broker
         self._queue = queue_name
         broker.declare_queue(queue_name)
+        self._local_live: set[UUID] = set()  # used only by brokers without Redis (tests)
 
     def enqueue_preview(self, batch_id: UUID, row_id: UUID) -> None:
         """Queue the preview render of one row."""
@@ -43,6 +46,27 @@ class DramatiqJobQueue:
         client: Any = getattr(self._broker, "client")  # noqa: B009 - Redis broker  # pragma: no cover
         return int(client.llen(f"{REDIS_NAMESPACE}:{self._queue}"))  # pragma: no cover
 
+    def has_live_job(self, row_id: UUID) -> bool:
+        """True while a message for the row was sent and Redis still remembers it.
+
+        A marker key per row is written on enqueue. A Redis flush or restart loses messages and
+        markers together, which is exactly the case this answers.
+        """
+        client = self._redis()
+        if client is None:
+            return row_id in self._local_live
+        return bool(client.exists(f"{LIVE_KEY_PREFIX}{row_id}"))  # pragma: no cover
+
+    def _redis(self) -> Any:
+        return getattr(self._broker, "client", None)
+
+    def _mark_live(self, row_id: UUID) -> None:
+        client = self._redis()
+        if client is None:
+            self._local_live.add(row_id)
+        else:  # pragma: no cover
+            client.set(f"{LIVE_KEY_PREFIX}{row_id}", "1", ex=LIVE_TTL_SECONDS)
+
     def _send(self, actor_name: str, batch_id: UUID, row_id: UUID) -> None:
         message: dramatiq.Message[Any] = dramatiq.Message(
             queue_name=self._queue,
@@ -52,3 +76,4 @@ class DramatiqJobQueue:
             options={},
         )
         self._broker.enqueue(message)
+        self._mark_live(row_id)

@@ -221,11 +221,11 @@ class RowRenderer:
         with run.stage("lipsync"):
             self._lipsync.sync(template, speech, synced)
         label = folder / "label.png"
-        self._labels.render_label(
-            job.template.width,
-            band_height(job.template.height, self._config.label_band_share),
-            label,
-        )
+        if self._config.label_style == "bubble":
+            self._labels.render_label(job.template.width, job.template.height, label)
+        else:
+            band = band_height(job.template.height, self._config.label_band_share)
+            self._labels.render_label(job.template.width, band, label)
         output = folder / "output.mp4"
         metadata = {
             "creator_entity": self._config.creator_entity,

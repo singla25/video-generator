@@ -34,6 +34,9 @@ KIND_BY_DOMAIN_CODE = {
 }
 
 
+LABEL_STYLES = ("bubble", "band")
+
+
 @dataclass(frozen=True)
 class RenderConfig:
     """Everything configurable about rendering a row."""
@@ -44,6 +47,11 @@ class RenderConfig:
     retry: RetryPolicy = field(default_factory=RetryPolicy)
     label_band_share: float = 0.10  # share of the frame height covered by the AI label (C2)
     stale_margin_s: float = 60.0  # a PROCESSING row older than timeout + margin is abandoned
+    label_style: str = "bubble"  # "bubble" (corner badge) or "band" (top band), DD-32
+
+    def __post_init__(self) -> None:
+        if self.label_style not in LABEL_STYLES:
+            raise ValueError(f"unknown label_style {self.label_style!r}; use one of {LABEL_STYLES}")
 
     @property
     def stale_after(self) -> timedelta:

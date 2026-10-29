@@ -124,3 +124,8 @@ Newest first. One entry per task.
 - Measured row 0 (28 frames): SSIM 0.81 -> 0.96, mean abs diff 6.08 -> 3.42, texture retention 0.52 -> 0.89. Row 1: 0.96 / 3.73 / 0.92. Duration 26.2 s, 1080x1300, band 10 %.
 - Tests added: none (tester). Suggested: `mouth_masks` (shape, range, core inside outer), `composite_mouth` (pixels outside ellipse unchanged, identical face -> identical frame, colour shift clamped), `lower_face_mask` (excludes mouth rect), `frame_fidelity` (identical -> SSIM 1, ratio 1; blurred -> ratio < 1), `mean_fidelity`; update model fakes so `_paste` can drop the fallback.
 - Open: lips look slightly low-contrast; ellipse geometry is fixed fractions of the face box (tuned on this template).
+
+## 2026-10-29 - LB-GREEN (DD-32)
+- Added AI label style `bubble` (default) | `band`: `Settings.label_style` (`VIDGEN_LABEL_STYLE`), `RenderConfig.label_style` (validated), `PillowBubbleRenderer`, `bubble_diameter`, `bubble_box`, `build_label_renderer` in `infrastructure/ffmpeg/label.py`.
+- `RowRenderer` requests a full-frame label for bubble; `local_label_band_height` returns 0 for bubble; runner picks the renderer by style. Band behaviour unchanged.
+- Files: backend/vidgen/{settings.py, services/render_support.py, services/render_row.py, worker/runner.py, infrastructure/ffmpeg/label.py, infrastructure/local_ai/factory.py}.

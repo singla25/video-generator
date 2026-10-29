@@ -25,7 +25,7 @@ from vidgen.infrastructure.db.row_store import SqlRowStore
 from vidgen.infrastructure.db.uow import get_engine
 from vidgen.infrastructure.fakes import FakeQualityChecker
 from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
-from vidgen.infrastructure.ffmpeg.label import PillowLabelRenderer
+from vidgen.infrastructure.ffmpeg.label import build_label_renderer
 from vidgen.infrastructure.local_ai.factory import (
     build_ai_adapters,
     effective_worker_threads,
@@ -51,6 +51,7 @@ def render_config(settings: Settings) -> RenderConfig:
         creator_entity=settings.creator_entity,
         pause_s=settings.pause_seconds,
         label_band_share=settings.label_band_share,
+        label_style=settings.label_style,
         timing=TimingRules(
             max_stretch_ratio=settings.max_stretch_ratio,
             max_extension_s=settings.max_extension_seconds,
@@ -86,8 +87,10 @@ def build_renderer(settings: Settings, sink: PreviewSink) -> RowRenderer:
             crossfade_ms=settings.crossfade_ms,
         ),
         quality=FakeQualityChecker(),
-        labels=PillowLabelRenderer(
-            devanagari_font=FONT_DIR / DEVANAGARI_FONT, latin_font=FONT_DIR / LATIN_FONT
+        labels=build_label_renderer(
+            settings.label_style,
+            devanagari_font=FONT_DIR / DEVANAGARI_FONT,
+            latin_font=FONT_DIR / LATIN_FONT,
         ),
         clock=SystemClock(),
         config=render_config(settings),

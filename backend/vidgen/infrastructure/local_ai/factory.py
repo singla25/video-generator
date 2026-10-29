@@ -89,6 +89,8 @@ def log_startup_warning(settings: Settings) -> None:
 
 
 def local_label_band_height(settings: Settings, frame_h: int) -> int:
-    """Label band height for the local pipeline: the same rule as the fake path (>= 10 %)."""
+    """Label band height for the local pipeline: 0 for the bubble, else >= 10 %."""
+    if settings.label_style == "bubble":
+        return 0
     share = max(settings.label_band_share, MIN_LABEL_SHARE)
     return math.ceil(frame_h * share - ROUNDING_TOLERANCE)

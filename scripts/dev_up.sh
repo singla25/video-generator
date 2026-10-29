@@ -26,6 +26,17 @@ if [ -z "${VIDGEN_ADMIN_PASSWORD_HASH:-}" ]; then
   exit 1
 fi
 
+if [ "${VIDGEN_AI_MODE:-${AI_MODE:-fake}}" = "local" ]; then
+  # Pilot only (ADR-012): real models on this machine. Fake mode skips all of this.
+  echo "Local AI mode: installing the local-ai extra (first run downloads a lot)..."
+  uv sync --extra local-ai
+  # chatterbox-tts pins stale versions of torch/transformers, so install it without deps.
+  uv pip install --python .venv/bin/python --no-deps chatterbox-tts==0.1.7
+  export VIDGEN_AI_MODE=local
+  export VIDGEN_LOCAL_AI_WEIGHTS_DIR="${VIDGEN_LOCAL_AI_WEIGHTS_DIR:-$(pwd)/models}"
+  export VIDGEN_WORKER_THREADS=1   # one render at a time: the models share one GPU/RAM
+fi
+
 echo "Checking postgres and redis..."
 .venv/bin/python - <<'PY' || { echo "Postgres or redis is not reachable. Start the Docker containers first."; exit 1; }
 import os, socket

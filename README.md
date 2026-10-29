@@ -54,6 +54,7 @@ Open **http://localhost:5173** and log in with the admin password. Stop everythi
 - `dev_up.sh` never applies a migration silently: if new ones are pending it lists them and asks `y/N` first (no answer, or no terminal, means nothing is applied and nothing starts).
 - Logs and PIDs live in `.dev/` (git-ignored). If something fails, read `.dev/logs/*.log`.
 - First time on a new machine: `uv sync` and `cd frontend && npm ci`.
+- Local AI mode (pilot, Apple silicon): set `VIDGEN_AI_MODE=local` in `.env` (or the shell) and run `dev_up.sh`. It installs the `local-ai` extra, adds `chatterbox-tts` without its stale pins, uses `./models` for weights (`VIDGEN_LOCAL_AI_WEIGHTS_DIR`) and runs the worker with one thread. Fake mode is unchanged. See `docs/plans/m2-local-real-ai.md`.
 
 ## How a feature flows
 

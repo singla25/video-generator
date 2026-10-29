@@ -135,3 +135,6 @@ Newest first. One entry per task.
 - Existing band-by-default assertions made explicit with `label_style="band"`: integration/worker/test_render_row.py (2 tests), e2e/conftest.py, unit/ai_local/test_label_height.py.
 - Names for backend-dev: `Settings.label_style`, `RenderConfig.label_style`, `PillowBubbleRenderer`, `bubble_diameter`, `bubble_box`, `build_label_renderer` (label.py), `local_label_band_height` returns 0 for bubble. Bubble PNG = transparent RGBA of full frame size.
 - Red: 26 failed + 2 modules fail at import + 3 e2e error (TypeError label_style on RenderConfig); everything else unchanged (2023 pass; tests/unit/infra/ai still red from G3).
+
+## 2026-10-29 - T-L10b
+- FakeJobQueue implements has_live_job (live set from enqueue until mark_done); doubles.py ruff/mypy --strict clean; unit suite 1241 passed, 2 skipped.

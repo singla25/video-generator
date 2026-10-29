@@ -96,3 +96,25 @@ Feature: UI says which AI is on and a human confirms the spoken name
     ├── ❌ fake mode has no field; failed confirm -> alert, Approve stays disabled; confirmed text alone never auto-approves
     └── ⚠️ editing after confirming re-locks Approve; empty suggestion -> empty field, Confirm disabled
 ```
+
+## L10: neutral empty fidelity and lost-queue recovery
+
+Tests: tests/unit/ai_local/test_fidelity_empty.py, tests/unit/services/test_requeue_stuck_rows.py,
+tests/unit/worker/test_requeue_wiring.py, tests/integration/api/test_stuck_candidates.py.
+
+Expected API (backend-dev creates):
+- `fidelity.mean_fidelity([])` returns `Fidelity(ssim=1.0, mean_abs_diff=0.0, texture_ratio=1.0)` (no ZeroDivisionError).
+- `vidgen.ports.batches.StuckRow(batch_id, row_id, kind: "row" | "preview")`.
+- `BatchStore.stuck_candidates(cutoff, after: UUID | None, limit) -> list[StuckRow]`: QUEUED rows of RUNNING batches started before `cutoff`, plus the preview row of DRAFT batches with a PENDING preview; ordered by row_id, keyset paged. Needs no migration (age = batch.started_at).
+- `JobQueue.has_live_job(row_id) -> bool` (this is what makes a second run idempotent).
+- `vidgen.services.requeue.requeue_stuck_rows(open_uow, queue, clock, *, stuck_after_seconds=600, page_size=500) -> RequeueReport(requeued, skipped_live, queue_down)`.
+- Settings `stuck_after_seconds=600`, `requeue_interval_seconds=300` (both > 0).
+- `vidgen.worker.periodic.PeriodicTask(fn, interval_seconds)` with `start()` (first run immediately) and `stop()`; job errors are logged, never stop the loop. The worker runs requeue at startup and each interval.
+
+```
+Feature: Recover rows whose queue message was lost
+├── ✅ stuck rows without a live job are re-enqueued once, grouped per batch; previews as preview jobs; cutoff = now - stuck_after
+├── ❌ queue down -> logged, report.queue_down, no raise (also failing midway keeps earlier work)
+└── ⚠️ rows with a live job skipped; second run no duplicates; empty DB; 10 000 rows read in pages of page_size; page_size <= 0 rejected;
+    SQL: fresh batch, PROCESSING/COMPLETED/FAILED rows and DRAFT rows are never candidates; paging returns every row exactly once
+```

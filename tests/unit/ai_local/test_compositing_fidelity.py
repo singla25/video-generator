@@ -205,8 +205,3 @@ def test_mouth_only_compositing_keeps_more_texture_than_a_full_face_paste() -> N
 def test_mean_fidelity_averages_each_metric() -> None:
     mean = mean_fidelity([Fidelity(1.0, 0.0, 1.0), Fidelity(0.5, 4.0, 0.5)])
     assert mean == Fidelity(0.75, 2.0, 0.75)
-
-
-def test_mean_fidelity_of_an_empty_list_raises_instead_of_returning_nonsense() -> None:
-    with pytest.raises(ZeroDivisionError):
-        mean_fidelity([])

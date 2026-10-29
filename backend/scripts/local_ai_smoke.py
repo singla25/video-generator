@@ -199,7 +199,7 @@ def main() -> int:
 
     from vidgen.domain.timing import TimingRules, plan_timing
     from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
-    from vidgen.infrastructure.ffmpeg.label import PillowLabelRenderer, label_band_height
+    from vidgen.infrastructure.ffmpeg.label import build_label_renderer, label_band_height
     from vidgen.infrastructure.local_ai.factory import build_ai_adapters
     from vidgen.settings import Settings
     from vidgen.worker.runner import DEVANAGARI_FONT, FONT_DIR, LATIN_FONT
@@ -229,11 +229,15 @@ def main() -> int:
     adapters.voice.release()
     timer.stage("voice", started)
 
-    labels = PillowLabelRenderer(FONT_DIR / DEVANAGARI_FONT, FONT_DIR / LATIN_FONT)
+    labels = build_label_renderer(
+        settings.label_style, FONT_DIR / DEVANAGARI_FONT, FONT_DIR / LATIN_FONT
+    )
     encoder = FfmpegVideoEncoder("ffmpeg", crossfade_ms=settings.crossfade_ms)
     band = label_band_height(int(info["height"]))
     label = tmp / "label.png"
-    labels.render_label(int(info["width"]), band, label)
+    bubble = settings.label_style == "bubble"  # the bubble renderer takes the frame height
+    labels.render_label(int(info["width"]), int(info["height"]) if bubble else band, label)
+    print(f"label style: {settings.label_style}")
     failures = 0
     metadata = {
         "creator_entity": "Local smoke test",
@@ -268,7 +272,7 @@ def main() -> int:
         result = _probe(out)
         ok = (
             abs(result["duration"] - info["duration"] - plan.extension_s) < 0.1
-            and band / result["height"] >= 0.10
+            and (bubble or band / result["height"] >= 0.10)
         )
         failures += 0 if ok else 1
         share = band / result["height"]

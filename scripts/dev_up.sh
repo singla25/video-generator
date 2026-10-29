@@ -33,7 +33,7 @@ if [ "${VIDGEN_AI_MODE:-${AI_MODE:-fake}}" = "local" ]; then
   # chatterbox-tts pins stale versions of torch/transformers, so install it without deps.
   uv pip install --python .venv/bin/python --no-deps chatterbox-tts==0.1.7
   export VIDGEN_AI_MODE=local
-  export VIDGEN_LOCAL_AI_WEIGHTS_DIR="${VIDGEN_LOCAL_AI_WEIGHTS_DIR:-$(pwd)/models}"
+  export VIDGEN_LOCAL_AI_WEIGHTS_DIR="${VIDGEN_LOCAL_AI_WEIGHTS_DIR:-$(pwd)/backend/spikes/m2_mac/work/local_ai_weights}"
   export VIDGEN_WORKER_THREADS=1   # one render at a time: the models share one GPU/RAM
 fi
 

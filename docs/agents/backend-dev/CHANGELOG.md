@@ -153,3 +153,4 @@ Newest first. One entry per task.
 - Band style and every public name are unchanged. The font error stays a typed DomainError with no file written.
 - Tests: the 64 DD-36 bubble tests pass (test_bubble_look, test_bubble_renderer, test_label_bubble_overlay). Full unit and integration run: 2192 passed, 2 skipped.
 - Open: the Admin still has to judge the look on the re-rendered sample row.
+- 2026-10-30 B-FIX-depth: JobQueue.depth() checks the Redis client first (llen), so the real RedisBroker no longer crashes the status endpoint.

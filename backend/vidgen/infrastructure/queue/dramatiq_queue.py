@@ -40,11 +40,11 @@ class DramatiqJobQueue:
 
     def depth(self) -> int:
         """Messages waiting in the queue (the queue-depth metric)."""
-        queues: Any = getattr(self._broker, "queues", None)
-        if queues is not None:  # the in-memory StubBroker
-            return int(queues[self._queue].qsize())
-        client: Any = getattr(self._broker, "client")  # noqa: B009 - Redis broker  # pragma: no cover
-        return int(client.llen(f"{REDIS_NAMESPACE}:{self._queue}"))  # pragma: no cover
+        client = self._redis()
+        if client is not None:  # Redis broker: its ``queues`` is a plain set of names
+            return int(client.llen(f"{REDIS_NAMESPACE}:{self._queue}"))
+        queues: Any = self._broker.queues  # the in-memory StubBroker maps name -> Queue
+        return int(queues[self._queue].qsize())
 
     def has_live_job(self, row_id: UUID) -> bool:
         """True while a message for the row was sent and Redis still remembers it.

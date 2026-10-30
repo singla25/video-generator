@@ -41,16 +41,23 @@ Feature: name gap after the new name (DD-34)
     ├── ✅ NG-O-P2 frame count = round((template + 0.25) * fps) within 1 frame
     ├── ✅ NG-O-P3 audio length equals video length within 60 ms
     ├── ✅ NG-O-P4 speech after the name is silent at 2.3-2.8 s and audible at 2.95-3.2 s
-    ├── ✅ NG-O-P5 last slot frame held: >= round(gap * fps) - 1 identical frames (5 at 25 fps) from the slot end, then motion resumes
+    ├── ✅ NG-O-P5 last slot frame held: N = round(gap * fps) - 1 = 5 frames from the slot end differ from the held frame by <= 0.5 and <= motion / 5 (tolerance, see below)
+    ├── ❌ NG-O-N1 control with gap 0: at least one of the same N frames differs by > 5.0 (proves P5 detects a missing hold)
     └── ⚠️ NG-O-E1 gap 0 keeps the template length within 50 ms
 ```
 
-## Threshold decision (CEO, DD-34 hold)
+## Hold thresholds (CEO, DD-34)
 
-The 10-frame figure was wrong: at 25 fps a 0.25 s gap is about 6 frames. The hold test asserts
-N = round(gap_s * fps) - 1 = 5 identical frames from the slot end (frame 50) and checks that the
-identical run ends and motion resumes. The run is measured to its end, because the last clone
-frame can equal the held frame, so a fixed "frame N+1 differs" check would be wrong.
+The 10-frame figure was wrong: at 25 fps a 0.25 s gap is about 6 frames. Frames are decoded to
+RGB; the difference d is the mean absolute pixel difference on the 0-255 scale.
+
+1. Motion floor: d(output frame 10, frame 11) >= 2.0 (measured 4.34; first limit was 5.0).
+2. Hold: every d(held frame at output frame 50, each of frames 50..54) <= 0.5 AND <= motion / 5
+   (measured largest 0.009).
+3. Gap-0 control: at least one of frames 50..54 has d > 5.0 (measured largest 17.46).
+
+The codec makes the held frames not bit-identical (libx264 CRF 18 chroma noise), so the hold uses
+a tolerance instead of exact hashes.
 
 ## Conventions
 

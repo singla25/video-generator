@@ -1,0 +1,48 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Plan — G8 licence gate for production weights</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Plan — G8 licence gate for production weights</h1>
+<p><strong>Status:</strong> Draft, waiting for Admin approval. Nothing is built until the Admin approves. No migration.</p>
+<h2>Goal</h2>
+<p>No model weights with unclear or non-commercial licences are needed for a production run.</p>
+<h2>Background</h2>
+<ul><li>ADR-012 (Correction, 2026-10-30) lists three weights that are not cleared for commercial use:</li><li>Demucs htdemucs weights: the author states the licence is unclear.</li><li>face-parse-bisent weights: trained on CelebAMask-HQ, which is for non-commercial research and educational purposes only.</li><li>S3FD / FAN (face-alignment) weights: no licence stated.</li><li>The app does not use Demucs yet.</li><li>face-parse-bisent and S3FD/FAN are used inside the MuseTalk lip sync path.</li><li>DD-31: these weights are accepted for pilot use on the Admin's Mac only.</li></ul>
+<h2>Acceptance criteria</h2>
+<ol><li>Every weight the production path loads has a licence line in ADR-012 with its source URL and the date checked.</li><li>A test fails if a weight outside the allow-list is loaded in production mode.</li><li>Quality check on the sample row is not worse than the pilot: beard texture retention &gt;= 0.85 on the lip-synced clip, and no visible seam.</li><li>Pilot mode (<code>AI_MODE=local</code> on the Admin's Mac) still works.</li><li>ADR-012 is updated to match the result.</li></ol>
+<h2>Requirement tree</h2>
+<pre><code>G8 licence gate
+├── Functional
+│   ├── F1 Production path loads only allow-listed weights
+│   └── F2 Pilot path keeps current behaviour
+├── Non-functional
+│   ├── Quality of lip sync not worse than pilot (beard texture &gt;= 0.85, no seam)
+│   └── Licence evidence recorded with URL and date
+├── Constraints
+│   ├── Nothing is built until the Admin approves
+│   └── No migration
+├── Out of scope
+│   ├── Legal advice (this is a technical reading of project pages)
+│   └── Changes to the fake AI default
+└── Open questions (must be empty before build)
+    └── Which replacement option the Admin chooses (see Options)</code></pre>
+<h2>Options to evaluate</h2>
+<p>All options are UNVERIFIED. Each must be checked against the official licence pages before any code is written.</p>
+<ul><li><strong>Landmarks and face mask:</strong> MediaPipe-based landmarks and mask. Code is believed to be Apache-2.0; the models must be checked separately.</li><li><strong>Separation (Demucs):</strong> either skip separation, or use a separation model with a clear licence. Skipping is possible because the music bed is not preserved under the name slot today anyway.</li><li><strong>Written licences:</strong> obtain written licences from the rights holders for the current weights.</li></ul>
+<h2>Tasks</h2>
+<table><tr><th>ID</th><th>Task</th><th>Agent</th><th>Why this agent</th><th>Depends on</th><th>Model</th><th>Worktree?</th><th>Done when</th></tr><tr><td>G8-1</td><td>Licence research for the options above (no code)</td><td>CEO + Haiku</td><td>Documentation research only</td><td>Admin approval</td><td>haiku</td><td>No</td><td>Licence line with URL and date per candidate in ADR-012</td></tr><tr><td>G8-2</td><td>Red tests for the allow-list (production mode fails on a non-listed weight)</td><td>tester</td><td>Owns <code>tests/</code>; writes tests first</td><td>G8-1</td><td>haiku</td><td>No</td><td>Tests exist and fail on current code</td></tr><tr><td>G8-3</td><td>Swap the adapters to allow-listed weights</td><td>backend-dev</td><td>Owns <code>backend/</code> adapters</td><td>G8-2</td><td>haiku</td><td>No</td><td>G8-2 tests green; pilot tests still green</td></tr><tr><td>G8-4</td><td>Verify on the Mac with the sample row</td><td>tester</td><td>Verification and quality check</td><td>G8-3</td><td>haiku</td><td>No</td><td>Quality criteria 3 and 4 met, recorded in ADR-012</td></tr></table>
+<h2>Order (TDD)</h2>
+<p>tester (red, G8-2) → backend-dev (green, G8-3) → tester (verify, G8-4) → CEO review → Admin approves merge</p>
+<h2>Risks</h2>
+<ol><li><strong>Quality drop:</strong> the replacement may be worse on beard texture or seams. Mitigation: quality check on the sample row (criterion 3) before any merge.</li><li><strong>Licence research is incomplete:</strong> a candidate may also have unclear terms. Mitigation: every candidate is UNVERIFIED until its official page is read and recorded with URL and date.</li><li><strong>Pilot breaks:</strong> changing the adapters may affect the Mac pilot. Mitigation: criterion 4 and the existing pilot tests.</li></ol>
+<h2>Migrations / dependencies (need separate approval)</h2>
+<ul><li>No database migration.</li><li>Any new dependency (for example MediaPipe) needs separate Admin approval before it is added.</li></ul>
+<h2>Admin approval</h2>
+<ul><li>[ ] Plan approved</li><li>[ ] Task assignment approved</li><li>[ ] Merge approved</li></ul></div></body></html>

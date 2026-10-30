@@ -1,0 +1,61 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree: name gap after the new name (DD-34, task NG-RED)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree: name gap after the new name (DD-34, task NG-RED)</h1>
+<p>After the new name, everything later in the video starts <code>gap_s</code> seconds later. The output is <code>gap_s</code> longer than the template. Video: the last slot frame is held for <code>gap_s</code>. Audio: the region that replaces the slot is <code>gap_s</code> longer (silence padded) and the tail keeps its place, shifted later by <code>gap_s</code>. Defaults: <code>Settings.name_gap_s</code> 0.25 s (env <code>VIDGEN_NAME_GAP_S</code>, range 0 to 1.0), <code>RenderConfig.name_gap_s</code> 0.0, <code>plan_timing(gap_s=0.0)</code>.</p>
+<pre><code>Feature: name gap after the new name (DD-34)
+├── Scenario: the planner adds the gap to the timing plan  (tests/unit/domain/test_name_gap.py)
+│   ├── ✅ NG-D-P1 gap 0 gives the same plan as before; gap_s == 0.0; delta == extension
+│   ├── ✅ NG-D-P2 gap changes only gap_s (stretch, absorbed, extension, padding unchanged)
+│   ├── ✅ NG-D-P3 short name, gap 0.25: extension 0, delta 0.25, padding about 0.1
+│   ├── ✅ NG-D-P4 long name: delta == extension + gap
+│   ├── ✅ NG-D-P5 output length = template + gap within 40 ms
+│   ├── ❌ NG-D-N1 gap &lt; 0 or &gt; 1.0 raises ValueError (-0.1, -1e-6, 1.0001, 2.0)
+│   ├── ❌ NG-D-N2 a name too long with gap 0 is too long with gap 0.25 (no new way to fail)
+│   └── ⚠️ NG-D-E1 gap is not counted against max_extension_s; exactly 1.0 s is accepted
+├── Scenario: the graph holds the last slot frame  (tests/unit/infra/test_ffmpeg_graph_gap.py)
+│   ├── ✅ NG-G-P1 region length = slot + absorbed + extension + gap
+│   ├── ✅ NG-G-P2 audio region apad/atrim use the longer length; tail start unchanged
+│   ├── ✅ NG-G-P3 slot segment ends with tpad clone of 0.250000 s (gap 0.25, no extension)
+│   ├── ✅ NG-G-P4 gap without extension still uses split + concat
+│   ├── ✅ NG-G-P5 slot with 1.5x slow-down and hold: setpts first, then tpad
+│   ├── ✅ NG-G-N1 gap 0 has no tpad
+│   └── ⚠️ NG-G-E1 gap 0 and extension 0: graph string identical to today
+├── Scenario: the Admin sets the gap  (tests/unit/infra/test_name_gap_setting.py)
+│   ├── ✅ NG-S-P1 default 0.25 s
+│   ├── ✅ NG-S-P2 VIDGEN_NAME_GAP_S=0.5 overrides the default
+│   ├── ✅ NG-S-P3 render_config copies the setting (default and 0.5)
+│   ├── ✅ NG-S-P4 RenderConfig built directly has name_gap_s 0.0
+│   ├── ❌ NG-S-N1 -0.1, 1.5 and 1.0001 rejected (name_gap_s in the message)
+│   └── ⚠️ NG-S-E1 0.0 and 1.0 accepted (inclusive range)
+├── Scenario: the row pipeline passes the gap to the encoder  (tests/integration/worker/test_render_row_name_gap.py)
+│   ├── ✅ NG-R-P1 name_gap_s 0.25 reaches plan.gap_s of the encoder call
+│   ├── ✅ NG-R-P2 default config gives plan.gap_s 0.0
+│   └── ⚠️ NG-R-E1 gap 1.0 still completes the row and stores the output
+└── Scenario: the rendered file is longer by the gap  (tests/integration/ffmpeg/test_name_gap_output.py)
+    ├── ✅ NG-O-P1 duration = template + 0.25 s within 50 ms
+    ├── ✅ NG-O-P2 frame count = round((template + 0.25) * fps) within 1 frame
+    ├── ✅ NG-O-P3 audio length equals video length within 60 ms
+    ├── ✅ NG-O-P4 speech after the name is silent at 2.3-2.8 s and audible at 2.95-3.2 s
+    ├── ✅ NG-O-P5 last slot frame held: N = round(gap * fps) - 1 = 5 frames from the slot end differ from the held frame by &lt;= 0.5 and &lt;= motion / 5 (tolerance, see below)
+    ├── ❌ NG-O-N1 control with gap 0: at least one of the same N frames differs by &gt; 5.0 (proves P5 detects a missing hold)
+    └── ⚠️ NG-O-E1 gap 0 keeps the template length within 50 ms</code></pre>
+<h2>Hold thresholds (CEO, DD-34)</h2>
+<p>The 10-frame figure was wrong: at 25 fps a 0.25 s gap is about 6 frames. Frames are decoded to RGB; the difference d is the mean absolute pixel difference on the 0-255 scale.</p>
+<ol><li>Motion floor: d(output frame 10, frame 11) &gt;= 2.0 (measured 4.34; first limit was 5.0).</li><li>Hold: every d(held frame at output frame 50, each of frames 50..54) &lt;= 0.5 AND &lt;= motion / 5</li></ol>
+<p>   (measured largest 0.009).</p>
+<ol><li>Gap-0 control: at least one of frames 50..54 has d &gt; 5.0 (measured largest 17.46).</li></ol>
+<p>The codec makes the held frames not bit-identical (libx264 CRF 18 chroma noise), so the hold uses a tolerance instead of exact hashes.</p>
+<h2>Conventions</h2>
+<ul><li>Failing reasons at RED: <code>plan_timing(gap_s=...)</code>, <code>TimingPlan.gap_s</code>, <code>Settings.name_gap_s</code>,</li></ul>
+<p>  <code>RenderConfig.name_gap_s</code> and the <code>tpad</code> string are missing. No test relies on a typo.</p>
+<ul><li>The output checks use the same synthetic template as the neighbours (<code>make_template</code>, 4 s,</li></ul>
+<p>  25 fps, testsrc2 motion, 880 Hz name at 1-2 s, silence 2.0-2.6 s, 440 Hz speech after).</p></div></body></html>

@@ -42,10 +42,12 @@
 
 | # | Since | Item | Why blocked | Prepared |
 |---|-------|------|-------------|----------|
-| W-1 | 2026-10-19 | M2 GPU provider + budget | Paid service (forbidden under delegation) | `docs/plans/m2-real-ai.md` draft, ADR-010 provisional model stack |
+| W-1 | 2026-10-19 | M2 GPU provider + budget (no longer blocks M2: the Mac is enough, DD-30; only for production-size batches) | Paid service (forbidden under delegation) | `docs/plans/m2-real-ai.md` draft, ADR-010 provisional model stack |
 | W-3 | 2026-10-19 | Drop 2 leftover throwaway test DBs from killed pytest runs: `vidgen_55e3f615_test`, `vidgen_63e1f22e_test` (leave any other `vidgen_<hex>_test` that may be in use) | The guard blocks `DROP DATABASE` for agents, and deletions are outside the delegation | `docker compose exec postgres dropdb -U vidgen vidgen_55e3f615_test` and the same for `vidgen_63e1f22e_test`. Harmless if left. |
 | W-4 | 2026-10-20 | UI-AC1 visual sign-off of the dashboard vs the TrustVest reference | Human judgement (plan F7) | Screenshots: `media/review/ui/` (overview, overview-tablet, wizard-step3, batch-detail, templates, security) |
 | W-2 | 2026-10-19 | Using the real `samples/` on a GPU box for the M2 spike | Voter data handling decision | Plan says: our own server only, never a third party |
+| W-5 | 2026-10-30 | Try local mode from the dashboard with 2-3 rows (VIDGEN_AI_MODE=local, Mac free, confirm each name's spelling) | Needs the Admin's Mac and a human check of the result | `scripts/dev_up.sh`, README "Local AI mode" |
+| W-6 | 2026-10-30 | Approve the G8 plan (replace or clear the Demucs, face-parse and S3FD/FAN weights before any production run) | Licence / risk decision | `docs/plans/g8-licence-gate.md` |
 
 ## DD-30 (2026-10-28) M2-local real AI on the Mac
 Admin approved local Metal GPU. Plan `docs/plans/m2-local-real-ai.md`. Optional extra, `AI_MODE` switch, fake stays default. Licence check (L0) gates the weights. Undo: set `AI_MODE=fake`.

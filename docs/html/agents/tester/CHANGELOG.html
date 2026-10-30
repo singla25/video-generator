@@ -11,6 +11,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Tester — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-10-30 — RM-G3 (remove redundant red set)</h2>
+<ul><li>Removed: the redundant G3 adapter test set (tests/unit/infra/ai/, docs/test-tree/m2-real-ai.md). The adapters were built as vidgen.infrastructure.local_ai and are covered by tests/unit/ai_local/. The Admin approved the deletion. Those tests failed at collection with ModuleNotFoundError.</li></ul>
 <h2>2026-10-20 - W-4 tests</h2>
 <ul><li>Added: progress ignores skipped rows (and all-skipped = 0), rows response carries same-snapshot counts, header follows the rows snapshot, panel shows skipped separately. TT-AC14-E2 updated (all skipped is 0, not 100). Python 1744, Vitest 209.</li></ul>
 <h2>2026-10-19 — T15 (VERIFY M1)</h2>
@@ -62,4 +64,20 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 <h2>2026-10-20 - F6 re-verification</h2>
 <ul><li>Real-stack E2E 47 pass, 1 fail (tablet overflow, D-F6-4); Python 1745; Vitest 207, 93 percent lines. Added tablet Overview screenshot test, desktop 1440x900 screenshots. COVERAGE.md updated.</li></ul>
 <h2>2026-10-20 - final M3 verification</h2>
-<ul><li>E2E 48/48, Python 1745, Vitest 207 (93 percent lines), checks clean; screenshots refreshed; UI-AC2 now green.</li></ul></div></body></html>
+<ul><li>E2E 48/48, Python 1745, Vitest 207 (93 percent lines), checks clean; screenshots refreshed; UI-AC2 now green.</li></ul>
+<h2>2026-10-28 - FIX-UPLOAD-1 RED</h2>
+<ul><li>Tree docs/test-tree/fix-upload-feedback.md. Vitest upload-feedback.test.tsx (4 upload surfaces, fake XHR helper in tests/frontend/support/fake-xhr.ts, setup.ts now unstubs globals) and pytest tests/unit/api/test_dependency_outage.py (DB_UNAVAILABLE / QUEUE_UNAVAILABLE 503). Red: Vitest 55 fail / 13 pass (guards), pytest 7 fail / 3 pass (guards). Needs: XHR upload with progressbar, Retry button, 503 mapping.</li></ul>
+<h2>2026-10-28 - FIX-UPLOAD-4 verify</h2>
+<ul><li>Moved the XHR FormData shim to tests/frontend/support/xhr-formdata.ts (imported by setup.ts). Added TT-UP-E10/E11/N10 (timeout set, progress clamp, 504). Vitest 289 pass; pytest unit 903 pass.</li></ul>
+<h2>2026-10-28 - FIX-WORKER-1 RED</h2>
+<ul><li>Tree docs/test-tree/fix-worker-health.md; heartbeat adapter and route pytest, redis_double fixture, Vitest worker-health (default status handler added to mocks).</li></ul>
+<h2>2026-10-28 - L1 RED (local real AI)</h2>
+<ul><li>Tree docs/test-tree/m2-local-real-ai.md (with the expected API table). Tests in tests/unit/ai_local/ (mode switch, adapters with stub models, name slot, guards and offline, label height). <code>local_ai</code> marker registered in that conftest and skipped unless RUN_LOCAL_AI=1. Red: 5 modules fail at collection (vidgen.infrastructure.local_ai missing).</li></ul>
+<h2>2026-10-28 - G3 RED (M2 real-AI adapters)</h2>
+<ul><li>Tree docs/test-tree/m2-real-ai.md (8 scenarios). New tests/unit/infra/ai/: STT, Qwen transliterator, Chatterbox cloner, MuseTalk lip-syncer (real ffmpeg on tiny clips, stub model), Demucs separator + VocalSeparator port/fake, package rules (lazy imports, ModelLoadError, AdapterTimeoutError), ai_backend setting, label band &gt;= 10 % guards.</li><li>Seams proposed: <code>engine_factory</code>, <code>timeout_s</code>, <code>vidgen.infrastructure.ai.errors</code>, <code>FailureCode.PRONUNCIATION_UNCERTAIN</code>, <code>transliterate_checked</code>, <code>FakeVocalSeparator</code>.</li><li>Red: 5 modules fail at collection (ModuleNotFoundError vidgen.infrastructure.ai) + 7 failing in test_ai_package; 39 guards (settings, label) pass. Existing unit suite 939 pass. Note: tests/unit/ai_local (commit a26a5a5, other RED set) still fails on missing vidgen.infrastructure.local_ai.</li></ul>
+<h2>2026-10-28 - L1b RED (UI mode and spoken-name confirmation)</h2>
+<ul><li>test_system_status.py now expects ai_mode (7 fail). New tests/frontend/unit/ai-mode.test.tsx (17 tests, 11 red, 6 guards pass). Contract in docs/test-tree/m2-local-real-ai.md.</li></ul>
+<h2>2026-10-29 - LB-RED (DD-32 AI label style: bubble default, band option)</h2>
+<ul><li>Tree docs/test-tree/label-style.md (defaults and names recorded there). New tests: unit/infra/test_label_style_setting.py, unit/infra/test_bubble_renderer.py, integration/ffmpeg/test_label_bubble_overlay.py (real ffmpeg), integration/worker/test_render_row_label_style.py, unit/worker/test_runner_label_style.py, unit/ai_local/test_label_style_local.py.</li><li>Existing band-by-default assertions made explicit with <code>label_style="band"</code>: integration/worker/test_render_row.py (2 tests), e2e/conftest.py, unit/ai_local/test_label_height.py.</li><li>Names for backend-dev: <code>Settings.label_style</code>, <code>RenderConfig.label_style</code>, <code>PillowBubbleRenderer</code>, <code>bubble_diameter</code>, <code>bubble_box</code>, <code>build_label_renderer</code> (label.py), <code>local_label_band_height</code> returns 0 for bubble. Bubble PNG = transparent RGBA of full frame size.</li><li>Red: 26 failed + 2 modules fail at import + 3 e2e error (TypeError label_style on RenderConfig); everything else unchanged (2023 pass; tests/unit/infra/ai still red from G3).</li></ul>
+<h2>2026-10-29 - T-L10b</h2>
+<ul><li>FakeJobQueue implements has_live_job (live set from enqueue until mark_done); doubles.py ruff/mypy --strict clean; unit suite 1241 passed, 2 skipped.</li></ul></div></body></html>

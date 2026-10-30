@@ -2,6 +2,13 @@
 
 Newest first. One entry per task.
 
+## 2026-10-30 — M2 local real AI merged (PRs #5, #6, #7)
+- PR #5 (bf14a93): local real AI on the Admin's Mac (pilot): faster-whisper, Qwen3-4B spelling pre-fill, Chatterbox voice, MuseTalk lip sync with only a mouth oval replaced, confirm-spelling step and mode badge, stuck-queue sweep, Redis saves to disk, optional local-ai install group with uv.lock, worker-health fix (PR #4 closed as contained).
+- DD-32/36: AI label is a small see-through bubble at the bottom-right (48 px at 1080, white ring), band kept as an option. DD-34: 0.25 s real gap after the name (video 0.25 s longer than the template). DD-33: pause setting has no effect when the name fits the slot.
+- PR #6 (bde91b3): removed the redundant red adapter test set (DD-35). PR #7 (c3b3055): the see-through bubble.
+- Tests on main: 2174 → 2192 passed, 2 skipped (unit + integration, test_worker.py run alone with the dev worker stopped).
+- Open: Admin tries local mode from the dashboard; G8 production licence gate (plan docs/plans/g8-licence-gate.md, waiting for approval); CI workflow (ADR-011, approved scope B).
+
 ## 2026-10-27 — M2 Mac feasibility spike (branch spike/m2-mac-feasibility)
 - Merged feat/dev-migration-prompt (dev_up.sh asks y/N before migrations); suite 1750 pass.
 - Spike S1–S6: whisper ✅, IndicXlit ❌ (fairseq vs Py3.11), Chatterbox ✅, Demucs ✅, MuseTalk ✅ (patched landmarks), real sample ✅ (3 local videos, 158–189 s each, 16–18 GB peak). Results: backend/spikes/m2_mac/RESULTS.md.

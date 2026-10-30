@@ -1,0 +1,84 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree: M2-local real AI (AI_MODE switch + real adapters)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree: M2-local real AI (AI_MODE switch + real adapters)</h1>
+<p>Plan: docs/plans/m2-local-real-ai.md. Tests: <code>tests/unit/ai_local/</code>. All real adapters are tested with stubbed models injected through a <code>loader(weights_dir) -&gt; model</code> seam. No torch, weights or network in default or CI runs. Real-model tests carry <code>@pytest.mark.local_ai</code> and run only with <code>RUN_LOCAL_AI=1</code>.</p>
+<h2>Expected API (the developer creates these)</h2>
+<table><tr><th>Module</th><th>Names</th></tr><tr><td><code>vidgen.settings.Settings</code></td><td><code>ai_mode: Literal["fake","local"] = "fake"</code> (env <code>VIDGEN_AI_MODE</code>), <code>local_ai_weights_dir: Path</code></td></tr><tr><td><code>vidgen.infrastructure.local_ai.errors</code></td><td><code>LocalAiError</code> (base), <code>ModelWeightsMissingError</code>, <code>EmptyAudioError</code>, <code>OfflineViolationError</code>, <code>AiBusyError</code>, <code>NameSlotNotFoundError</code></td></tr><tr><td><code>vidgen.infrastructure.local_ai.factory</code></td><td><code>build_ai_adapters(settings)</code> returning an object with <code>.stt .transliterator .voice .lipsync</code>; <code>effective_worker_threads(settings)</code>; <code>describe_mode(settings)</code>; <code>local_label_band_height(settings, frame_h)</code></td></tr><tr><td><code>vidgen.infrastructure.local_ai.stt</code></td><td><code>FasterWhisperSpeechToText(weights_dir, loader=...)</code></td></tr><tr><td><code>vidgen.infrastructure.local_ai.transliterate</code></td><td><code>QwenTransliterator(weights_dir, loader=...)</code>; model has <code>generate(prompt) -&gt; str</code></td></tr><tr><td><code>vidgen.infrastructure.local_ai.tts</code></td><td><code>ChatterboxVoiceCloner(weights_dir, loader=...)</code>; model has <code>generate(text, voice_sample) -&gt; (samples, rate)</code></td></tr><tr><td><code>vidgen.infrastructure.local_ai.lipsync</code></td><td><code>MuseTalkLipSyncer(weights_dir, loader=..., guard=None)</code>; model has <code>run(video, audio, out)</code></td></tr><tr><td><code>vidgen.infrastructure.local_ai.name_slot</code></td><td><code>detect_name_slot(words, placeholder, manual=None, min_confidence=0.6) -&gt; NameSlot(start_s, end_s, source, ambiguous)</code></td></tr><tr><td><code>vidgen.infrastructure.local_ai.guard</code></td><td><code>SingleRenderGuard().acquire()</code> context manager, raises <code>AiBusyError</code> when held</td></tr><tr><td><code>vidgen.infrastructure.local_ai.offline</code></td><td><code>offline_only()</code> context manager patching socket connect and DNS</td></tr></table>
+<p>Rules the tests pin: weights checked on first use (not at construction); model loaded once; weights missing -&gt; <code>ModelWeightsMissingError</code> naming the folder; empty audio -&gt; <code>EmptyAudioError</code> before the model is called; a failed call leaves no output file; local mode sets <code>HF_HUB_OFFLINE=1</code> and <code>TRANSFORMERS_OFFLINE=1</code>; heavy imports happen only inside default loaders.</p>
+<pre><code>Feature: Run real AI locally
+├── Scenario: Choose the mode (AC1, AC2, AC9)            test_mode_switch.py
+│   ├── ✅ default is fake; VIDGEN_AI_MODE=local selected; fake builds Fake* adapters; local builds real ones lazily; banner text per mode
+│   ├── ❌ unknown value (real, &quot;LOCAL &quot;, gpu, empty) -&gt; ValidationError naming ai_mode
+│   └── ⚠️ importing the factory in fake mode does not import torch / faster_whisper / transformers (subprocess check)
+├── Scenario: Worker concurrency (AC7)                   test_mode_switch.py
+│   ├── ✅ fake mode keeps worker_threads
+│   └── ⚠️ local mode forces 1 for requested 1, 2, 8
+├── Scenario: No network (AC8)                           test_mode_switch.py, test_errors_and_guards.py, test_adapters.py
+│   ├── ✅ stubbed pass works inside offline_only(); local mode sets the two offline env vars
+│   ├── ❌ socket.create_connection and getaddrinfo raise OfflineViolationError inside the guard
+│   └── ⚠️ guard is removed on exit even after an exception
+├── Scenario: Speech to text (AC3)                       test_adapters.py
+│   ├── ✅ words, times, confidence mapped; lazy single load
+│   ├── ❌ missing weights -&gt; ModelWeightsMissingError; empty WAV -&gt; EmptyAudioError (model never called); missing file -&gt; FileNotFoundError
+│   └── ⚠️ silence returns []
+├── Scenario: Transliterate a name (AC3, AC5)
+│   ├── ✅ cleaned answer returned; prompt contains the name
+│   ├── ❌ missing weights -&gt; ModelWeightsMissingError
+│   └── ⚠️ 1-char names (A, ए, Ng); Hindi input kept intact; blank -&gt; &quot;&quot; without model call; chatty multi-line answer -&gt; first line only
+├── Scenario: Clone the voice (AC3)
+│   ├── ✅ WAV written, duration returned equals file duration
+│   ├── ❌ missing weights; empty voice sample -&gt; EmptyAudioError; blank text -&gt; ValueError; model failure leaves no partial file
+│   └── ⚠️ 1-char, Hindi, multi-word Hindi, accented text; a failing row does not poison the next row (one load)
+├── Scenario: Lip sync (AC3, AC7)
+│   ├── ✅ output written through the model
+│   ├── ❌ missing weights; empty audio; model failure leaves no partial video
+│   └── ⚠️ second concurrent run refused by SingleRenderGuard (AiBusyError)
+├── Scenario: Detect the name slot (AC4)                 test_name_slot.py
+│   ├── ✅ placeholder found -&gt; auto slot; case and punctuation ignored
+│   ├── ❌ not found and no manual slot -&gt; NameSlotNotFoundError; inverted manual slot -&gt; ValueError
+│   └── ⚠️ not found -&gt; manual fallback; empty transcript; two hits -&gt; first, ambiguous=True; manual wins over two hits; low confidence -&gt; ambiguous
+├── Scenario: Memory guard and batch isolation (AC7)     test_errors_and_guards.py
+│   ├── ✅ guard released after success and after failure
+│   ├── ❌ second render (same or other thread) -&gt; AiBusyError
+│   └── ⚠️ every LocalAiError subclass is classified by classify_failure into a row failure code, so one row never stops the batch
+├── Scenario: AI label size (AC6)                        test_label_height.py
+│   ├── ✅ band &gt;= 10 % of 1300 and 1920; rendered PNG matches
+│   └── ⚠️ odd heights (1081, 1279, 2); local_label_band_height keeps the same rule
+├── Scenario: Preview confirmation of the spoken name (AC5)
+│   └── Backend part is covered by existing ADR-010 override tests; UI part goes to the L5 frontend tree.
+└── Scenario: Real-model smoke (@local_ai, skipped by default)
+    └── ✅ real Whisper runs on a synthetic clip (L6 adds the 2-video run)</code></pre>
+<h2>Acceptance criteria map</h2>
+<p>AC1 mode switch; AC2 lazy import + default install; AC3 adapter contracts; AC4 name slot; AC5 transliterator pre-fill (human confirmation tested in L5/L6); AC6 label; AC7 guard, concurrency, isolation; AC8 offline; AC9 <code>describe_mode</code> (UI part in L5).</p>
+<h2>L1b: UI and status contract (tests/frontend/unit/ai-mode.test.tsx, tests/unit/api/test_system_status.py)</h2>
+<p>API fields assumed (backend-dev adds, frontend-dev consumes):</p>
+<ul><li>The system status endpoint (GET, session required) gains <code>ai_mode: "fake" | "local"</code> from <code>Settings.ai_mode</code>, independent of Redis and the DB.</li><li><code>batch.preview</code> gains optional <code>suggested_spoken_name: string | null</code>, <code>spoken_name: string | null</code>, <code>spoken_name_confirmed: boolean</code> (local mode).</li><li>POST on the batch preview path <code>confirm-spelling</code> with JSON <code>{spoken_name}</code> stores the human-confirmed spelling.</li><li>In local mode the API should refuse approve until the spelling is confirmed; the UI test only pins the disabled button.</li></ul>
+<pre><code>Feature: UI says which AI is on and a human confirms the spoken name
+├── Scenario: Mode badge (AC9)      TT-AM-P1..P3, N1, E1
+│   ├── ✅ fake -&gt; &quot;Fake AI: a beep stands in for the name until real AI is on&quot;; local -&gt; &quot;Local AI&quot;; on every page
+│   ├── ❌ status call fails -&gt; no badge
+│   └── ⚠️ old server without ai_mode -&gt; no badge, no crash
+├── Scenario: Next hint             TT-AM-P4, P5   &quot;Choose a template to continue&quot; under disabled Next; gone after choosing
+├── Scenario: Template card note    TT-AM-P6, N2, N3   fake mode + manual slot -&gt; &quot;Automatic detection needs real AI ... set the slot by hand&quot;; not in local mode or with a detected slot
+└── Scenario: Spoken name confirmation (AC5)   TT-AM-P7, P8, N4, N5, E2, E3, E4
+    ├── ✅ pre-filled textbox &quot;Spoken name&quot;; &quot;Confirm spelling&quot; posts the edited text and unlocks Approve
+    ├── ❌ fake mode has no field; failed confirm -&gt; alert, Approve stays disabled; confirmed text alone never auto-approves
+    └── ⚠️ editing after confirming re-locks Approve; empty suggestion -&gt; empty field, Confirm disabled</code></pre>
+<h2>L10: neutral empty fidelity and lost-queue recovery</h2>
+<p>Tests: tests/unit/ai_local/test_fidelity_empty.py, tests/unit/services/test_requeue_stuck_rows.py, tests/unit/worker/test_requeue_wiring.py, tests/integration/api/test_stuck_candidates.py.</p>
+<p>Expected API (backend-dev creates):</p>
+<ul><li><code>fidelity.mean_fidelity([])</code> returns <code>Fidelity(ssim=1.0, mean_abs_diff=0.0, texture_ratio=1.0)</code> (no ZeroDivisionError).</li><li><code>vidgen.ports.batches.StuckRow(batch_id, row_id, kind: "row" | "preview")</code>.</li><li><code>BatchStore.stuck_candidates(cutoff, after: UUID | None, limit) -&gt; list[StuckRow]</code>: QUEUED rows of RUNNING batches started before <code>cutoff</code>, plus the preview row of DRAFT batches with a PENDING preview; ordered by row_id, keyset paged. Needs no migration (age = batch.started_at).</li><li><code>JobQueue.has_live_job(row_id) -&gt; bool</code> (this is what makes a second run idempotent).</li><li><code>vidgen.services.requeue.requeue_stuck_rows(open_uow, queue, clock, *, stuck_after_seconds=600, page_size=500) -&gt; RequeueReport(requeued, skipped_live, queue_down)</code>.</li><li>Settings <code>stuck_after_seconds=600</code>, <code>requeue_interval_seconds=300</code> (both &gt; 0).</li><li><code>vidgen.worker.periodic.PeriodicTask(fn, interval_seconds)</code> with <code>start()</code> (first run immediately) and <code>stop()</code>; job errors are logged, never stop the loop. The worker runs requeue at startup and each interval.</li></ul>
+<pre><code>Feature: Recover rows whose queue message was lost
+├── ✅ stuck rows without a live job are re-enqueued once, grouped per batch; previews as preview jobs; cutoff = now - stuck_after
+├── ❌ queue down -&gt; logged, report.queue_down, no raise (also failing midway keeps earlier work)
+└── ⚠️ rows with a live job skipped; second run no duplicates; empty DB; 10 000 rows read in pages of page_size; page_size &lt;= 0 rejected;
+    SQL: fresh batch, PROCESSING/COMPLETED/FAILED rows and DRAFT rows are never candidates; paging returns every row exactly once</code></pre></div></body></html>

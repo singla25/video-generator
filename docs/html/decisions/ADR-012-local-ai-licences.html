@@ -1,0 +1,23 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>ADR-012 Licences for the local real-AI stack (L0 / G1)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>ADR-012 Licences for the local real-AI stack (L0 / G1)</h1>
+<h2>Context</h2>
+<p>M2-local (plan <code>docs/plans/m2-local-real-ai.md</code>) runs real models on the Mac. Hard rule: no model whose licence forbids commercial use.</p>
+<h2>Check (2026-10-28, from the project pages)</h2>
+<table><tr><th>Component</th><th>Licence</th><th>Status</th></tr><tr><td>faster-whisper / Whisper</td><td>MIT</td><td>OK</td></tr><tr><td>Qwen3-4B-Instruct-2507</td><td>Apache-2.0</td><td>OK</td></tr><tr><td>Chatterbox-Multilingual</td><td>MIT</td><td>OK</td></tr><tr><td>Demucs (code) / htdemucs weights</td><td>code MIT; the weights' licence is stated as unclear by the author</td><td>UNVERIFIED for commercial use (see Correction); the app does not use Demucs yet</td></tr><tr><td>MuseTalk v1.5 code and unet</td><td>MIT, "any purpose, even commercially"</td><td>OK</td></tr><tr><td>face-alignment (code)</td><td>BSD-3-Clause</td><td>OK; S3FD/FAN weights not stated</td></tr><tr><td>S3FD weights (SFD repo, trained on WIDER FACE)</td><td>no licence stated</td><td>UNVERIFIED</td></tr><tr><td>face-parse-bisent weights (zllrunning, trained on CelebAMask-HQ)</td><td>code MIT; weights have no terms; CelebAMask-HQ is "non-commercial research purposes only"</td><td>NON-COMMERCIAL until cleared (see Correction)</td></tr></table>
+<h2>Decision</h2>
+<p>Build the local adapters now. Treat the two UNVERIFIED weights as <strong>development use on this Mac only</strong>. Before any production or commercial use, replace them or get a written licence; the Admin decides. Setting <code>AI_MODE=local</code> logs this warning at startup.</p>
+<h2>Consequences</h2>
+<p>Lip sync stays dev-only until the two weights are cleared or swapped. Everything else is clear for commercial use.</p>
+<h2>Correction (2026-10-30, from the G1 audit in ADR-010 on the branch feat/m2-mac-first)</h2>
+<ul><li>Demucs: the code is MIT, but the author states that the licence of the htdemucs weights is not clear (MUSDB contains research-only data and he cannot grant a licence); the 6-source variant likely carries CC-BY-NC. The first table row meant the code only.</li><li>face-parse-bisent: the weights were trained on CelebAMask-HQ, whose terms say it is for non-commercial research and educational purposes only. Treat the weights as non-commercial.</li><li>S3FD / FAN (face-alignment): no licence is stated for the weights (downloaded from adrianbulat.com); the original S3FD repository states none either.</li><li>Confirmed permissive: faster-whisper (MIT), Qwen3-4B-Instruct-2507 (Apache-2.0), Chatterbox (MIT), MuseTalk code and weights (MIT, "any purpose, even commercially"), sd-vae-ft-mse (MIT), whisper-tiny (Apache-2.0).</li><li>Decision unchanged: pilot use only on the Admin's Mac (DD-31). Production use needs the G8 gate: docs/plans/g8-licence-gate.md.</li></ul>
+<p>This is a technical reading of the project pages, not legal advice.</p></div></body></html>

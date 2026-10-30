@@ -11,6 +11,10 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Frontend developer — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-10-28 - FIX-WORKER-3</h2>
+<ul><li><code>useSystemStatus</code> (2 s polling of GET /system/status) and <code>useBatchList({poll})</code> in <code>api/queries.ts</code>; <code>SystemStatus</code> type; <code>SLOW_PREVIEW_MS</code> in <code>config.ts</code>.</li><li><code>layout/WorkerBanner.tsx</code> in the app shell: role=alert, only when worker_alive is false and a batch has queued rows or a pending preview; silent while loading or failing.</li><li><code>PreviewPanel</code>: after 30 s pending shows "Preview is taking longer than expected" (names the worker only when the status read says it is down) plus Retry.</li><li>Tests: worker-health.test.tsx 24/24; full suite 313/313. Open: none.</li></ul>
+<h2>2026-10-28 - FIX-UPLOAD-3</h2>
+<ul><li>Uploads (wizard sheet, Validate sheet, new template, consent) go through one XHR helper <code>apiUpload</code> in <code>src/api/client.ts</code> (CSRF, 401, error envelope, plain-words messages for 413/500/503/network/timeout) and the <code>useUpload</code> hook (progress, error, Retry, cancel, abort on unmount, one request at a time).</li><li><code>UploadFeedback</code> shows role=progressbar or the error via <code>ErrorState</code> (new <code>retryLabel</code> prop). Consent refuses 0-byte files.</li><li><code>test-support/xhr-formdata.ts</code> (Vitest setup in <code>vite.config.ts</code>): jsdom XHR cannot send the Node FormData that tests/setup installs, so it is encoded as multipart. Test-only.</li><li>Tests: upload-feedback.test.tsx green, Vitest 277/277. Playwright not run (needs the backend).</li></ul>
 <h2>2026-10-20 - W-4 fixes</h2>
 <ul><li>Batch detail header and ring use the counts of the rows page (same snapshot as the table); rows refetch after every status poll. Current-batch panel shows completed / renderable and skipped separately.</li><li>Files: <code>BatchDetailPage.tsx</code>, <code>RowsTable.tsx</code>, <code>CurrentBatchPanel.tsx</code>, <code>api/types.ts</code>. Vitest 209 pass. Open: none.</li></ul>
 <h2>2026-10-20 - DD-21/22/23 fixes</h2>
@@ -30,4 +34,6 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 <h2>2026-10-19 - F1a</h2>
 <ul><li>Tooling scaffold in <code>frontend/</code>: Vite 8, React 19, TS 6 strict, Tailwind 3.4 (design tokens), Vitest 5, Playwright, ESLint 10, Prettier. Exact pinned versions.</li><li>Placeholder <code>src/main.tsx</code> (no screens), logo copied, <code>frontend/.gitignore</code>.</li><li>Tests added: none (tester next). Open: <code>@types/react</code>, <code>@types/react-dom</code>, <code>@types/node</code> are NOT approved but will be needed for TSX components; asked CEO.</li></ul>
 <h2>2026-10-18 — SETUP</h2>
-<ul><li>Agent created.</li></ul></div></body></html>
+<ul><li>Agent created.</li></ul>
+<h2>2026-10-28 - L5</h2>
+<ul><li>AI-mode badge in AppShell, Next hint, fake-mode template note, Spoken name + Confirm spelling gating Approve preview (local mode).</li><li>Files: api/queries.ts, api/types.ts, layout/AiModeBadge.tsx, layout/AppShell.tsx, pages/wizard/{PreviewPanel,StepUpload}.tsx, pages/templates/TemplateCard.tsx.</li><li>Tests: ai-mode.test.tsx 17 pass; full Vitest 330/330.</li></ul></div></body></html>

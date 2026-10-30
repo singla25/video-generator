@@ -216,6 +216,7 @@ class RowRenderer:
             self._config.pause_s,
             seconds,
             self._config.timing,
+            gap_s=self._config.name_gap_s,
         )
         synced = folder / "lipsync.mp4"
         with run.stage("lipsync"):

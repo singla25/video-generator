@@ -56,6 +56,7 @@ def render_config(settings: Settings) -> RenderConfig:
         pause_s=settings.pause_seconds,
         label_band_share=settings.label_band_share,
         label_style=settings.label_style,
+        name_gap_s=settings.name_gap_s,
         timing=TimingRules(
             max_stretch_ratio=settings.max_stretch_ratio,
             max_extension_s=settings.max_extension_seconds,

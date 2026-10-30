@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     stuck_after_seconds: int = Field(default=600, gt=0)  # QUEUED this long = message likely lost
     requeue_interval_seconds: float = Field(default=300.0, gt=0)
     pause_seconds: float = Field(default=0.5, ge=0)  # DD-7: pause after the name, until measured
+    # DD-34: extra silence and held frame after the new name
+    name_gap_s: float = Field(default=0.25, ge=0, le=1.0)
 
     # Retention
     retention_days: int = Field(default=30, gt=0)

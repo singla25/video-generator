@@ -11,6 +11,8 @@ MIN_CROSSFADE_MS = 20
 MAX_CROSSFADE_MS = 50
 # Float noise allowance when comparing seconds computed through multiplication.
 EPSILON_S = 1e-9
+# DD-34: the extra silence after the new name is capped at one second.
+MAX_GAP_S = 1.0
 
 
 class NameTooLongToSpeakError(DomainError):
@@ -58,20 +60,28 @@ class TimingPlan:
     extension_s: float
     pause_padding_s: float
     final_audio_s: float
+    gap_s: float = 0.0  # DD-34: extra silence and held frame after the name; last on purpose
 
     @property
     def duration_delta_s(self) -> float:
-        """Change of the video length versus the template (D16)."""
-        return self.extension_s
+        """Change of the video length versus the template: extension plus name gap (D16, DD-34)."""
+        return self.extension_s + self.gap_s
 
 
 def plan_timing(
-    slot_s: float, pause_s: float, new_audio_s: float, rules: TimingRules
+    slot_s: float,
+    pause_s: float,
+    new_audio_s: float,
+    rules: TimingRules,
+    gap_s: float = 0.0,
 ) -> TimingPlan:
     """Fit ``new_audio_s`` into the slot, using the pause after it and then extending the video.
 
     Speech is only ever sped up (never slowed down); a shorter name pads the pause (D-2).
+    The name gap (DD-34) is added after all of that and never changes the other fields.
     """
+    if gap_s < 0 or gap_s > MAX_GAP_S:
+        raise ValueError(f"name gap must be between 0 and {MAX_GAP_S} s, got {gap_s}")
     if slot_s <= 0 or new_audio_s <= 0:
         raise ValueError("slot and audio lengths must be positive")
     if slot_s < 2 * rules.crossfade_s:
@@ -90,6 +100,7 @@ def plan_timing(
         extension_s=extension_s,
         pause_padding_s=_padding(slot_s, spoken_s),
         final_audio_s=spoken_s,
+        gap_s=gap_s,
     )
 
 

@@ -5,8 +5,9 @@ so it can be tested exhaustively. The engine only executes the plan; it never re
 
 Audio layout (template time ``t``; slot = [start, end]):
   head   = template[0, start + cf]            kept as is
-  region = new name, stretched, padded         replaces [start, end + absorbed + extension]
-  tail   = template[end + absorbed - cf, T]    keeps its place, shifted by the extension
+  region = new name, stretched, padded         replaces [start, end + absorbed + extension + gap]
+  tail   = template[end + absorbed - cf, T]    keeps its place, shifted by extension + gap
+Video: the slot is slowed by the extension and its last frame is held for the gap (DD-34).
 Head/region and region/tail are joined with a crossfade of ``cf`` seconds.
 """
 
@@ -35,8 +36,8 @@ def seconds(value: float) -> str:
 
 
 def region_length(slot: tuple[float, float], plan: TimingPlan) -> float:
-    """Output length of the part that replaces the slot (slot + absorbed pause + extension)."""
-    return slot[1] - slot[0] + plan.pause_absorbed_s + plan.extension_s
+    """Output length of the part that replaces the slot (slot + absorbed + extension + gap)."""
+    return slot[1] - slot[0] + plan.pause_absorbed_s + plan.extension_s + plan.gap_s
 
 
 def tail_start(slot: tuple[float, float], plan: TimingPlan) -> float:
@@ -101,26 +102,32 @@ def audio_graph(
 
 
 def _video_segments(
-    facts: TemplateFacts, slot: tuple[float, float], extension_s: float
+    facts: TemplateFacts, slot: tuple[float, float], extension_s: float, gap_s: float
 ) -> list[str]:
-    """Trim expressions for the template video, with the slot slowed by the extension (D-11)."""
+    """Trim expressions for the template video, with the slot slowed by the extension (D-11).
+
+    The slot's last frame is cloned for ``gap_s`` seconds after the slow-down (DD-34).
+    """
     start, end = slot
     slow = (end - start + extension_s) / (end - start)
     segments: list[str] = []
     if start > EPSILON_S:
         segments.append(f"trim=end={seconds(start)},setpts=PTS-STARTPTS")
-    segments.append(
+    slot_segment = (
         f"trim=start={seconds(start)}:end={seconds(end)},setpts=(PTS-STARTPTS)*{slow:.6f}"
     )
+    if gap_s > EPSILON_S:
+        slot_segment += f",tpad=stop_mode=clone:stop_duration={seconds(gap_s)}"
+    segments.append(slot_segment)
     if end < facts.duration_s - EPSILON_S:
         segments.append(f"trim=start={seconds(end)},setpts=PTS-STARTPTS")
     return segments
 
 
 def video_graph(facts: TemplateFacts, slot: tuple[float, float], plan: TimingPlan) -> str:
-    """Filter graph producing ``[vout]``: optional slow-down, constant fps, label overlay."""
-    if plan.extension_s > EPSILON_S:
-        segments = _video_segments(facts, slot, plan.extension_s)
+    """Filter graph producing ``[vout]``: optional slow-down and hold, fps, label overlay."""
+    if plan.extension_s > EPSILON_S or plan.gap_s > EPSILON_S:
+        segments = _video_segments(facts, slot, plan.extension_s, plan.gap_s)
         names = [f"[s{i}]" for i in range(len(segments))]
         split = f"[0:v]split={len(segments)}" + "".join(f"[i{i}]" for i in range(len(segments)))
         trims = [f"[i{i}]{seg}{names[i]}" for i, seg in enumerate(segments)]

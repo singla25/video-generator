@@ -140,3 +140,10 @@ Newest first. One entry per task.
 - Outputs (git-ignored) in `backend/spikes/m2_mac/work/local_out/timing/`: ALC1761923_A/B/C.mp4. All 26.2 s, 1080x1300, 60 fps.
 - Finding: the new name (0.90 s) fits the 1.0 s slot, so `pause_seconds` is never absorbed (pause_absorbed_s=0, extension_s=0). The next template word stays at 1.00 s in A, B and C; only the crossfade differs.
 - Tests added: none. Open: a longer gap needs a product change (e.g. always delay the tail).
+
+## 2026-10-30 - NG-GREEN (DD-34 name gap)
+- `domain/timing.py`: `MAX_GAP_S = 1.0`; `TimingPlan.gap_s` (last field, default 0.0); `duration_delta_s` = extension + gap; `plan_timing(..., gap_s=0.0)` rejects gaps outside 0-1 s. Gap does not change stretch, absorbed pause, extension or padding.
+- `infrastructure/ffmpeg/graph.py`: region length includes the gap; slot segment gets `tpad=stop_mode=clone` for the gap; graph unchanged when gap and extension are zero.
+- `settings.py`: `name_gap_s` (`VIDGEN_NAME_GAP_S`, default 0.25, 0-1.0). `services/render_support.py`: `RenderConfig.name_gap_s`. `worker/runner.py` and `services/render_row.py` pass it through.
+- Tests: 52 DD-34 tests in the five name-gap files. The held-frame check is relaxed by the tester (0d3ec1e): lossy H.264 keeps the clones luma-identical but not bit-identical.
+- Open: no per-template gap tuning; `timing_variants.py` lint is fixed separately.

@@ -11,6 +11,7 @@ from vidgen.api import (
     routes_auth,
     routes_batch_files,
     routes_batches,
+    routes_system,
     routes_templates,
 )
 from vidgen.api.container import AppDeps, build_container
@@ -36,6 +37,7 @@ def create_app(settings: Settings, *, deps: AppDeps | None = None) -> FastAPI:
         routes_auth.protected_router,
         routes_templates.router,
         routes_audit.router,
+        routes_system.router,
         routes_batches.router,
         routes_batch_files.router,
         routes_batches.stats_router,

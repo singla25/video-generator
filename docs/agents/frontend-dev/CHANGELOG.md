@@ -2,6 +2,12 @@
 
 Newest first. One entry per task.
 
+## 2026-10-28 - FIX-WORKER-3
+- `useSystemStatus` (2 s polling of GET /system/status) and `useBatchList({poll})` in `api/queries.ts`; `SystemStatus` type; `SLOW_PREVIEW_MS` in `config.ts`.
+- `layout/WorkerBanner.tsx` in the app shell: role=alert, only when worker_alive is false and a batch has queued rows or a pending preview; silent while loading or failing.
+- `PreviewPanel`: after 30 s pending shows "Preview is taking longer than expected" (names the worker only when the status read says it is down) plus Retry.
+- Tests: worker-health.test.tsx 24/24; full suite 313/313. Open: none.
+
 ## 2026-10-28 - FIX-UPLOAD-3
 - Uploads (wizard sheet, Validate sheet, new template, consent) go through one XHR helper `apiUpload` in `src/api/client.ts` (CSRF, 401, error envelope, plain-words messages for 413/500/503/network/timeout) and the `useUpload` hook (progress, error, Retry, cancel, abort on unmount, one request at a time).
 - `UploadFeedback` shows role=progressbar or the error via `ErrorState` (new `retryLabel` prop). Consent refuses 0-byte files.
@@ -49,3 +55,8 @@ Newest first. One entry per task.
 
 ## 2026-10-18 — SETUP
 - Agent created.
+
+## 2026-10-28 - L5
+- AI-mode badge in AppShell, Next hint, fake-mode template note, Spoken name + Confirm spelling gating Approve preview (local mode).
+- Files: api/queries.ts, api/types.ts, layout/AiModeBadge.tsx, layout/AppShell.tsx, pages/wizard/{PreviewPanel,StepUpload}.tsx, pages/templates/TemplateCard.tsx.
+- Tests: ai-mode.test.tsx 17 pass; full Vitest 330/330.

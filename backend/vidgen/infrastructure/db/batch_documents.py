@@ -1,17 +1,21 @@
 """Conversion between batch records and ORM rows (the JSON document in ``column_mapping``).
 
-The document holds column names, the sheet name and the preview state: ids and settings only,
-never personal data.
+The document holds column names, the sheet name and the preview state. The one piece of
+personal data in it, the confirmed spoken name, is stored as base64 AES-GCM ciphertext.
 """
 
 from __future__ import annotations
 
-from typing import Any
+import base64
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from vidgen.domain.status import ApprovalFingerprint
 from vidgen.infrastructure.db.models import Batch
 from vidgen.ports.batches import BatchRecord, MappingRecord, PreviewRecord
+
+if TYPE_CHECKING:
+    from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 
 
 def _fingerprint_json(fp: ApprovalFingerprint | None) -> dict[str, Any] | None:
@@ -33,7 +37,15 @@ def _fingerprint_from(data: dict[str, Any] | None) -> ApprovalFingerprint | None
     )
 
 
-def to_document(batch: BatchRecord) -> dict[str, Any]:
+def _seal(cipher: AesGcmCipher, text: str | None) -> str | None:
+    return None if text is None else base64.b64encode(cipher.encrypt(text)).decode("ascii")
+
+
+def _unseal(cipher: AesGcmCipher, sealed: str | None) -> str | None:
+    return None if not sealed else cipher.decrypt(base64.b64decode(sealed))
+
+
+def to_document(batch: BatchRecord, cipher: AesGcmCipher) -> dict[str, Any]:
     """The JSON document stored in ``batches.column_mapping``."""
     preview = batch.preview
     mapping = batch.mapping
@@ -57,11 +69,12 @@ def to_document(batch: BatchRecord) -> dict[str, Any]:
             "requested_for": _fingerprint_json(preview.requested_for),
             "rendered_for": _fingerprint_json(preview.rendered_for),
             "approved_for": _fingerprint_json(preview.approved_for),
+            "spoken_name_enc": _seal(cipher, preview.spoken_name),
         },
     }
 
 
-def to_record(row: Batch) -> BatchRecord:
+def to_record(row: Batch, cipher: AesGcmCipher) -> BatchRecord:
     """The batch record described by an ORM row and its JSON document."""
     document: dict[str, Any] = row.column_mapping or {}
     mapping = document.get("mapping")
@@ -86,11 +99,12 @@ def to_record(row: Batch) -> BatchRecord:
             requested_for=_fingerprint_from(preview.get("requested_for")),
             rendered_for=_fingerprint_from(preview.get("rendered_for")),
             approved_for=_fingerprint_from(preview.get("approved_for")),
+            spoken_name=_unseal(cipher, preview.get("spoken_name_enc")),
         ),
     )
 
 
-def apply_to_row(row: Batch, batch: BatchRecord) -> None:
+def apply_to_row(row: Batch, batch: BatchRecord, cipher: AesGcmCipher) -> None:
     """Copy a batch record onto its ORM row."""
     row.template_id = batch.template_id
     row.status = batch.status
@@ -100,4 +114,4 @@ def apply_to_row(row: Batch, batch: BatchRecord) -> None:
     row.created_at = batch.created_at
     row.started_at = batch.started_at
     row.finished_at = batch.finished_at
-    row.column_mapping = to_document(batch)
+    row.column_mapping = to_document(batch, cipher)

@@ -29,6 +29,12 @@ START_FONT_SHARE = 0.62  # starting font size as a share of the band height
 MAX_TEXT_WIDTH_SHARE = 0.94
 MAX_INK_HEIGHT_SHARE = 0.90
 MIN_FONT_SIZE = 4
+BUBBLE_DIAMETER_SHARE = 0.09  # bubble diameter as a share of the frame width (DD-32)
+BUBBLE_MARGIN_SHARE = 0.03  # distance from the right and bottom edges, share of the width
+BUBBLE_TEXT = "AI"
+BUBBLE_TEXT_SHARE = 0.46  # starting font size as a share of the bubble diameter
+BUBBLE_MAX_INK_SHARE = 0.62  # the text ink may use at most this share of the diameter
+LABEL_STYLES = ("bubble", "band")
 _DEVANAGARI_RANGE = range(0x0900, 0x0980)
 _JOINERS = frozenset({ZWJ, ZWNJ})
 
@@ -144,6 +150,69 @@ class PillowLabelRenderer:
             font = fonts.for_run(is_dev)
             draw.text((x, baseline), run, font=font, fill=TEXT_COLOUR, anchor="ls")
             x += draw.textlength(run, font=font)
+
+
+def bubble_diameter(frame_width: int) -> int:
+    """Bubble diameter in pixels: about 9 % of the frame width, at least 1."""
+    return max(1, round(frame_width * BUBBLE_DIAMETER_SHARE))
+
+
+def bubble_box(frame_width: int, frame_height: int) -> tuple[int, int, int, int]:
+    """(left, top, right, bottom) of the bubble, in the bottom-right corner."""
+    margin = round(frame_width * BUBBLE_MARGIN_SHARE)
+    size = bubble_diameter(frame_width)
+    right, bottom = frame_width - margin, frame_height - margin
+    return right - size, bottom - size, right, bottom
+
+
+class PillowBubbleRenderer:
+    """Draws a small dark round badge with light text on a transparent full-size frame."""
+
+    def __init__(self, latin_font: Path, text: str = BUBBLE_TEXT) -> None:
+        self._latin_path = latin_font
+        self._text = text
+
+    def render_label(self, width: int, height: int, out: Path) -> None:
+        """Write a transparent ``width`` x ``height`` PNG with the bubble to ``out``."""
+        if width <= 0 or height <= 0:
+            raise ValueError("label size must be positive")
+        box = bubble_box(width, height)
+        diameter = box[2] - box[0]
+        font = self._fit(diameter)
+        image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((box[0], box[1], box[2] - 1, box[3] - 1), fill=(*BAND_COLOUR, 255))
+        centre = ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+        draw.text(centre, self._text, font=font, fill=(*TEXT_COLOUR, 255), anchor="mm")
+        image.save(out, "PNG")
+
+    def _fit(self, diameter: int) -> ImageFont.FreeTypeFont:
+        """Largest font whose text fits inside the bubble."""
+        size = max(MIN_FONT_SIZE, int(diameter * BUBBLE_TEXT_SHARE))
+        probe = ImageDraw.Draw(Image.new("L", (1, 1)))
+        while True:
+            try:
+                font = ImageFont.truetype(str(self._latin_path), size)
+            except OSError as exc:
+                raise DomainError(
+                    FailureCode.INTERNAL_ERROR, "The label font could not be loaded."
+                ) from exc
+            left, top, right, bottom = probe.textbbox((0, 0), self._text, font=font)
+            fits = max(right - left, bottom - top) <= diameter * BUBBLE_MAX_INK_SHARE
+            if fits or size <= MIN_FONT_SIZE:
+                return font
+            size -= 1
+
+
+def build_label_renderer(
+    style: str, devanagari_font: Path, latin_font: Path
+) -> PillowLabelRenderer | PillowBubbleRenderer:
+    """The renderer for a label style; an unknown style is an error, never a fallback."""
+    if style == "bubble":
+        return PillowBubbleRenderer(latin_font)
+    if style == "band":
+        return PillowLabelRenderer(devanagari_font, latin_font)
+    raise ValueError(f"unknown label_style {style!r}; use one of {LABEL_STYLES}")
 
 
 if TYPE_CHECKING:  # pragma: no cover

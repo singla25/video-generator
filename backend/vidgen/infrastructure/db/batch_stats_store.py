@@ -9,8 +9,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from vidgen.domain.codes import FailureCode
-from vidgen.infrastructure.db.models import BatchRow
-from vidgen.ports.batches import DayStat
+from vidgen.infrastructure.db.models import Batch, BatchRow
+from vidgen.ports.batches import PREVIEW_PENDING, DayStat, StuckRow
 
 FALLBACK_FAILURE_CODE = FailureCode.INTERNAL_ERROR.value
 
@@ -71,3 +71,39 @@ class BatchStatsMixin:
             BatchRow.batch_id == batch_id, BatchRow.output_key.is_not(None)
         )
         return [key for key in self._session.scalars(query) if key]
+
+    def stuck_candidates(self, cutoff: datetime, after: UUID | None, limit: int) -> list[StuckRow]:
+        """QUEUED rows of RUNNING batches started before ``cutoff`` plus pending previews.
+
+        Row age comes from the batch's ``started_at`` (no migration). Previews live in the batch's
+        JSON document, so their few candidates are filtered in Python. Keyset-paged by row id.
+        """
+        rows = select(BatchRow.batch_id, BatchRow.id).where(
+            BatchRow.status == "QUEUED",
+            BatchRow.batch_id.in_(
+                select(Batch.id).where(Batch.status == "RUNNING", Batch.started_at < cutoff)
+            ),
+        )
+        if after is not None:
+            rows = rows.where(BatchRow.id > after)
+        found = [
+            StuckRow(batch_id, row_id, "row")
+            for batch_id, row_id in self._session.execute(rows.order_by(BatchRow.id).limit(limit))
+        ]
+        found += self._pending_previews(cutoff, after)
+        found.sort(key=lambda item: item.row_id)
+        return found[:limit]
+
+    def _pending_previews(self, cutoff: datetime, after: UUID | None) -> list[StuckRow]:
+        query = select(Batch.id, Batch.column_mapping).where(
+            Batch.status == "DRAFT", Batch.created_at < cutoff
+        )
+        found: list[StuckRow] = []
+        for batch_id, document in self._session.execute(query):
+            preview = (document or {}).get("preview") or {}
+            if preview.get("status") != PREVIEW_PENDING or not preview.get("row_id"):
+                continue
+            row_id = UUID(preview["row_id"])
+            if after is None or row_id > after:
+                found.append(StuckRow(batch_id, row_id, "preview"))
+        return found

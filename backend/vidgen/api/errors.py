@@ -38,6 +38,7 @@ METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
 INVALID_STATE = "INVALID_STATE"
 PREVIEW_NOT_READY = "PREVIEW_NOT_READY"
 PREVIEW_NOT_APPROVED = "PREVIEW_NOT_APPROVED"
+SPELLING_NOT_CONFIRMED = "SPELLING_NOT_CONFIRMED"
 DB_UNAVAILABLE = "DB_UNAVAILABLE"
 QUEUE_UNAVAILABLE = "QUEUE_UNAVAILABLE"
 HTTP_UNAVAILABLE = 503
@@ -53,6 +54,7 @@ API_MESSAGES: Mapping[str, str] = {
     INVALID_STATE: "This action is not possible in the batch's current state.",
     PREVIEW_NOT_READY: "The preview is not ready for the current settings yet.",
     PREVIEW_NOT_APPROVED: "Approve a preview of the current settings before starting.",
+    SPELLING_NOT_CONFIRMED: "Confirm the spelling of the spoken name before approving the preview.",
     DB_UNAVAILABLE: "The database is not reachable right now. Please try again in a moment.",
     QUEUE_UNAVAILABLE: "The job queue is not reachable right now. Please try again in a moment.",
 }

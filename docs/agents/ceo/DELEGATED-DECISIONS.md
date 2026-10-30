@@ -35,6 +35,7 @@
 | DD-26 | 2026-10-28 | Merge `feat/dev-migration-prompt` (dev_up.sh asks y/N before migrations) | merge · hold | **Merge `--no-ff`** | Tests 1750 green on the merged spike branch, lint/types clean, diff reviewed; Admin had asked for this change. |
 | DD-27 | 2026-10-28 | Push to GitHub (private `singla25/video-generator`; main + fix/upload-feedback + spike/m2-mac-feasibility) | — | **Admin asked, chose private + these branches** | History scanned first: no .env/keys/samples/media/large files. Undo: Admin runs `gh repo delete`. |
 | DD-28 | 2026-10-28 | CI on GitHub Actions: scope A / B / C | A fast · **B full** · C CI+CD | **B (Admin chose)**; CD deferred | See ADR-011 + docs/plans/ci-github-actions.md. New `.github/workflows/` folder. Free tier, $0 limit, no secrets. |
+| DD-29 | 2026-10-28 | Worker health: silent 'Queued forever' when the worker is dead | banner only · **heartbeat + status route + banner** | **Heartbeat in Redis (TTL ~15 s), a system status route, dashboard banner + slow-preview message** | Admin lost 5 h to a dead worker with no error. Port `WorkerHeartbeat`, `JobQueue.depth()`. Branch fix/worker-health; tests 1796 py / 313 ui. |
 | DD-2 | 2026-10-19 | F0 (Node.js) for M3 | Install · use existing | **Use the existing Node v26.12.0** at /opt/homebrew/bin/node; no install needed | Already present; F0 counts as satisfied. If any approved npm package doesn't support Node 26, frontend-dev pins an LTS via `engines` and reports it. |
 
 ## Waiting for Admin
@@ -45,3 +46,18 @@
 | W-3 | 2026-10-19 | Drop 2 leftover throwaway test DBs from killed pytest runs: `vidgen_55e3f615_test`, `vidgen_63e1f22e_test` (leave any other `vidgen_<hex>_test` that may be in use) | The guard blocks `DROP DATABASE` for agents, and deletions are outside the delegation | `docker compose exec postgres dropdb -U vidgen vidgen_55e3f615_test` and the same for `vidgen_63e1f22e_test`. Harmless if left. |
 | W-4 | 2026-10-20 | UI-AC1 visual sign-off of the dashboard vs the TrustVest reference | Human judgement (plan F7) | Screenshots: `media/review/ui/` (overview, overview-tablet, wizard-step3, batch-detail, templates, security) |
 | W-2 | 2026-10-19 | Using the real `samples/` on a GPU box for the M2 spike | Voter data handling decision | Plan says: our own server only, never a third party |
+
+## DD-30 (2026-10-28) M2-local real AI on the Mac
+Admin approved local Metal GPU. Plan `docs/plans/m2-local-real-ai.md`. Optional extra, `AI_MODE` switch, fake stays default. Licence check (L0) gates the weights. Undo: set `AI_MODE=fake`.
+
+## DD-31 (2026-10-28) Pilot-only weights on this Mac
+Admin accepted Demucs, face-parse-bisent and S3FD/FAN weights for pilot use on this Mac only. Not for production or commercial use until replaced or licensed (ADR-012). Nothing leaves the Mac. Undo: `AI_MODE=fake`.
+
+## DD-32 (2026-10-28) AI label: small bottom-right bubble by default
+Admin confirmed the legal side and asked for a small "AI" bubble at the bottom-right instead of the full band. This changes requirement C2 (label at top, at least 10 % of the frame, every frame); the Admin accepts that change. Plan: a label style setting with `bubble` (default) and `band` (today's behaviour, kept as an option); the bubble does not add height to the frame. Tests first (tester), then backend-dev; ADR to follow. Starts after the M2-local session finishes its render run, because both touch `ffmpeg/label.py`, `local_ai/factory.py`, `render_row.py` and the label tests. Undo: set the label style to `band`.
+
+## DD-33 (2026-10-30) Keep the bubble as is; tune the transition and timing after the name
+Admin reviewed row-1.mp4: quality is good, the bubble stays exactly as built (bottom-right; it overlaps the template's bottom-right text, the Admin accepts that). Improvement asked: a smoother transition and slightly more time right after the name. Approach: render timing variants of the same row (pause after the name `pause_seconds` +0.2 s / +0.4 s, crossfade 40 / 50 ms; the baseline is 0.5 s and 30 ms) and let the Admin pick by ear; the winner becomes the default. No product code change until the pick. Undo: keep `pause_seconds` 0.5 and `crossfade_ms` 30.
+
+## DD-34 (2026-10-30) Real extra gap after the name (video is longer than the template)
+Result of DD-33: `pause_seconds` has no effect when the new name fits the slot (0.90 s name in a 1.00 s slot leaves only 0.1 s), and the three crossfade variants differ by 10-20 ms. Admin chose a real extra gap: new setting `name_gap_s` (default 0.25 s). Everything after the name slot starts `name_gap_s` later, so the output is `name_gap_s` longer than the template; the face holds a still closed-mouth pose and the music bed continues without a jump during the gap. This changes the earlier rule "output duration equals the template" (checks, tests and docs that assert it must say template + `name_gap_s`). Tests first (tester), then backend-dev, then re-render row-1 for the Admin to listen to. Undo: set `name_gap_s` to 0 (output length equals the template again).

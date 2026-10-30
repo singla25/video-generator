@@ -30,6 +30,7 @@ class StateConflictError(Exception):
     INVALID_STATE = "INVALID_STATE"
     PREVIEW_NOT_READY = "PREVIEW_NOT_READY"
     PREVIEW_NOT_APPROVED = "PREVIEW_NOT_APPROVED"
+    SPELLING_NOT_CONFIRMED = "SPELLING_NOT_CONFIRMED"
 
     def __init__(self, code: str) -> None:
         self.code = code

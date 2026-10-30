@@ -98,14 +98,29 @@ class FakeJobQueue:
     def __init__(self) -> None:
         self.previews: list[tuple[UUID, UUID]] = []
         self.rows: list[tuple[UUID, UUID]] = []
+        self.live: set[UUID] = set()  # rows with a queued job until mark_done()
 
     def enqueue_preview(self, batch_id: UUID, row_id: UUID) -> None:
         """Record a preview render request for one row."""
         self.previews.append((batch_id, row_id))
+        self.live.add(row_id)
 
     def enqueue_rows(self, batch_id: UUID, row_ids: list[UUID]) -> None:
         """Record row render jobs, one entry per row."""
         self.rows.extend((batch_id, row_id) for row_id in row_ids)
+        self.live.update(row_ids)
+
+    def depth(self) -> int:
+        """Jobs waiting (everything enqueued; the double never consumes)."""
+        return len(self.previews) + len(self.rows)
+
+    def has_live_job(self, row_id: UUID) -> bool:
+        """True from enqueue until the row is marked done with ``mark_done``."""
+        return row_id in self.live
+
+    def mark_done(self, row_id: UUID) -> None:
+        """Test helper: simulate a worker finishing (or clearing) the row's job."""
+        self.live.discard(row_id)
 
 
 class ChunkSpyStorage(InMemoryStorage):

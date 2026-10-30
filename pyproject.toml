@@ -21,6 +21,33 @@ dependencies = [
     "uvicorn[standard]>=0.54.0",
 ]
 
+[project.optional-dependencies]
+# Pilot only, Apple silicon (DD-31, ADR-012). Not needed for AI_MODE=fake or CI.
+local-ai = [
+    "torch==2.14.1",
+    "torchaudio==2.11.0",
+    "torchvision==0.29.1",
+    "transformers==5.20.2",
+    "accelerate==1.15.0",
+    "faster-whisper==1.2.1",
+    # chatterbox-tts==0.1.7 itself is installed with --no-deps (scripts/dev_up.sh local mode):
+    # its declared pins (torch 2.6.0, transformers 5.2.0, gradio, ...) are stale; these are the tested versions.
+    "librosa==0.11.0",
+    "s3tokenizer==0.3.0",
+    "diffusers==0.29.0",
+    "resemble-perth==1.0.1",
+    "conformer==0.3.2",
+    "safetensors==0.8.0",
+    "pykakasi==2.3.0",
+    "pyloudnorm==0.2.0",
+    "omegaconf==2.0.6",
+    "face-alignment==1.5.0",
+    "opencv-python-headless==5.0.0.93",
+    "numpy==1.26.4",
+    "soundfile==0.14.0",
+    "setuptools==80.10.2",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -74,4 +101,14 @@ dev = [
     "ruff>=0.17.1",
     "types-openpyxl>=3.1.5.20261017",
     "types-regex>=2026.9.29.20261017",
+]
+
+[tool.uv]
+# opencv-python-headless 5.x declares numpy>=2, but the tested stack (Chatterbox, librosa) runs numpy 1.26.4 (DD-31, pilot only).
+override-dependencies = [
+    "numpy==1.26.4",
+    # Never installed: we use opencv-python-headless; pre-commit/virtualenv are dev tooling pulled in by chatterbox deps.
+    "opencv-python; sys_platform == 'never'",
+    "virtualenv; sys_platform == 'never'",
+    "pre-commit; sys_platform == 'never'",
 ]

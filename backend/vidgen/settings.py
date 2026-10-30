@@ -29,7 +29,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen"
     redis_url: str = "redis://127.0.0.1:6379/0"
     storage_root: Path = Path("./media")
-    ai_backend: Literal["fake", "real"] = "fake"
+    ai_backend: Literal["fake", "real"] = "fake"  # legacy M1 switch; superseded by ai_mode
+    ai_mode: Literal["fake", "local"] = "fake"
+    local_ai_weights_dir: Path = Path("./models")
 
     # Upload limits
     max_video_bytes: int = Field(default=500 * 1024 * 1024, gt=0)
@@ -56,11 +58,19 @@ class Settings(BaseSettings):
     max_retries: int = Field(default=1, ge=0)
 
     # Worker
+    label_style: Literal["bubble", "band"] = "bubble"  # DD-32
     label_band_share: float = Field(default=0.10, ge=0.10, le=0.5)  # C2: at least 10 %
     queue_name: str = Field(default="vidgen", min_length=1)
     pause_poll_seconds: int = Field(default=5, gt=0)
     worker_threads: int = Field(default=2, gt=0)
+    heartbeat_key: str = Field(default="vidgen:worker:heartbeat", min_length=1)
+    heartbeat_ttl_seconds: int = Field(default=15, gt=0)
+    heartbeat_interval_seconds: float = Field(default=5.0, gt=0)
+    stuck_after_seconds: int = Field(default=600, gt=0)  # QUEUED this long = message likely lost
+    requeue_interval_seconds: float = Field(default=300.0, gt=0)
     pause_seconds: float = Field(default=0.5, ge=0)  # DD-7: pause after the name, until measured
+    # DD-34: extra silence and held frame after the new name
+    name_gap_s: float = Field(default=0.25, ge=0, le=1.0)
 
     # Retention
     retention_days: int = Field(default=30, gt=0)

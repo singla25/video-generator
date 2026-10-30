@@ -15,7 +15,7 @@ from vidgen.services.batch_rules import (
     page_count,
     progress_percent,
 )
-from vidgen.services.batch_support import BatchContext, describe, load_batch
+from vidgen.services.batch_support import BatchContext, describe, describe_preview, load_batch
 from vidgen.services.batch_views import BatchStatus, BatchView, FailureGroup, RowsPage
 from vidgen.services.errors import BatchNotFoundError
 
@@ -37,7 +37,7 @@ class BatchQueries:
     def get(self, batch_id: UUID) -> BatchView:
         """One batch with its counts."""
         with self._ctx.uow() as uow:
-            return describe(uow, load_batch(uow, batch_id))
+            return describe_preview(self._ctx, uow, load_batch(uow, batch_id))
 
     def history(self, page: int, page_size: int) -> tuple[list[BatchView], int]:
         """Newest-first page of batches (each with counts) and the total."""

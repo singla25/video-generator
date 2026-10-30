@@ -84,3 +84,66 @@ Newest first. One entry per task.
 ## 2026-10-28 — FIX-UPLOAD-2
 - `vidgen/api/errors.py`: SQLAlchemy OperationalError/InterfaceError -> 503 `DB_UNAVAILABLE`; redis errors and ConnectionRefusedError -> 503 `QUEUE_UNAVAILABLE`. Fixed plain messages, logged at error level (exception type only, no DSN). Other errors stay 500.
 - Tests: tests/unit/api/test_dependency_outage.py (written by tester). Open: none.
+
+## 2026-10-28 — FIX-WORKER-2
+- Added WorkerHeartbeat port, RedisWorkerHeartbeat and HeartbeatLoop (redis_heartbeat.py), AppDeps.worker_heartbeat, the system status route (routes_system.py), heartbeat settings (key, ttl, interval); the worker process beats every 5 s and stops the loop on shutdown.
+- Files: ports/interfaces.py, ports/__init__.py, settings.py, api/container.py, api/app.py, api/routes_system.py, infrastructure/queue/redis_heartbeat.py, worker/runner.py.
+- Tests: test_worker_heartbeat.py and test_system_status.py (25) pass; full suite 1794 passed.
+- Open: plain mypy also checks backend/spikes/m2_mac (988 pre-existing errors, none in vidgen).
+
+## 2026-10-28 — L2+L3 (local real AI adapters)
+- New package `vidgen/infrastructure/local_ai/`: errors, guard (SingleRenderGuard), offline (offline_only), name_slot, stt (faster-whisper), transliterate (Qwen), tts (Chatterbox), lipsync (MuseTalk, runtime loader is a stub until L4), loaders (heavy imports only here), factory (build_ai_adapters, effective_worker_threads, describe_mode, log_startup_warning, local_label_band_height). Weights live in `<local_ai_weights_dir>/{whisper,qwen,chatterbox,musetalk}`.
+- Settings: `ai_mode` (fake|local), `local_ai_weights_dir`. Legacy `ai_backend` kept because tests/unit/worker/test_runner.py still pins it. `FakeTransliterator` added. Runner and container use the factory; worker threads forced to 1 in local mode; local mode logs the ADR-012 unverified-weights warning and sets HF_HUB_OFFLINE / TRANSFORMERS_OFFLINE.
+- Tests: tests/unit/ai_local (80 pass, smoke skipped). Open: status route does not return ai_mode (test_system_status pins exact keys); MuseTalk runtime (L4); Chatterbox `from_local` call unverified without weights.
+
+## 2026-10-28 - L4a
+- System status response now returns `ai_mode`.
+- Spoken-name confirmation: POST on the batch preview path `confirm-spelling` with `{spoken_name}`. The preview JSON gains `suggested_spoken_name`, `spoken_name`, `spoken_name_confirmed` (local mode only). Approve is refused with 409 `SPELLING_NOT_CONFIRMED` in local mode until confirmed. Stored AES-GCM encrypted (base64) in the existing batch JSON document; no migration.
+- Open: the confirmed name is not yet fed into the render of the preview or rows.
+
+## 2026-10-28 - L4 real MuseTalk lip-sync (AI_MODE=local, Mac MPS)
+- `loaders.py`: real `load_musetalk` (in-process, models loaded once, float32 MPS, heavy imports only here).
+- `musetalk_support.py` (new, no heavy imports): ffmpeg frame extract/assemble, template fingerprint, `LandmarkCache` (face boxes per template, JSON on disk).
+- `backend/scripts/setup_musetalk.py` + `musetalk_mac.patch`: one-time clone (pinned 0a89dec), patch, weights, face-detector warm-up. Never run by the app.
+- `SqlRowStore._job`: preview row speaks the confirmed spoken name (preview.spoken_name_enc), else the row's own, else the name.
+- Peak memory 16-18 GB, one render at a time (SingleRenderGuard). Lip-sync window starts at 0 s of the template (port has no slot argument).
+- Tests: none added (tester's job). Open: real-weights run not verified here.
+
+## 2026-10-28 - L7 local AI smoke run (partial: blocked at lip sync)
+- Added `backend/scripts/local_ai_smoke.py` (2 rows through the factory adapters, stage by stage, with timings/memory).
+- `release()` on the four local adapters (LazyModel.release) so models can run one stage at a time in 24 GB.
+- `tts.trim_to_first_utterance`: Chatterbox babbled ~4 s after a 1 s name; clip is cut after the first utterance.
+- Weights dir `work/local_ai_weights` built with symlinks; MuseTalk clone patch re-applied on 3 files.
+- Open: 2DFAN4 face-landmark weights are not inside the project (spike cached them in the home folder); lip sync cannot run offline until they are in `work/torch/hub/checkpoints/`. No tests added (tester to cover trim and release).
+
+## 2026-10-29 - L8 lip sync keeps the face (mouth-only compositing)
+- Problem: MuseTalk's blend replaced the whole lower face; beard came out smooth and lighter.
+- New `local_ai/compositing.py` (`composite_mouth`): generated pixels only inside a feathered mouth ellipse; around the lips the original's high-frequency texture is re-added to the colour-matched generated low-pass; the inner core (lips/teeth) stays generated. Outside the ellipse the frame equals the original.
+- `loaders._MuseTalkModel._paste`: uses `composite_mouth` for real image arrays, MuseTalk's own blend for non-arrays (keeps the existing fake-based unit tests green).
+- New `local_ai/fidelity.py` (SSIM, mean abs diff, Laplacian-variance retention, lower face minus mouth); smoke script prints it per row.
+- Measured row 0 (28 frames): SSIM 0.81 -> 0.96, mean abs diff 6.08 -> 3.42, texture retention 0.52 -> 0.89. Row 1: 0.96 / 3.73 / 0.92. Duration 26.2 s, 1080x1300, band 10 %.
+- Tests added: none (tester). Suggested: `mouth_masks` (shape, range, core inside outer), `composite_mouth` (pixels outside ellipse unchanged, identical face -> identical frame, colour shift clamped), `lower_face_mask` (excludes mouth rect), `frame_fidelity` (identical -> SSIM 1, ratio 1; blurred -> ratio < 1), `mean_fidelity`; update model fakes so `_paste` can drop the fallback.
+- Open: lips look slightly low-contrast; ellipse geometry is fixed fractions of the face box (tuned on this template).
+
+## 2026-10-29 - LB-GREEN (DD-32)
+- Added AI label style `bubble` (default) | `band`: `Settings.label_style` (`VIDGEN_LABEL_STYLE`), `RenderConfig.label_style` (validated), `PillowBubbleRenderer`, `bubble_diameter`, `bubble_box`, `build_label_renderer` in `infrastructure/ffmpeg/label.py`.
+- `RowRenderer` requests a full-frame label for bubble; `local_label_band_height` returns 0 for bubble; runner picks the renderer by style. Band behaviour unchanged.
+- Files: backend/vidgen/{settings.py, services/render_support.py, services/render_row.py, worker/runner.py, infrastructure/ffmpeg/label.py, infrastructure/local_ai/factory.py}.
+
+## 2026-10-29 - L10
+- mean_fidelity([]) returns the neutral Fidelity(1.0, 0.0, 1.0).
+- Lost-queue recovery without a migration: StuckRow, BatchStore.stuck_candidates, JobQueue.has_live_job (Redis marker key per row, 6 h TTL), services/requeue.py, Settings.stuck_after_seconds/requeue_interval_seconds, worker/periodic.PeriodicTask wired into the worker.
+- Open: the Redis marker can outlive a finished job (harmless, row is no longer QUEUED).
+
+## 2026-10-30 - Task TV (timing variants, DD-33)
+- Added `backend/spikes/m2_mac/timing_variants.py`: re-splices the already lip-synced row row-1 (re-uses speech0.wav, synced0.mp4, label.png) with the app's `plan_timing` + `FfmpegVideoEncoder`, pause/crossfade from `VIDGEN_PAUSE_SECONDS` / `VIDGEN_CROSSFADE_MS`.
+- Outputs (git-ignored) in `backend/spikes/m2_mac/work/local_out/timing/`: row-1_A/B/C.mp4. All 26.2 s, 1080x1300, 60 fps.
+- Finding: the new name (0.90 s) fits the 1.0 s slot, so `pause_seconds` is never absorbed (pause_absorbed_s=0, extension_s=0). The next template word stays at 1.00 s in A, B and C; only the crossfade differs.
+- Tests added: none. Open: a longer gap needs a product change (e.g. always delay the tail).
+
+## 2026-10-30 - NG-GREEN (DD-34 name gap)
+- `domain/timing.py`: `MAX_GAP_S = 1.0`; `TimingPlan.gap_s` (last field, default 0.0); `duration_delta_s` = extension + gap; `plan_timing(..., gap_s=0.0)` rejects gaps outside 0-1 s. Gap does not change stretch, absorbed pause, extension or padding.
+- `infrastructure/ffmpeg/graph.py`: region length includes the gap; slot segment gets `tpad=stop_mode=clone` for the gap; graph unchanged when gap and extension are zero.
+- `settings.py`: `name_gap_s` (`VIDGEN_NAME_GAP_S`, default 0.25, 0-1.0). `services/render_support.py`: `RenderConfig.name_gap_s`. `worker/runner.py` and `services/render_row.py` pass it through.
+- Tests: 52 DD-34 tests in the five name-gap files. The held-frame check is relaxed by the tester (0d3ec1e): lossy H.264 keeps the clones luma-identical but not bit-identical.
+- Open: no per-template gap tuning; `timing_variants.py` lint is fixed separately.

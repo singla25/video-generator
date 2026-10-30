@@ -56,6 +56,10 @@ class BatchService:
         """Approve the rendered preview."""
         return self._flow.approve_preview(batch_id)
 
+    def confirm_spelling(self, batch_id: UUID, spoken_name: str) -> BatchView:
+        """Store the confirmed spoken-name spelling."""
+        return self._flow.confirm_spelling(batch_id, spoken_name)
+
     def preview_rendered(self, batch_id: UUID, key: str) -> None:
         """Worker hook: preview stored at ``key``."""
         self._flow.preview_rendered(batch_id, key)

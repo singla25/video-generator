@@ -40,6 +40,8 @@ class BatchView:
     report: BatchReport | None = None
     queued_rows: int | None = None
     retried_rows: int | None = None
+    suggested_spoken_name: str | None = None
+    spelling_required: bool = False  # local mode: the spoken-name fields are part of the preview
 
 
 @dataclass(frozen=True)

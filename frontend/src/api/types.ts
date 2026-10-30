@@ -47,6 +47,15 @@ export interface SheetInspection {
   row_count: number;
 }
 
+/** Preview state; the spoken-name fields exist in local AI mode only. */
+export interface Preview {
+  status: PreviewState;
+  approved: boolean;
+  suggested_spoken_name?: string | null;
+  spoken_name?: string | null;
+  spoken_name_confirmed?: boolean;
+}
+
 export interface Batch {
   id: string;
   template_id: string;
@@ -56,7 +65,7 @@ export interface Batch {
   folder_name: string | null;
   counts: Counts;
   success_rate: number | null;
-  preview?: { status: PreviewState; approved: boolean };
+  preview?: Preview;
   report?: SheetReport | null;
 }
 
@@ -113,4 +122,12 @@ export interface DailyStat {
   date: string;
   videos: number;
   avg_render_seconds: number;
+}
+
+export interface SystemStatus {
+  worker_alive: boolean;
+  queue_depth: number | null;
+  redis_ok: boolean;
+  /** Absent from older servers. */
+  ai_mode?: 'fake' | 'local';
 }

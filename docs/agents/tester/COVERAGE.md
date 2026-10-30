@@ -210,3 +210,19 @@ D-F6-4 is fixed and verified. No open defects.
 | UI-AC1 Design fidelity | awaiting Admin visual sign-off |
 | UI-AC2 Layout | ✅ (tablet overflow fixed) |
 | UI-AC3 to UI-AC13 | ✅ |
+
+## M2-local real AI (L1, L1b, L6a, L6b), 2026-10-28
+
+Run: `pytest --ignore=tests/unit/infra/ai --ignore=tests/e2e` = 2002 passed, 1 skipped (local_ai smoke). e2e not run (only Postgres is up in Docker, no full stack). `ruff check`, `ruff format --check` clean; `mypy --strict backend/vidgen/infrastructure/local_ai` clean (13 files). Total backend line+branch coverage 97 %.
+
+| Area | Tests (approx) | Notes |
+|---|---|---|
+| Mode switch, errors, guards, name slot, adapters (tests/unit/ai_local) | positive ~30, negative ~25, edge ~30 | stubbed models, no torch |
+| MuseTalk support + model (test_musetalk_support, test_musetalk_model) | 37 | real ffmpeg on tiny clips; fake torch/musetalk/cv2 modules |
+| confirm-spelling API (tests/integration/api/test_confirm_spelling.py) | 28 | encrypted storage, no log leak, 409/422 paths |
+| SqlRowStore._spoken_name | 9 | preview row vs others, blank fallback |
+| ai_mode status, UI (ai-mode.test.tsx) | 7 + 17 | |
+
+local_ai coverage per file: errors, guard, lipsync, name_slot, stt 100 %; musetalk_support 94 %; tts 94 %; _common 93 %; factory 92 %; transliterate 90 %; loaders 86 %; offline 84 %. Package about 92 %. Uncovered: real Whisper/Qwen/Chatterbox loader bodies (loaders.py 38-102, covered only by `@local_ai` smoke tests), offline.py 39-50 (IPv6/edge socket paths), musetalk_support.py 62-65, 78 (bad frame-rate text, no-frames branch).
+
+Defects: none open. Notes: tests/unit/infra/ai (G3 set, other module layout) is excluded and not part of this run. `running_batch`/`approve_preview` helpers do not confirm spelling, so they cannot be used in local mode.

@@ -115,3 +115,26 @@ Newest first. One entry per task.
 
 ## 2026-10-28 - FIX-UPLOAD-4 verify
 - Moved the XHR FormData shim to tests/frontend/support/xhr-formdata.ts (imported by setup.ts). Added TT-UP-E10/E11/N10 (timeout set, progress clamp, 504). Vitest 289 pass; pytest unit 903 pass.
+
+## 2026-10-28 - FIX-WORKER-1 RED
+- Tree docs/test-tree/fix-worker-health.md; heartbeat adapter and route pytest, redis_double fixture, Vitest worker-health (default status handler added to mocks).
+
+## 2026-10-28 - L1 RED (local real AI)
+- Tree docs/test-tree/m2-local-real-ai.md (with the expected API table). Tests in tests/unit/ai_local/ (mode switch, adapters with stub models, name slot, guards and offline, label height). `local_ai` marker registered in that conftest and skipped unless RUN_LOCAL_AI=1. Red: 5 modules fail at collection (vidgen.infrastructure.local_ai missing).
+
+## 2026-10-28 - G3 RED (M2 real-AI adapters)
+- Tree docs/test-tree/m2-real-ai.md (8 scenarios). New tests/unit/infra/ai/: STT, Qwen transliterator, Chatterbox cloner, MuseTalk lip-syncer (real ffmpeg on tiny clips, stub model), Demucs separator + VocalSeparator port/fake, package rules (lazy imports, ModelLoadError, AdapterTimeoutError), ai_backend setting, label band >= 10 % guards.
+- Seams proposed: `engine_factory`, `timeout_s`, `vidgen.infrastructure.ai.errors`, `FailureCode.PRONUNCIATION_UNCERTAIN`, `transliterate_checked`, `FakeVocalSeparator`.
+- Red: 5 modules fail at collection (ModuleNotFoundError vidgen.infrastructure.ai) + 7 failing in test_ai_package; 39 guards (settings, label) pass. Existing unit suite 939 pass. Note: tests/unit/ai_local (commit a26a5a5, other RED set) still fails on missing vidgen.infrastructure.local_ai.
+
+## 2026-10-28 - L1b RED (UI mode and spoken-name confirmation)
+- test_system_status.py now expects ai_mode (7 fail). New tests/frontend/unit/ai-mode.test.tsx (17 tests, 11 red, 6 guards pass). Contract in docs/test-tree/m2-local-real-ai.md.
+
+## 2026-10-29 - LB-RED (DD-32 AI label style: bubble default, band option)
+- Tree docs/test-tree/label-style.md (defaults and names recorded there). New tests: unit/infra/test_label_style_setting.py, unit/infra/test_bubble_renderer.py, integration/ffmpeg/test_label_bubble_overlay.py (real ffmpeg), integration/worker/test_render_row_label_style.py, unit/worker/test_runner_label_style.py, unit/ai_local/test_label_style_local.py.
+- Existing band-by-default assertions made explicit with `label_style="band"`: integration/worker/test_render_row.py (2 tests), e2e/conftest.py, unit/ai_local/test_label_height.py.
+- Names for backend-dev: `Settings.label_style`, `RenderConfig.label_style`, `PillowBubbleRenderer`, `bubble_diameter`, `bubble_box`, `build_label_renderer` (label.py), `local_label_band_height` returns 0 for bubble. Bubble PNG = transparent RGBA of full frame size.
+- Red: 26 failed + 2 modules fail at import + 3 e2e error (TypeError label_style on RenderConfig); everything else unchanged (2023 pass; tests/unit/infra/ai still red from G3).
+
+## 2026-10-29 - T-L10b
+- FakeJobQueue implements has_live_job (live set from enqueue until mark_done); doubles.py ruff/mypy --strict clean; unit suite 1241 passed, 2 skipped.

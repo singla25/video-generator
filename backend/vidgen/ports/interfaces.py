@@ -240,3 +240,15 @@ class Clock(Protocol):
     def now(self) -> datetime:
         """Return the current UTC time."""
         ...
+
+
+class WorkerHeartbeat(Protocol):
+    """A liveness signal the worker refreshes and the API reads."""
+
+    def beat(self) -> None:
+        """Record that a worker is alive now (never raises on a transient backend error)."""
+        ...
+
+    def is_alive(self) -> bool:
+        """True while some worker has beaten recently; backend errors propagate."""
+        ...

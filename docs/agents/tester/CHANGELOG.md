@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-10-30 — RM-G3 (remove redundant red set)
+- Removed: the redundant G3 adapter test set (tests/unit/infra/ai/, docs/test-tree/m2-real-ai.md). The adapters were built as vidgen.infrastructure.local_ai and are covered by tests/unit/ai_local/. The Admin approved the deletion. Those tests failed at collection with ModuleNotFoundError.
+
 ## 2026-10-20 - W-4 tests
 - Added: progress ignores skipped rows (and all-skipped = 0), rows response carries same-snapshot counts, header follows the rows snapshot, panel shows skipped separately. TT-AC14-E2 updated (all skipped is 0, not 100). Python 1744, Vitest 209.
 

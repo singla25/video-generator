@@ -1,4 +1,7 @@
-"""Bubble label composited by real ffmpeg: no extra height, bottom-right only (DD-32). LS-C-*."""
+"""Bubble label composited by real ffmpeg: no extra height, bottom-right only (DD-32, DD-36).
+
+LS-C-*.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +24,7 @@ from vidgen.infrastructure.ffmpeg.label import (
 METADATA = {"creator_entity": "Test Creator Org", "generated_on": "2026-10-18", "batch_id": "b-1"}
 PAD = 3  # pixels around the bubble box that codec smearing may touch
 SAME = 8  # mean abs diff below this = "same picture" after re-encoding
+PRESENT = 8  # mean abs diff inside the bubble box at or above this = the bubble is drawn (DD-36)
 
 
 def render_with_label(
@@ -88,18 +92,16 @@ def test_bubble_changes_pixels_only_in_the_bottom_right_in_every_sampled_frame(
             assert mean_abs_diff(frame, template_frame, box) < SAME, f"changed at {at}s {box}"
 
 
-def test_bubble_is_present_and_covers_the_picture_in_every_sampled_frame(
+def test_bubble_is_present_and_changes_its_box_in_every_sampled_frame(
     tmp_path: Path, encoder: FfmpegVideoEncoder, small_template: Path
 ) -> None:
-    """LS-C-P3: dark disc over the busy test picture, also on the last frames."""
+    """LS-C-P3 (DD-36): the see-through bubble changes the box in every sampled frame."""
     out, extension = render_with_label(tmp_path, encoder, small_template, (320, 240), "bubble")
-    left, top, right, bottom = bubble_box(320, 240)
-    probe = (left + max(2, (right - left) // 8), (top + bottom) // 2)
+    box = bubble_box(320, 240)
     for index, at in enumerate(sample_times(extension)):
         frame = extract_frame(out, at, tmp_path / f"o{index}.png")
-        assert pixel_mean(frame, probe) < 70, f"bubble missing at {at}s"
         template_frame = extract_frame(small_template, at, tmp_path / f"t{index}.png")
-        assert mean_abs_diff(frame, template_frame, (left, top, right, bottom)) > 20
+        assert mean_abs_diff(frame, template_frame, box) >= PRESENT, f"bubble missing at {at}s"
 
 
 def test_band_style_still_adds_the_ten_percent_band_at_the_top(
@@ -129,5 +131,4 @@ def test_bubble_on_a_production_size_frame(tmp_path: Path, encoder: FfmpegVideoE
     template_frame = extract_frame(template, 0.5, tmp_path / "t.png")
     for box in outside_boxes((1080, 1920)):
         assert mean_abs_diff(frame, template_frame, box) < SAME
-    left, top, _right, bottom = bubble_box(1080, 1920)
-    assert pixel_mean(frame, (left + 12, (top + bottom) // 2)) < 70
+    assert mean_abs_diff(frame, template_frame, bubble_box(1080, 1920)) >= PRESENT

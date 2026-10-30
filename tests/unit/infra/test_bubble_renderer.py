@@ -1,4 +1,7 @@
-"""Bubble label: a small "AI" badge at the bottom-right of a transparent frame (DD-32). LS-R-*."""
+"""Bubble label: a small "AI" badge at the bottom-right of a transparent frame (DD-32, DD-36).
+
+LS-R-*. The look inside the bubble (tint, ring, text, shadow) is in test_bubble_look.py.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +12,7 @@ from PIL import Image
 
 from tests.fixtures.analysis import pixel_mean
 from tests.fixtures.assets import devanagari_font, latin_font
+from tests.fixtures.bubble import render_bubble
 from vidgen.domain.codes import DomainError
 from vidgen.infrastructure.ffmpeg.label import (
     PillowBubbleRenderer,
@@ -20,42 +24,21 @@ from vidgen.infrastructure.ffmpeg.label import (
 
 SIZES = [(320, 240), (1080, 1920), (1080, 1300), (3840, 2160), (321, 241), (64, 64), (240, 426)]
 DARK = 70
-LIGHT = 150
-MIN_CONTRAST = 7.0
-
-
-def render(tmp_path: Path, size: tuple[int, int]) -> Image.Image:
-    """Render the bubble overlay with the real Latin font."""
-    out = tmp_path / "bubble.png"
-    PillowBubbleRenderer(latin_font=latin_font()).render_label(size[0], size[1], out)
-    return Image.open(out).convert("RGBA")
-
-
-def luminance(rgb: tuple[int, int, int]) -> float:
-    """WCAG relative luminance."""
-
-    def channel(value: int) -> float:
-        s = value / 255
-        return s / 12.92 if s <= 0.03928 else ((s + 0.055) / 1.055) ** 2.4
-
-    r, g, b = (channel(v) for v in rgb)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
 # ---- geometry -------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("size", SIZES)
-def test_bubble_box_is_about_nine_percent_wide_with_three_percent_margin(
-    size: tuple[int, int],
-) -> None:
-    """LS-R-P2."""
+def test_bubble_box_is_48_per_1080_wide_with_12_per_1080_margin(size: tuple[int, int]) -> None:
+    """LS-R-P2 (DD-36): square box, side 48/1080 of the width, 12/1080 from right and bottom."""
     width, height = size
     left, top, right, bottom = bubble_box(width, height)
-    assert bubble_diameter(width) == right - left == bottom - top
-    assert abs((right - left) - 0.09 * width) <= 1.5
-    assert abs((width - right) - 0.03 * width) <= 1.5
-    assert abs((height - bottom) - 0.03 * width) <= 1.5
+    side = round(width * 48 / 1080)
+    margin = round(width * 12 / 1080)
+    assert bubble_diameter(width) == right - left == bottom - top == side
+    assert width - right == margin
+    assert height - bottom == margin
     assert 0 <= left < right <= width
     assert 0 <= top < bottom <= height
 
@@ -80,7 +63,7 @@ def test_bubble_diameter_grows_with_the_frame_width() -> None:
 @pytest.mark.parametrize("size", SIZES)
 def test_png_is_exactly_the_frame_size_and_has_alpha(tmp_path: Path, size: tuple[int, int]) -> None:
     """LS-R-P1: overlaid at 0:0 it adds no height and needs no placement."""
-    image = render(tmp_path, size)
+    image = render_bubble(tmp_path, size)
     assert image.size == size
     assert image.mode == "RGBA"
 
@@ -89,55 +72,24 @@ def test_png_is_exactly_the_frame_size_and_has_alpha(tmp_path: Path, size: tuple
 def test_everything_outside_the_bubble_box_is_transparent(
     tmp_path: Path, size: tuple[int, int]
 ) -> None:
-    """LS-R-P3: only the bottom-right corner carries pixels."""
-    image = render(tmp_path, size)
+    """LS-R-P3 (DD-36): alpha is 0 everywhere outside the box, not just nearby."""
+    image = render_bubble(tmp_path, size)
     left, top, right, bottom = bubble_box(*size)
-    alpha = image.getchannel("A")
-    ink = alpha.getbbox()
+    ink = image.getchannel("A").getbbox()
     assert ink is not None, "the bubble is empty"
-    assert ink[0] >= left - 1 and ink[1] >= top - 1
-    assert ink[2] <= right + 1 and ink[3] <= bottom + 1
+    # getbbox is exclusive on the right and bottom; every drawn pixel lies inside the box.
+    assert ink[0] >= left and ink[1] >= top
+    assert ink[2] <= right and ink[3] <= bottom
 
 
 @pytest.mark.parametrize("size", SIZES[:4])
-def test_bubble_is_a_rounded_opaque_dark_disc(tmp_path: Path, size: tuple[int, int]) -> None:
-    """LS-R-P3: corners of the box are see-through, the body is opaque and dark."""
-    image = render(tmp_path, size)
+def test_bubble_box_corners_are_see_through(tmp_path: Path, size: tuple[int, int]) -> None:
+    """LS-R-P3 (DD-36): the four corners of the box are outside the circle, so alpha 0."""
+    image = render_bubble(tmp_path, size)
     left, top, right, bottom = bubble_box(*size)
-    d = right - left
-    assert image.getpixel((left, top))[3] == 0  # type: ignore[index]
-    assert image.getpixel((right - 1, bottom - 1))[3] == 0  # type: ignore[index]
-    inside = (left + max(2, d // 8), top + d // 2)
-    assert image.getpixel(inside)[3] == 255  # type: ignore[index]
-    assert pixel_mean(image, inside) < DARK
-
-
-@pytest.mark.parametrize("size", SIZES[:4])
-def test_text_is_light_centred_and_has_enough_contrast(
-    tmp_path: Path, size: tuple[int, int]
-) -> None:
-    """LS-R-P4: "AI" is legible on the dark fill."""
-    image = render(tmp_path, size)
-    left, top, right, bottom = bubble_box(*size)
-    d = right - left
-    pixels = image.load()
-    assert pixels is not None
-    light = [
-        (x, y)
-        for y in range(top, bottom)
-        for x in range(left, right)
-        if pixels[x, y][3] == 255 and sum(pixels[x, y][:3]) / 3 > LIGHT
-    ]
-    assert light, "no light text pixels"
-    xs, ys = [p[0] for p in light], [p[1] for p in light]
-    assert (max(xs) - min(xs)) >= 0.25 * d  # not a speck
-    assert (max(ys) - min(ys)) >= 0.25 * d
-    assert abs((min(xs) + max(xs)) / 2 - (left + right) / 2) <= 0.12 * d
-    assert abs((min(ys) + max(ys)) / 2 - (top + bottom) / 2) <= 0.12 * d
-    brightest = max((pixels[x, y][:3] for x, y in light), key=sum)
-    fill = pixels[left + max(2, d // 8), top + d // 2][:3]
-    ratio = (luminance(brightest) + 0.05) / (luminance(fill) + 0.05)
-    assert ratio >= MIN_CONTRAST
+    corners = [(left, top), (right - 1, top), (left, bottom - 1), (right - 1, bottom - 1)]
+    for xy in corners:
+        assert image.getpixel(xy)[3] == 0, f"corner {xy} is drawn"  # type: ignore[index]
 
 
 def test_band_renderer_is_unchanged(tmp_path: Path) -> None:

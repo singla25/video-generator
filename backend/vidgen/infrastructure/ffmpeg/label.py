@@ -4,6 +4,9 @@ Latin runs use the Latin font and Devanagari runs the Devanagari font. Correct D
 shaping (conjuncts, vowel-sign order) needs Pillow's Raqm layout; without it Pillow draws
 unshaped glyphs. The renderer never pretends otherwise: ``shaping_available`` tells the
 caller, and a warning is logged when it is False.
+
+The bubble style (DD-36) is a faint dark tint, a white ring and white "AI" text on a transparent
+frame.
 """
 
 from __future__ import annotations
@@ -14,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PIL import Image, ImageDraw, ImageFont, features
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, features
 
 from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.domain.validation import ZWJ, ZWNJ
@@ -29,11 +32,18 @@ START_FONT_SHARE = 0.62  # starting font size as a share of the band height
 MAX_TEXT_WIDTH_SHARE = 0.94
 MAX_INK_HEIGHT_SHARE = 0.90
 MIN_FONT_SIZE = 4
-BUBBLE_DIAMETER_SHARE = 0.09  # bubble diameter as a share of the frame width (DD-32)
-BUBBLE_MARGIN_SHARE = 0.03  # distance from the right and bottom edges, share of the width
+BUBBLE_DIAMETER_SHARE = 48 / 1080  # 48 px at 1080 wide (DD-36)
+BUBBLE_MARGIN_SHARE = 12 / 1080  # 12 px from the right and bottom edges at 1080 wide (DD-36)
+BUBBLE_FILL = (0, 0, 0, 40)  # faint dark tint: the picture shows through
+BUBBLE_RING = (255, 255, 255, 230)
+BUBBLE_RING_SHARE = 0.04  # ring width as a share of the diameter, at least 1 px
 BUBBLE_TEXT = "AI"
-BUBBLE_TEXT_SHARE = 0.46  # starting font size as a share of the bubble diameter
+BUBBLE_TEXT_COLOUR = (255, 255, 255)
+BUBBLE_TEXT_SHARE = 0.5  # starting font size as a share of the bubble diameter
 BUBBLE_MAX_INK_SHARE = 0.62  # the text ink may use at most this share of the diameter
+BUBBLE_SHADOW = (0, 0, 0, 120)
+BUBBLE_SHADOW_REFERENCE_PX = 48  # the shadow offset and blur are 1 px at this diameter
+BUBBLE_SUPERSAMPLE = 4  # draw at 4x, then downscale with LANCZOS for smooth edges
 LABEL_STYLES = ("bubble", "band")
 _DEVANAGARI_RANGE = range(0x0900, 0x0980)
 _JOINERS = frozenset({ZWJ, ZWNJ})
@@ -153,7 +163,7 @@ class PillowLabelRenderer:
 
 
 def bubble_diameter(frame_width: int) -> int:
-    """Bubble diameter in pixels: about 9 % of the frame width, at least 1."""
+    """Bubble diameter in pixels: 48/1080 of the frame width, at least 1."""
     return max(1, round(frame_width * BUBBLE_DIAMETER_SHARE))
 
 
@@ -165,8 +175,59 @@ def bubble_box(frame_width: int, frame_height: int) -> tuple[int, int, int, int]
     return right - size, bottom - size, right, bottom
 
 
+def _disc_mask(size: int) -> Image.Image:
+    """Opaque circle filling a ``size`` x ``size`` mask."""
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, size - 1, size - 1), fill=255)
+    return mask
+
+
+def _centred_origin(size: int, font: ImageFont.FreeTypeFont, text: str) -> tuple[float, float]:
+    """Text origin (anchor "la") that puts the ink box of ``text`` at the centre of the patch."""
+    left, top, right, bottom = ImageDraw.Draw(Image.new("L", (1, 1))).textbbox(
+        (0, 0), text, font=font, anchor="la"
+    )
+    centre = (size - 1) / 2
+    return centre - (left + right) / 2, centre - (top + bottom) / 2
+
+
+def _coloured(mask: Image.Image, colour: tuple[int, int, int]) -> Image.Image:
+    """An RGBA layer of one colour whose alpha is ``mask``."""
+    layer = Image.new("RGBA", mask.size, (*colour, 0))
+    layer.putalpha(mask)
+    return layer
+
+
+def _bubble_patch(diameter: int, font: ImageFont.FreeTypeFont, text: str) -> Image.Image:
+    """The bubble on a transparent square patch, drawn at BUBBLE_SUPERSAMPLE and downscaled."""
+    big = diameter * BUBBLE_SUPERSAMPLE
+    disc = (0, 0, big - 1, big - 1)
+    ring = max(1, round(BUBBLE_RING_SHARE * diameter)) * BUBBLE_SUPERSAMPLE
+    layer = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    draw.ellipse(disc, fill=BUBBLE_FILL)
+    draw.ellipse(disc, outline=BUBBLE_RING, width=ring)
+    origin = _centred_origin(big, font, text)
+    # The shadow is the text moved down and right, blurred, and drawn under the text.
+    reach = max(1, round(diameter / BUBBLE_SHADOW_REFERENCE_PX)) * BUBBLE_SUPERSAMPLE
+    shadow = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(shadow).text(
+        (origin[0] + reach, origin[1] + reach), text, font=font, fill=255, anchor="la"
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(reach))
+    shadow_alpha = shadow.point(lambda value: value * BUBBLE_SHADOW[3] // 255)
+    layer = Image.alpha_composite(layer, _coloured(shadow_alpha, BUBBLE_SHADOW[:3]))
+    text_mask = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(text_mask).text(origin, text, font=font, fill=255, anchor="la")
+    layer = Image.alpha_composite(layer, _coloured(text_mask, BUBBLE_TEXT_COLOUR))
+    layer.putalpha(ImageChops.multiply(layer.getchannel("A"), _disc_mask(big)))
+    # Premultiplied resize keeps the edges of the transparent area clean.
+    premultiplied = layer.convert("RGBa").resize((diameter, diameter), Image.Resampling.LANCZOS)
+    return premultiplied.convert("RGBA")
+
+
 class PillowBubbleRenderer:
-    """Draws a small dark round badge with light text on a transparent full-size frame."""
+    """Draws a see-through round badge: faint dark tint, white ring and white text."""
 
     def __init__(self, latin_font: Path, text: str = BUBBLE_TEXT) -> None:
         self._latin_path = latin_font
@@ -176,18 +237,16 @@ class PillowBubbleRenderer:
         """Write a transparent ``width`` x ``height`` PNG with the bubble to ``out``."""
         if width <= 0 or height <= 0:
             raise ValueError("label size must be positive")
-        box = bubble_box(width, height)
-        diameter = box[2] - box[0]
-        font = self._fit(diameter)
+        left, top, right, _ = bubble_box(width, height)
+        diameter = right - left
+        font = self._fit(diameter * BUBBLE_SUPERSAMPLE)
+        patch = _bubble_patch(diameter, font, self._text)
         image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(image)
-        draw.ellipse((box[0], box[1], box[2] - 1, box[3] - 1), fill=(*BAND_COLOUR, 255))
-        centre = ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
-        draw.text(centre, self._text, font=font, fill=(*TEXT_COLOUR, 255), anchor="mm")
+        image.alpha_composite(patch, dest=(left, top))
         image.save(out, "PNG")
 
     def _fit(self, diameter: int) -> ImageFont.FreeTypeFont:
-        """Largest font whose text fits inside the bubble."""
+        """Largest font whose text fits inside the bubble; ``diameter`` is supersampled."""
         size = max(MIN_FONT_SIZE, int(diameter * BUBBLE_TEXT_SHARE))
         probe = ImageDraw.Draw(Image.new("L", (1, 1)))
         while True:

@@ -1,11 +1,14 @@
-"""Bubble design previews (DD-35): three small AI badges drawn on one real frame.
+"""Bubble design previews (DD-35): three small AI badges drawn on one clean real frame.
 
-Usage (repository root, after a timing render has written a ``*_G.mp4``):
+The base frame comes from the lip-synced video WITHOUT any label (``_tmp/synced0.mp4``), so the
+old bubble is never burned in. Usage (repository root):
 
     PYTHONPATH=backend .venv/bin/python backend/spikes/m2_mac/bubble_designs.py
 
-Outputs go to ``work/local_out/bubble_designs/`` (git-ignored): ``full_A/B/C.png`` (whole frame),
-``zoom_old.png`` (the current bubble) and ``zoom_*.png`` crops, stacked in ``sheet.png``.
+Outputs go to ``work/local_out/bubble_designs/`` (git-ignored): ``full_A/B/C.png`` (the whole clean
+frame with one design), ``zoom_*.png`` crops and ``sheet.png`` (old, A, B, C from top to bottom).
+Each design is also checked: the number of pixels that differ from the clean frame outside the box
+is printed and must be 0.
 """
 
 from __future__ import annotations
@@ -15,10 +18,12 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[3]
-TIMING_DIR = ROOT / "backend" / "spikes" / "m2_mac" / "work" / "local_out" / "timing"
+SOURCE_VIDEO = (
+    ROOT / "backend" / "spikes" / "m2_mac" / "work" / "local_out" / "_tmp" / "synced0.mp4"
+)
 OUT_DIR = ROOT / "backend" / "spikes" / "m2_mac" / "work" / "local_out" / "bubble_designs"
 FONT_DIR = ROOT / "backend" / "vidgen" / "assets" / "fonts"
 BOLD_FONT = FONT_DIR / "NotoSans-Bold.ttf"
@@ -28,9 +33,9 @@ FRAME_T_S = 20.0
 FRAME_WIDTH = 1080
 FRAME_HEIGHT = 1300
 DIAMETER = round(0.05 * FRAME_WIDTH)  # 54 px
+MARGIN = round(0.015 * FRAME_WIDTH)  # 16 px from the right and bottom edges
 PAD_PX = 4  # margin around the circle inside the drawn patch, for the soft shadow
 PATCH_PX = DIAMETER + 2 * PAD_PX
-MARGIN = round(0.015 * FRAME_WIDTH)  # 16 px from the right and bottom edges
 TEXT = "AI"
 TEXT_SHARE = 0.5  # font size as a share of the diameter
 SUPERSAMPLE = 4  # draw at 4x, then downscale with LANCZOS for smooth edges
@@ -40,6 +45,7 @@ ZOOM_BOX = (760, 1130, 1080, 1300)  # x0, y0, x1, y1 of the zoomed crop
 ZOOM = 3
 SHEET_GAP_PX = 8
 SHEET_BACKGROUND = (128, 128, 128)
+FFMPEG_TIMEOUT_S = 120
 
 RGBA = tuple[int, int, int, int]
 
@@ -90,25 +96,32 @@ def bubble_box() -> tuple[int, int, int, int]:
     return right - DIAMETER, bottom - DIAMETER, right, bottom
 
 
-def find_timing_video() -> Path:
-    """The first ``*_G.mp4`` timing render; a clear error when none has been made yet."""
-    matches = sorted(TIMING_DIR.glob("*_G.mp4"))
-    if not matches:
-        raise FileNotFoundError(
-            f"no *_G.mp4 in {TIMING_DIR}; run the timing render for variant G first"
-        )
-    return matches[0]
+def source_video() -> Path:
+    """The clean lip-synced video without any label; a clear error when it is missing."""
+    if not SOURCE_VIDEO.is_file():
+        raise FileNotFoundError(f"clean source video not found: {SOURCE_VIDEO}")
+    return SOURCE_VIDEO
 
 
 def extract_frame(video: Path, out: Path) -> Image.Image:
     """Decode one frame at ``FRAME_T_S`` with ffmpeg and return it as an RGBA image."""
     command = [
-        "ffmpeg", "-v", "error", "-y", "-i", str(video),
-        "-ss", f"{FRAME_T_S:.1f}", "-frames:v", "1", str(out),
-    ]  # fmt: skip
+        "ffmpeg",
+        "-v",
+        "error",
+        "-y",
+        "-i",
+        str(video),
+        "-ss",
+        f"{FRAME_T_S:.1f}",
+        "-frames:v",
+        "1",
+        str(out),
+    ]
     try:
-        # Fixed argument list, no shell, local paths only: nothing untrusted reaches ffmpeg.
-        subprocess.run(command, check=True, capture_output=True, text=True, timeout=120)  # noqa: S603
+        subprocess.run(  # noqa: S603 - fixed argument list, no shell, local paths only
+            command, check=True, capture_output=True, text=True, timeout=FFMPEG_TIMEOUT_S
+        )
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(f"ffmpeg could not extract the frame: {exc.stderr.strip()}") from exc
     frame = Image.open(out).convert("RGBA")
@@ -124,11 +137,10 @@ def _text_font() -> ImageFont.FreeTypeFont:
 
 def _shadow_layer(size: int, centre: float, design_shadow: RGBA) -> Image.Image:
     """Blurred, offset text shadow as an RGBA layer of ``size`` x ``size`` supersampled pixels."""
-    font = _text_font()
     mask = Image.new("L", (size, size), 0)
     offset = SHADOW_OFFSET_PX * SUPERSAMPLE
     ImageDraw.Draw(mask).text(
-        (centre + offset, centre + offset), TEXT, font=font, fill=255, anchor="mm"
+        (centre + offset, centre + offset), TEXT, font=_text_font(), fill=255, anchor="mm"
     )
     mask = mask.filter(ImageFilter.GaussianBlur(SHADOW_BLUR_PX * SUPERSAMPLE))
     alpha = mask.point(lambda value: value * design_shadow[3] // 255)
@@ -156,9 +168,24 @@ def render_patch(design: Design) -> Image.Image:
     )
     layer = Image.alpha_composite(layer, text_layer)
     # Premultiplied resize keeps the edges of the transparent area clean.
-    return (
-        layer.convert("RGBa").resize((PATCH_PX, PATCH_PX), Image.Resampling.LANCZOS).convert("RGBA")
+    premultiplied = layer.convert("RGBa")
+    return premultiplied.resize((PATCH_PX, PATCH_PX), Image.Resampling.LANCZOS).convert("RGBA")
+
+
+def _clip_to_box(patch: Image.Image) -> Image.Image:
+    """The patch with its alpha forced to 0 outside the bubble box.
+
+    The LANCZOS resize spreads a fraction of the alpha one pixel past the circle; clipping keeps
+    every pixel outside the box identical to the clean frame.
+    """
+    inside = Image.new("L", patch.size, 0)
+    left = PAD_PX
+    ImageDraw.Draw(inside).rectangle(
+        (left, left, left + DIAMETER - 1, left + DIAMETER - 1), fill=255
     )
+    clipped = patch.copy()
+    clipped.putalpha(ImageChops.multiply(patch.getchannel("A"), inside))
+    return clipped
 
 
 def composite_at_bubble(frame: Image.Image, patch: Image.Image) -> Image.Image:
@@ -167,8 +194,19 @@ def composite_at_bubble(frame: Image.Image, patch: Image.Image) -> Image.Image:
     left, top, _, _ = bubble_box()
     origin = (left - PAD_PX, top - PAD_PX)
     region = out.crop((*origin, origin[0] + PATCH_PX, origin[1] + PATCH_PX))
-    out.paste(Image.alpha_composite(region, patch), origin)
+    out.paste(Image.alpha_composite(region, _clip_to_box(patch)), origin)
     return out
+
+
+def changed_outside_box(before: Image.Image, after: Image.Image) -> int:
+    """Number of pixels that differ between two frames outside the bubble box."""
+    diff = ImageChops.difference(before.convert("RGB"), after.convert("RGB"))
+    red, green, blue = diff.split()
+    per_pixel = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+    left, top, right, bottom = bubble_box()
+    ImageDraw.Draw(per_pixel).rectangle((left, top, right - 1, bottom - 1), fill=0)
+    histogram = per_pixel.histogram()
+    return sum(histogram[1:])
 
 
 def old_bubble_frame(frame: Image.Image, work: Path) -> Image.Image:
@@ -202,22 +240,25 @@ def stack(images: list[Image.Image]) -> Image.Image:
 
 
 def main() -> None:
-    """Write the frame, the three designs, the old-bubble zoom and the sheet."""
+    """Write the clean frame's previews, the designs, the zoom crops and the sheet."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    video = find_timing_video()
+    video = source_video()
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
-        frame = extract_frame(video, work / "frame.png")
-        zooms: list[Image.Image] = [zoom(old_bubble_frame(frame, work))]
+        clean = extract_frame(video, work / "frame.png")
+        old = old_bubble_frame(clean, work)
+        zooms: list[Image.Image] = [zoom(old)]
         zooms[0].save(OUT_DIR / "zoom_old.png")
         for design in DESIGNS:
-            drawn = composite_at_bubble(frame, render_patch(design)).convert("RGB")
-            drawn.save(OUT_DIR / f"full_{design.name}.png")
+            drawn = composite_at_bubble(clean, render_patch(design))
+            changed = changed_outside_box(clean, drawn)
+            print(f"{design.name}: {changed} pixels differ from the clean frame outside the box")
+            drawn.convert("RGB").save(OUT_DIR / f"full_{design.name}.png")
             zoomed = zoom(drawn)
             zoomed.save(OUT_DIR / f"zoom_{design.name}.png")
             zooms.append(zoomed)
     stack(zooms).save(OUT_DIR / "sheet.png")
-    print(f"wrote {OUT_DIR} (source {video.name})")
+    print(f"wrote {OUT_DIR} (clean source {video.name})")
 
 
 if __name__ == "__main__":

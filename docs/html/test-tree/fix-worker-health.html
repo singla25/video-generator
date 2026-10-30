@@ -1,0 +1,43 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree - FIX-WORKER-1 (DD-29): the dashboard says when the worker is not running</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree - FIX-WORKER-1 (DD-29): the dashboard says when the worker is not running</h1>
+<p>Bug: a batch preview was queued while the worker process was stopped; the dashboard showed 0 % / Queued for hours with no error. Branch <code>fix/worker-health</code>.</p>
+<p>Tests: <code>tests/unit/infra/test_worker_heartbeat.py</code>, <code>tests/unit/api/test_system_status.py</code> (pytest; <code>tests/fixtures/redis_double.py</code> is an in-memory Redis with expiry on the shared FakeClock, no new dependency) and <code>tests/frontend/unit/worker-health.test.tsx</code> (Vitest + MSW; the default handler for the status route reports a live worker).</p>
+<pre><code>Feature: Worker heartbeat (port WorkerHeartbeat, RedisWorkerHeartbeat)
+├── Scenario: worker running
+│   ├── ✅ beat sets vidgen:worker:heartbeat with EX 15; alive right after; a new beat extends life
+│   └── ✅ interval 5 s, two beats fit in one life
+├── Scenario: worker stopped
+│   ├── ❌ no beat yet -&gt; not alive; 15 s after the last beat -&gt; not alive
+│   └── ⚠️ boundary 14.9 s alive, 15.0 s dead; beat after expiry revives
+├── Scenario: several workers
+│   └── ⚠️ one stops, the other keeps the signal; all stopped is detected
+└── Scenario: Redis down
+    ├── ❌ is_alive raises a redis error (the route turns it into redis_ok=false)
+    └── ❌ beat logs at error level, does not raise, no DSN in the log
+
+Feature: GET /system/status
+├── ✅ 200 {worker_alive, queue_depth, redis_ok}; follows the heartbeat; real adapter with expiry
+├── ❌ 401 without a session; POST -&gt; 405
+└── ⚠️ Redis down -&gt; 200 worker_alive=false, redis_ok=false, depth null (not 503); depth error or
+       queue without depth -&gt; null; exact keys only; no DSN/password; works with the DB down
+
+Feature: Dashboard banner (frontend)
+├── ✅ TT-WH-P1..P3 alert with start hint when worker down and queued rows or pending preview; on every page
+├── ❌ TT-WH-N1..N5 hidden when alive, nothing to do, status 500/503/network/non-JSON, loading, batch list failing
+└── ⚠️ TT-WH-E1..E6 401 -&gt; login; no call on login screen; polling shows/hides; redis_ok false; reduced motion; no secrets
+
+Feature: Slow preview (frontend)
+├── ✅ TT-WH-P4..P6 over 30 s pending: &quot;Preview is taking longer than expected&quot;, worker named when down, Retry re-posts
+├── ❌ TT-WH-N6, N7 live worker not blamed; nothing before 30 s
+└── ⚠️ TT-WH-E7, E8 failing status call adds no accusation; preview done before 30 s never warns</code></pre>
+<p>Contract chosen by the tests: module <code>vidgen.infrastructure.queue.redis_heartbeat</code> (<code>DEFAULT_KEY</code>, <code>DEFAULT_TTL_SECONDS=15</code>, <code>HEARTBEAT_INTERVAL_SECONDS=5</code>, <code>RedisWorkerHeartbeat(client, key=, ttl_seconds=)</code> using <code>client.set(key, value, ex=)</code> and <code>client.exists(key)</code>), port <code>vidgen.ports.WorkerHeartbeat</code> (<code>beat()</code>, <code>is_alive()</code>), <code>AppDeps.worker_heartbeat</code>, queue depth from <code>job_queue.depth()</code>, route GET <code>/system/status</code>.</p></div></body></html>

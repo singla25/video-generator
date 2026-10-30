@@ -1,0 +1,21 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>ADR-011 — Continuous integration on GitHub Actions (CI now, CD later)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>ADR-011 — Continuous integration on GitHub Actions (CI now, CD later)</h1>
+<p><strong>Status:</strong> Accepted (Admin chose scope B, 2026-10-28) · <strong>Deciders:</strong> Admin, CEO</p>
+<h2>Context</h2>
+<p>The repository is now on GitHub (private, <code>singla25/video-generator</code>). Until now "main is always green" has depended on the CEO running the suite by hand. About 650 tests need Postgres/Redis, and local runs have failed when Docker was off. There is no deployment target yet (no server, GPU for M2 undecided).</p>
+<h2>Options</h2>
+<table><tr><th>Option</th><th>Pros</th><th>Cons</th><th>Cost / complexity</th><th>Scales?</th></tr><tr><td>A. Fast CI (unit, dashboard, lint, types)</td><td>Quick, simple</td><td>Skips DB integration tests, where most real bugs showed up</td><td>Free / small</td><td>Yes</td></tr><tr><td><strong>B. Full CI (A + Postgres/Redis integration + Playwright)</strong></td><td>Same checks as the CEO's gate; blocks bad merges</td><td>~10 min per run; Linux needs ffmpeg + libraqm</td><td>Free (private-repo free minutes, $0 spending limit) / medium</td><td>Yes</td></tr><tr><td>C. CI + CD</td><td>Auto-deploy</td><td>No deploy target; needs a paid server; would be rebuilt for M2</td><td>Paid / large</td><td>Premature</td></tr></table>
+<h2>Decision</h2>
+<p>Option <strong>B</strong>. CD is deferred until there is a deployment target (after W-1, the GPU decision).</p>
+<h2>Consequences</h2>
+<ul><li>New folder <code>.github/workflows/</code> (folder-structure change, recorded here). Owner for this task: backend-dev; afterwards the CEO routes changes to the right agent.</li><li>Workflows use <strong>no secrets</strong>: Postgres and Redis run as job services with throwaway passwords, and the app's own secrets are generated randomly inside the job. Real <code>.env</code> values are never needed in CI.</li><li>Only first-party <code>actions/*</code> plus <code>astral-sh/setup-uv</code>, pinned to exact versions. Workflow permissions are <code>contents: read</code>.</li><li>No voter data: <code>samples/</code> is git-ignored, so CI runs only on synthetic fixtures.</li><li>Branch protection on <code>main</code> (require the CI check to pass) is a GitHub account setting that the <strong>Admin</strong> switches on.</li><li>If the free minutes run out, runs stop (the spending limit stays at $0). No paid service is involved.</li></ul></div></body></html>

@@ -1,0 +1,50 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree — FIX-UPLOAD-1: uploads must never fail silently</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree — FIX-UPLOAD-1: uploads must never fail silently</h1>
+<p>Bug: in the dashboard an upload showed no progress and no error when Postgres was down and the API answered 500. Plan: <code>docs/plans/m3-dashboard.md</code> UI-AC5 and UI-AC10 (every screen shows error states). Branch <code>fix/upload-feedback</code>.</p>
+<p>Tests: <code>tests/frontend/unit/upload-feedback.test.tsx</code> (Vitest, MSW, controllable fake XHR in <code>tests/frontend/support/fake-xhr.ts</code>) and <code>tests/unit/api/test_dependency_outage.py</code> (pytest, no real DB or Redis). The upload surfaces covered: wizard sheet (inspect), wizard Validate sheet, new template, consent. The wizard has no video upload; the template video is the "video" case.</p>
+<pre><code>Feature: Upload feedback (frontend, per surface)
+├── Scenario: file is being sent
+│   ├── ✅ TT-UP-P1  progressbar with aria-valuemin 0, max 100, now = percent, text &quot;40%&quot;
+│   ├── ✅ TT-UP-P2  bar disappears when the upload succeeds
+├── Scenario: the upload fails
+│   ├── ❌ TT-UP-N1  500 with API body -&gt; role=alert with that message + Retry
+│   ├── ❌ TT-UP-N2  503 DB_UNAVAILABLE -&gt; API message shown
+│   ├── ❌ TT-UP-N3  503 HTML proxy page -&gt; plain words, no markup leaked, Retry
+│   ├── ❌ TT-UP-N4  network failure -&gt; &quot;could not reach the server&quot; + Retry
+│   ├── ❌ TT-UP-N5  connection dropped after progress -&gt; alert, bar cleared
+│   ├── ❌ TT-UP-N6  timeout -&gt; &quot;took too long&quot; alert + Retry
+│   ├── ❌ TT-UP-N7  Retry resends the same file; success clears the alert
+│   ├── ❌ TT-UP-N8  form stays usable, no stale success state (per-surface check)
+│   └── ❌ TT-UP-N9  repeated failure shows one alert, not a pile
+└── Scenario: edges
+    ├── ⚠️ TT-UP-E1  413 without JSON body -&gt; &quot;too large&quot;
+    ├── ⚠️ TT-UP-E2  413 with API body -&gt; API message
+    ├── ⚠️ TT-UP-E3  401 mid-upload -&gt; login screen
+    ├── ⚠️ TT-UP-E4  page left mid-upload -&gt; request aborted
+    ├── ⚠️ TT-UP-E5  double submit -&gt; one request
+    ├── ⚠️ TT-UP-E6  0-byte template video refused, no request
+    ├── ⚠️ TT-UP-E7  0-byte consent file refused, no request
+    ├── ⚠️ TT-UP-E8  Cancel on template form aborts the upload
+    └── ⚠️ TT-UP-E9  late answer after abort shows nothing
+
+Feature: Dependency outage (backend)
+├── Scenario: database unreachable (OperationalError / InterfaceError)
+│   ├── ✅ GET /templates, GET /batches, POST /templates -&gt; 503 {code DB_UNAVAILABLE, message}
+│   ├── ❌ no connection string, host, password or trace in the body or the log
+│   ├── ❌ logged at ERROR level
+│   └── ⚠️ a plain bug is still 500 INTERNAL_ERROR (no over-mapping)
+└── Scenario: queue unreachable on enqueue (redis ConnectionError, ConnectionRefusedError)
+    ├── ✅ 503 {code QUEUE_UNAVAILABLE, message}, nothing leaked
+    └── ❌ logged at ERROR level</code></pre>
+<p>Acceptance criteria map: AC1 -&gt; P1, P2; AC2 -&gt; N1-N7, E1, E2; AC3 -&gt; N8, per-surface stale checks; AC4 -&gt; backend file; AC5 -&gt; E1-E9.</p>
+<p>Implementation contract (from the tests): progress needs <code>XMLHttpRequest</code> (fetch has no upload progress); progress bar <code>role=progressbar</code> with <code>aria-valuenow</code>; Retry button named /retry/i; backend maps <code>sqlalchemy.exc.OperationalError/InterfaceError</code> to 503 DB_UNAVAILABLE and redis/connection-refused errors to 503 QUEUE_UNAVAILABLE in <code>backend/vidgen/api/errors.py</code>.</p></div></body></html>

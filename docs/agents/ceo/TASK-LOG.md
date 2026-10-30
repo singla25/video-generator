@@ -64,3 +64,9 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | DD-20 | Per-session throwaway test DBs | tester | sonnet | ✅ Done & CEO-verified @ 94e6225 (2 concurrent runs identical; protected-name guard); also fixed the tests' TS typecheck | Delegated (CEO) | — |
 | F5 | BatchDetail, Templates, History, Security | frontend-dev | sonnet | ✅ Done & CEO-verified @ 1073286 — 166/170 UI tests (4 = P10 defect + DD-18 wiring); privacy scan clean | Delegated (CEO) | — |
 | F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | Planned; F1 after F1a | Plan: yes (Admin); assignment: delegated | — |
+| M2-local | Local real AI pilot: adapters, confirm-spelling, face fix, queue fix, local-ai group | backend-dev / tester / frontend-dev | sonnet and haiku | ✅ merged in PR #5 (bf14a93); Admin reviewed the real videos: good | Yes (Admin, DD-30/31) | ✅ |
+| LB | AI label bubble then see-through bubble (DD-32, DD-36) | tester → backend-dev | haiku | ✅ merged in PR #5 and PR #7 (c3b3055) | Yes (Admin) | ✅ |
+| NG | 0.25 s gap after the name (DD-34) | tester → backend-dev | haiku | ✅ merged in PR #5 | Yes (Admin) | ✅ |
+| RM-G3 | Remove the redundant red adapter tests (DD-35) | tester | haiku | ✅ merged in PR #6 (bde91b3) | Yes (Admin approved the deletions) | ✅ |
+| G8 | Production licence gate for Demucs / face-parse / S3FD-FAN weights | backend-dev + CEO | haiku | Plan written: docs/plans/g8-licence-gate.md | Waiting for Admin approval | — |
+| CI-1 | GitHub Actions workflow (ADR-011, scope B) | backend-dev | haiku | In progress | Plan approved (DD-28) | — |

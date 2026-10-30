@@ -8,7 +8,8 @@ Usage (one process at a time, models are loaded only for Whisper, no new TTS or 
 
 ``render`` re-uses speech0.wav, synced0.mp4 and label.png left by backend/scripts/local_ai_smoke.py
 and splices with the app's FfmpegVideoEncoder and plan_timing. ``measure`` transcribes each output
-with the app's Whisper adapter and prints name end / next word start / gap. Only timings are printed.
+with the app's Whisper adapter and prints name end / next word start / gap.
+Only timings are printed.
 """
 
 from __future__ import annotations
@@ -39,7 +40,20 @@ def _adapters():  # type: ignore[no-untyped-def]
 
 def _words(adapters, video: Path):  # type: ignore[no-untyped-def]
     audio = TMP / f"{video.stem}_16k.wav"
-    smoke._run("ffmpeg", "-v", "error", "-y", "-i", str(video), "-vn", "-ac", "1", "-ar", "16000", str(audio))
+    smoke._run(
+        "ffmpeg",
+        "-v",
+        "error",
+        "-y",
+        "-i",
+        str(video),
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        str(audio),
+    )
     words = adapters.stt.transcribe(audio)
     adapters.stt.release()
     return words
@@ -79,32 +93,51 @@ def render(name: str) -> None:
     with wave.open(str(wav)) as f:
         seconds = f.getnframes() / f.getframerate()
     plan = plan_timing(
-        slot["end"] - slot["start"], settings.pause_seconds, seconds,
+        slot["end"] - slot["start"],
+        settings.pause_seconds,
+        seconds,
         TimingRules(crossfade_ms=settings.crossfade_ms),
     )
     out = TIMING / f"{ROW_ID}_{name}.mp4"
     out.unlink(missing_ok=True)
-    meta = {"creator_entity": "Local smoke test", "generated_on": date.today().isoformat(),
-            "batch_id": "local-smoke"}
+    meta = {
+        "creator_entity": "Local smoke test",
+        "generated_on": date.today().isoformat(),
+        "batch_id": "local-smoke",
+    }
     FfmpegVideoEncoder("ffmpeg", crossfade_ms=settings.crossfade_ms).render(
-        TMP / "synced0.mp4", wav, (slot["start"], slot["end"]), plan, TMP / "label.png", meta, out)
-    print(f"{name}: pause {settings.pause_seconds}, crossfade {settings.crossfade_ms} ms, "
-          f"speech {seconds:.3f}s, slot {slot['start']:.2f}-{slot['end']:.2f}, plan {plan}")
+        TMP / "synced0.mp4", wav, (slot["start"], slot["end"]), plan, TMP / "label.png", meta, out
+    )
+    print(
+        f"{name}: pause {settings.pause_seconds}, crossfade {settings.crossfade_ms} ms, "
+        f"speech {seconds:.3f}s, slot {slot['start']:.2f}-{slot['end']:.2f}, plan {plan}"
+    )
 
 
 def measure(names: list[str]) -> None:
     """Print duration/size/fps and the name-end to next-word gap for each output."""
     smoke._prepare_environment()
     _, adapters = _adapters()
-    slot = _slot()
+    _slot()  # called for its side effect: fills the slot cache if it is missing
     for name in names:
         video = TIMING / f"{ROW_ID}_{name}.mp4"
         info = smoke._probe(video)
-        fps = smoke._run("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-                         "stream=r_frame_rate", "-of", "csv=p=0", str(video)).strip()
+        fps = smoke._run(
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=r_frame_rate",
+            "-of",
+            "csv=p=0",
+            str(video),
+        ).strip()
         words = _words(adapters, video)
-        after = [w for w in words if w.end_s > slot["start"] + 0.2]
-        print(name, info, fps, [(w.text, round(w.start_s, 2), round(w.end_s, 2)) for w in words[:4]])
+        print(
+            name, info, fps, [(w.text, round(w.start_s, 2), round(w.end_s, 2)) for w in words[:4]]
+        )
 
 
 if __name__ == "__main__":

@@ -60,3 +60,4 @@ Newest first. One entry per task.
 - AI-mode badge in AppShell, Next hint, fake-mode template note, Spoken name + Confirm spelling gating Approve preview (local mode).
 - Files: api/queries.ts, api/types.ts, layout/AiModeBadge.tsx, layout/AppShell.tsx, pages/wizard/{PreviewPanel,StepUpload}.tsx, pages/templates/TemplateCard.tsx.
 - Tests: ai-mode.test.tsx 17 pass; full Vitest 330/330.
+- 2026-10-30 F-UI-controls: Overview batch controls (Delete draft, Pause/Resume, Cancel batch with confirm), draft rows read "Not started". Files: CurrentBatchPanel, RowsTable, StatusChip, OverviewPage, api/queries (useDeleteDraft). Tests: overview-batch-controls 17/17.

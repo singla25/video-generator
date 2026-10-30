@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useBatchAction, type BatchAction } from '../api/queries';
+import { useBatchAction, useDeleteDraft, type BatchAction } from '../api/queries';
 import type { Batch, BatchStatus } from '../api/types';
 import { ApiError } from '../api/client';
 import { etaLabel, formatNumber } from '../format';
+import { ConfirmDialog } from './ConfirmDialog';
 import { ProgressRing } from './ProgressRing';
 
 const BUTTON =
@@ -13,10 +15,22 @@ const MAIN_ACTION = 'block rounded-full bg-lime px-4 py-2.5 text-center font-sem
 /** Side panel: progress ring, ETA, counts and the batch controls. */
 export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: BatchStatus }) {
   const action = useBatchAction(batch.id);
+  const remove = useDeleteDraft(batch.id);
+  const [asking, setAsking] = useState<'cancel' | 'delete' | null>(null);
   const run = (name: BatchAction) => action.run(name);
+  const pending = action.isPending || remove.isPending;
   const { counts } = status;
   const isDraft = batch.status === 'DRAFT';
-  const failure = action.error instanceof ApiError ? action.error.message : 'Something went wrong.';
+  const canCancel = batch.status === 'RUNNING' || batch.status === 'PAUSED';
+  const error = action.isError ? action.error : remove.isError ? remove.error : null;
+  const failure = error instanceof ApiError ? error.message : 'Something went wrong.';
+
+  function confirm() {
+    const which = asking;
+    setAsking(null);
+    if (which === 'cancel') run('cancel');
+    if (which === 'delete') remove.run();
+  }
 
   return (
     <section data-testid="current-batch" className="min-w-0 rounded-card border bg-card p-5">
@@ -34,18 +48,29 @@ export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: Bat
           <p className="text-muted">{formatNumber(counts.skipped)} skipped</p>
         </div>
       </div>
-      {action.isError && (
+      {error && (
         <p role="alert" className="mb-3 text-sm text-status-failed">
           {failure}
         </p>
       )}
-      {!isDraft && (
+      {isDraft ? (
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={`${BUTTON} text-status-failed`}
+            disabled={pending}
+            onClick={() => setAsking('delete')}
+          >
+            Delete draft
+          </button>
+        </div>
+      ) : (
         <div className="mb-3 flex flex-wrap gap-2">
           {batch.status === 'RUNNING' && (
             <button
               type="button"
               className={BUTTON}
-              disabled={action.isPending}
+              disabled={pending}
               onClick={() => run('pause')}
             >
               Pause
@@ -55,7 +80,7 @@ export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: Bat
             <button
               type="button"
               className={BUTTON}
-              disabled={action.isPending}
+              disabled={pending}
               onClick={() => run('resume')}
             >
               Resume
@@ -64,11 +89,21 @@ export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: Bat
           <button
             type="button"
             className={BUTTON}
-            disabled={action.isPending}
+            disabled={pending}
             onClick={() => run('retry-failed')}
           >
             Retry failed
           </button>
+          {canCancel && (
+            <button
+              type="button"
+              className={BUTTON}
+              disabled={pending}
+              onClick={() => setAsking('cancel')}
+            >
+              Cancel batch
+            </button>
+          )}
         </div>
       )}
       {isDraft ? (
@@ -79,6 +114,26 @@ export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: Bat
         <Link to={`/batches/${batch.id}`} className={MAIN_ACTION}>
           View batch
         </Link>
+      )}
+      {asking === 'cancel' && (
+        <ConfirmDialog
+          title="Cancel this batch?"
+          body="Videos that are not finished yet will not be made."
+          confirmLabel="Yes, cancel batch"
+          cancelLabel="Keep running"
+          onConfirm={confirm}
+          onCancel={() => setAsking(null)}
+        />
+      )}
+      {asking === 'delete' && (
+        <ConfirmDialog
+          title="Delete this draft?"
+          body="The uploaded rows will be removed. This cannot be undone."
+          confirmLabel="Delete"
+          cancelLabel="Keep"
+          onConfirm={confirm}
+          onCancel={() => setAsking(null)}
+        />
       )}
     </section>
   );

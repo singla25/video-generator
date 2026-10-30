@@ -41,16 +41,16 @@ Feature: name gap after the new name (DD-34)
     ├── ✅ NG-O-P2 frame count = round((template + 0.25) * fps) within 1 frame
     ├── ✅ NG-O-P3 audio length equals video length within 60 ms
     ├── ✅ NG-O-P4 speech after the name is silent at 2.3-2.8 s and audible at 2.95-3.2 s
+    ├── ✅ NG-O-P5 last slot frame held: >= round(gap * fps) - 1 identical frames (5 at 25 fps) from the slot end, then motion resumes
     └── ⚠️ NG-O-E1 gap 0 keeps the template length within 50 ms
 ```
 
-## Not yet covered (open, needs a decision before the tests can be written)
+## Threshold decision (CEO, DD-34 hold)
 
-**NG-O-H1 (frame hold): not written.** The brief asks for "at least 10 consecutive frames
-starting at the slot end are pixel-identical" for a 0.25 s gap. At 25 fps, 0.25 s is about 6.25
-frames, so the hold cannot reach 10 identical frames with the specified feature. Options for the
-CEO: (a) assert at least round(gap_s * fps) = 6 identical frames, or (b) keep 10 and use a gap of
-0.4 s or more. The hold test is missing until one is chosen.
+The 10-frame figure was wrong: at 25 fps a 0.25 s gap is about 6 frames. The hold test asserts
+N = round(gap_s * fps) - 1 = 5 identical frames from the slot end (frame 50) and checks that the
+identical run ends and motion resumes. The run is measured to its end, because the last clone
+frame can equal the held frame, so a fixed "frame N+1 differs" check would be wrong.
 
 ## Conventions
 

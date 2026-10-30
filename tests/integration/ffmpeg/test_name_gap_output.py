@@ -14,6 +14,7 @@ from tests.fixtures.analysis import (
     duration_of,
     fps_of,
     frame_count,
+    frame_hashes,
     rms_dbfs,
     window,
 )
@@ -85,6 +86,28 @@ def test_speech_after_the_name_resumes_the_gap_later(
     samples = decode_pcm(out)
     assert rms_dbfs(window(samples, 2.3, 2.8)) < -40.0
     assert rms_dbfs(window(samples, 2.95, 3.2)) > -20.0
+
+
+def test_last_slot_frame_is_held_for_the_gap(
+    tmp_path: Path, encoder: FfmpegVideoEncoder, shared_template: Path
+) -> None:
+    """DD-34 positive: the frame at the slot end is held (identical frames) for the gap.
+
+    N = round(gap * fps) - 1 (5 at 25 fps). The hold ends where the picture moves again.
+    shared_template is testsrc2, which moves every frame, so the motion check below is active.
+    """
+    out = render_with_gap(tmp_path / "gap", encoder, shared_template, GAP_S)
+    fps = fps_of(shared_template)
+    needed = round(GAP_S * fps) - 1
+    slot_end_frame = round(SLOT[1] * fps)
+    hashes = frame_hashes(out)
+    held = hashes[slot_end_frame]
+    hold_end = slot_end_frame
+    while hold_end < len(hashes) and hashes[hold_end] == held:
+        hold_end += 1
+    assert hold_end - slot_end_frame >= needed, (hold_end - slot_end_frame, needed)
+    assert hold_end < len(hashes), "the picture never moves again after the slot"
+    assert len(set(hashes[hold_end : hold_end + needed])) > 1, "no motion after the hold"
 
 
 # ---- edge -----------------------------------------------------------------------------

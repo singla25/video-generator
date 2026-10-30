@@ -147,3 +147,9 @@ Newest first. One entry per task.
 - `settings.py`: `name_gap_s` (`VIDGEN_NAME_GAP_S`, default 0.25, 0-1.0). `services/render_support.py`: `RenderConfig.name_gap_s`. `worker/runner.py` and `services/render_row.py` pass it through.
 - Tests: 52 DD-34 tests in the five name-gap files. The held-frame check is relaxed by the tester (0d3ec1e): lossy H.264 keeps the clones luma-identical but not bit-identical.
 - Open: no per-template gap tuning; `timing_variants.py` lint is fixed separately.
+
+## 2026-10-30 - BB-GREEN (DD-36 see-through AI bubble)
+- `infrastructure/ffmpeg/label.py`: bubble is 48/1080 of the frame width, 12/1080 from the right and bottom edges, faint black tint (alpha 40), white ring (about 4 % of the diameter, alpha 230), white "AI" text with a soft shadow (alpha 120, 1 px at 48 px). Drawn at 4x and downscaled with LANCZOS, clipped to the circle, text centred by its ink box.
+- Band style and every public name are unchanged. The font error stays a typed DomainError with no file written.
+- Tests: the 64 DD-36 bubble tests pass (test_bubble_look, test_bubble_renderer, test_label_bubble_overlay). Full unit and integration run: 2192 passed, 2 skipped.
+- Open: the Admin still has to judge the look on the re-rendered sample row.

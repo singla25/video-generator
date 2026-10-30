@@ -136,8 +136,8 @@ Newest first. One entry per task.
 - Open: the Redis marker can outlive a finished job (harmless, row is no longer QUEUED).
 
 ## 2026-10-30 - Task TV (timing variants, DD-33)
-- Added `backend/spikes/m2_mac/timing_variants.py`: re-splices the already lip-synced row ALC1761923 (re-uses speech0.wav, synced0.mp4, label.png) with the app's `plan_timing` + `FfmpegVideoEncoder`, pause/crossfade from `VIDGEN_PAUSE_SECONDS` / `VIDGEN_CROSSFADE_MS`.
-- Outputs (git-ignored) in `backend/spikes/m2_mac/work/local_out/timing/`: ALC1761923_A/B/C.mp4. All 26.2 s, 1080x1300, 60 fps.
+- Added `backend/spikes/m2_mac/timing_variants.py`: re-splices the already lip-synced row row-1 (re-uses speech0.wav, synced0.mp4, label.png) with the app's `plan_timing` + `FfmpegVideoEncoder`, pause/crossfade from `VIDGEN_PAUSE_SECONDS` / `VIDGEN_CROSSFADE_MS`.
+- Outputs (git-ignored) in `backend/spikes/m2_mac/work/local_out/timing/`: row-1_A/B/C.mp4. All 26.2 s, 1080x1300, 60 fps.
 - Finding: the new name (0.90 s) fits the 1.0 s slot, so `pause_seconds` is never absorbed (pause_absorbed_s=0, extension_s=0). The next template word stays at 1.00 s in A, B and C; only the crossfade differs.
 - Tests added: none. Open: a longer gap needs a product change (e.g. always delay the tail).
 

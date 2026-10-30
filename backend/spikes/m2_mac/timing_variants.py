@@ -10,11 +10,13 @@ Usage (one process at a time, models are loaded only for Whisper, no new TTS or 
 and splices with the app's FfmpegVideoEncoder and plan_timing. ``measure`` transcribes each output
 with the app's Whisper adapter and prints name end / next word start / gap.
 Only timings are printed.
+Set VIDGEN_SPIKE_ROW_ID to the real row id (kept out of git) to find your local outputs.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 from datetime import date
@@ -27,7 +29,7 @@ import local_ai_smoke as smoke  # noqa: E402
 OUT = smoke.OUT_DIR
 TIMING = OUT / "timing"
 TMP = OUT / "_tmp"
-ROW_ID = "ALC1761923"
+ROW_ID = os.environ.get("VIDGEN_SPIKE_ROW_ID", "row-1")
 
 
 def _adapters():  # type: ignore[no-untyped-def]

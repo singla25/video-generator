@@ -97,6 +97,7 @@ def render(name: str) -> None:
         settings.pause_seconds,
         seconds,
         TimingRules(crossfade_ms=settings.crossfade_ms),
+        gap_s=settings.name_gap_s,
     )
     out = TIMING / f"{ROW_ID}_{name}.mp4"
     out.unlink(missing_ok=True)
@@ -110,6 +111,7 @@ def render(name: str) -> None:
     )
     print(
         f"{name}: pause {settings.pause_seconds}, crossfade {settings.crossfade_ms} ms, "
+        f"gap {settings.name_gap_s}, "
         f"speech {seconds:.3f}s, slot {slot['start']:.2f}-{slot['end']:.2f}, plan {plan}"
     )
 

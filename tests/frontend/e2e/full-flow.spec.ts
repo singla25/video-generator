@@ -141,6 +141,18 @@ test('TT-UI-E2E-P2c wizard: sheet, mapping with invalid rows, preview, approval,
   await shot(second, 'dd38-running-not-started');
   await second.goto('/');
   await shot(second, 'dd38-overview-draft');
+  // DD-38 regression: the real API sends counts but no report; resuming must not show the no-sheet message.
+  await second.goto('/batches/running');
+  await second.getByRole('link', { name: 'Continue setup' }).click();
+  await expect(second).toHaveURL(/\/batches\/new\?batch=/);
+  const steps = second.getByRole('list', { name: 'Steps' });
+  await expect(steps.getByRole('listitem').filter({ hasText: 'Slot & preview' })).toHaveAttribute(
+    'aria-current',
+    'step',
+  );
+  await expect(second.getByRole('button', { name: 'Generate preview' })).toBeVisible();
+  await expect(second.getByText('This draft has no sheet data yet')).toBeHidden();
+  await shot(second, 'dd38-resume-step3');
   await second.close();
   await page.getByRole('button', { name: 'Review and start' }).click();
   await expect(page.getByRole('dialog', { name: 'Start 3 videos?' })).toBeVisible();

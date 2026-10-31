@@ -11,7 +11,7 @@ from datetime import date, datetime
 from typing import Literal, Protocol
 from uuid import UUID
 
-from vidgen.domain.status import ApprovalFingerprint
+from vidgen.domain.status import ApprovalFingerprint, BatchListView
 
 PREVIEW_NONE = "NONE"
 PREVIEW_PENDING = "PENDING"
@@ -131,8 +131,10 @@ class BatchStore(Protocol):
         """Delete a batch; the database removes its rows."""
         ...
 
-    def list_page(self, offset: int, limit: int) -> tuple[list[BatchRecord], int]:
-        """Newest-first page of batches and the total count."""
+    def list_page(
+        self, offset: int, limit: int, view: BatchListView = BatchListView.ALL
+    ) -> tuple[list[BatchRecord], int]:
+        """Newest-first page of the batches in ``view`` and the total count of that view."""
         ...
 
     def by_idempotency_key(self, key: str) -> UUID | None:
@@ -161,6 +163,13 @@ class BatchStore(Protocol):
 
     def queued_row_ids(self, batch_id: UUID) -> list[UUID]:
         """Ids of QUEUED rows in sheet order."""
+        ...
+
+    def skip_unselected(self, batch_id: UUID, limit: int) -> int:
+        """Mark QUEUED rows after the first ``limit`` (sheet order) SKIPPED as NOT_SELECTED.
+
+        Returns how many rows were skipped.
+        """
         ...
 
     def cancel_queued(self, batch_id: UUID, finished_at: datetime) -> int:

@@ -32,6 +32,7 @@ class FailureCode(StrEnum):
     INVALID_FOLDER_NAME = "INVALID_FOLDER_NAME"
     NO_COMPLETED_ROWS = "NO_COMPLETED_ROWS"
     IDEMPOTENCY_KEY_CONFLICT = "IDEMPOTENCY_KEY_CONFLICT"
+    NOT_SELECTED = "NOT_SELECTED"
 
 
 # The single place for user-facing wording. ``{earlier_row}`` is filled by plain_message.
@@ -65,6 +66,7 @@ _MESSAGES: dict[FailureCode, str] = {
     FailureCode.INVALID_FOLDER_NAME: "This folder name is not allowed.",
     FailureCode.NO_COMPLETED_ROWS: "There are no finished videos to download yet.",
     FailureCode.IDEMPOTENCY_KEY_CONFLICT: "This request key was already used for another batch.",
+    FailureCode.NOT_SELECTED: "Not selected: outside the number of videos requested.",
 }
 
 _RETRYABLE = frozenset({FailureCode.RENDER_TIMEOUT, FailureCode.STORAGE_ERROR})

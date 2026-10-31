@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StrictInt, StringConstraints
 
 from vidgen.domain.stats import StatusCounts
 from vidgen.ports.batches import DayStat, RowView
@@ -18,9 +18,14 @@ MAX_SPOKEN_NAME_CHARS = 200
 
 
 class StartRequest(BaseModel):
-    """Optional body of the start request."""
+    """Optional body of the start request.
+
+    ``limit`` is the number of videos to make (the first rows in sheet order); it must be a whole
+    number of at least 1 and is refused otherwise (DD-37).
+    """
 
     folder_name: str | None = Field(default=None, max_length=MAX_FOLDER_INPUT_CHARS)
+    limit: Annotated[StrictInt, Field(ge=1)] | None = None
 
 
 class MappingBody(BaseModel):

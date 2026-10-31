@@ -20,6 +20,18 @@ class PreconditionError(DomainError):
         super().__init__(code)
 
 
+class TemplateInUseError(Exception):
+    """The template is used by batches, so it cannot be deleted (maps to HTTP 409)."""
+
+    CODE = "TEMPLATE_IN_USE"
+
+    def __init__(self, batches: int) -> None:
+        self.code = self.CODE
+        noun = "batch" if batches == 1 else "batches"
+        self.message = f"This template is used by {batches} {noun}. Delete those batches first."
+        super().__init__(self.message)
+
+
 class BatchNotFoundError(TemplateNotFoundError):
     """The requested batch (or row, or file) does not exist."""
 

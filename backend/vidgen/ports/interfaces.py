@@ -5,7 +5,7 @@ Signatures are sketches from the M1 plan; later slices may refine them.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any, BinaryIO, Protocol
@@ -169,8 +169,8 @@ class Cipher(Protocol):
 class TemplateRepository(Protocol):
     """Persistence for template profiles and their consent records."""
 
-    def get(self, template_id: UUID) -> TemplateRecord | None:
-        """Return the template or None."""
+    def get(self, template_id: UUID, *, lock: bool = False) -> TemplateRecord | None:
+        """Return the template or None; ``lock`` takes a row lock for the transaction."""
         ...
 
     def list(self) -> list[TemplateRecord]:
@@ -189,6 +189,18 @@ class TemplateRepository(Protocol):
         self, campaign_id: UUID, template_id: UUID, file_key: str, content_type: str
     ) -> None:
         """Record a confirmed consent file for a template."""
+        ...
+
+    def batch_count(self, template_id: UUID) -> int:
+        """How many batches of any status use the template."""
+        ...
+
+    def consent_file_keys(self, template_id: UUID) -> Sequence[str]:
+        """Storage keys of every consent file recorded for the template."""
+        ...
+
+    def delete(self, template_id: UUID) -> None:
+        """Delete the template; the database removes its consent records."""
         ...
 
 

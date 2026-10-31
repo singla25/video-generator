@@ -23,6 +23,7 @@ from vidgen.services.errors import (
     InvalidInputError,
     PreconditionError,
     StateConflictError,
+    TemplateInUseError,
     TemplateNotFoundError,
 )
 
@@ -39,6 +40,7 @@ INVALID_STATE = "INVALID_STATE"
 PREVIEW_NOT_READY = "PREVIEW_NOT_READY"
 PREVIEW_NOT_APPROVED = "PREVIEW_NOT_APPROVED"
 SPELLING_NOT_CONFIRMED = "SPELLING_NOT_CONFIRMED"
+TEMPLATE_IN_USE = "TEMPLATE_IN_USE"
 DB_UNAVAILABLE = "DB_UNAVAILABLE"
 QUEUE_UNAVAILABLE = "QUEUE_UNAVAILABLE"
 HTTP_UNAVAILABLE = 503
@@ -114,6 +116,11 @@ def _state_conflict(_: Request, exc: Exception) -> JSONResponse:
     return error_response(409, error.code, API_MESSAGES[error.code])
 
 
+def _template_in_use(_: Request, exc: Exception) -> JSONResponse:
+    error = cast(TemplateInUseError, exc)
+    return error_response(409, error.code, error.message)
+
+
 def _not_found(_: Request, __: Exception) -> JSONResponse:
     return error_response(404, NOT_FOUND, API_MESSAGES[NOT_FOUND])
 
@@ -158,6 +165,7 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(DomainError, _domain_error)
     app.add_exception_handler(StateConflictError, _state_conflict)
     app.add_exception_handler(TemplateNotFoundError, _not_found)
+    app.add_exception_handler(TemplateInUseError, _template_in_use)
     app.add_exception_handler(InvalidInputError, _invalid_input)
     app.add_exception_handler(RequestValidationError, _invalid_input)
     app.add_exception_handler(StarletteHTTPException, _http_error)

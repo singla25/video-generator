@@ -54,6 +54,13 @@ def get_template(template_id: UUID, request: Request) -> dict[str, Any]:
     return template_json(container(request).templates.get(template_id))
 
 
+@router.delete("/{template_id}", status_code=204)
+def delete_template(template_id: UUID, request: Request) -> Response:
+    """Delete the template, its consent records and files; refused while a batch uses it."""
+    container(request).templates.delete(template_id)
+    return Response(status_code=204)
+
+
 @router.get("/{template_id}/video")
 def template_video(
     template_id: UUID,

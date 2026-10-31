@@ -150,8 +150,18 @@ class BatchFlow:
 
     # ---- start -------------------------------------------------------------------------
 
-    def start(self, batch_id: UUID, idempotency_key: str, folder_name: str | None) -> BatchView:
-        """Start a batch once; repeats and re-starts return the current state (B11, C2)."""
+    def start(
+        self,
+        batch_id: UUID,
+        idempotency_key: str,
+        folder_name: str | None,
+        limit: int | None = None,
+    ) -> BatchView:
+        """Start a batch once; repeats and re-starts return the current state (B11, C2).
+
+        With ``limit`` the first rows in sheet order stay QUEUED and the others are SKIPPED
+        (NOT_SELECTED); the folder name counts only the selected rows (DD-37).
+        """
         ctx = self._ctx
         with ctx.uow() as uow:
             batch = load_batch(uow, batch_id, lock=True)
@@ -166,7 +176,9 @@ class BatchFlow:
             current = fingerprint_for(load_template(uow, batch.template_id), batch.mapping)
             if not can_start(preview_gate(batch), current):
                 raise StateConflictError(StateConflictError.PREVIEW_NOT_APPROVED)
-            folder = self._pick_folder(uow.batches.folders_in_use(), folder_name, live_rows)
+            skipped = uow.batches.skip_unselected(batch_id, limit) if limit is not None else 0
+            row_ids = uow.batches.queued_row_ids(batch_id)
+            folder = self._pick_folder(uow.batches.folders_in_use(), folder_name, len(row_ids))
             now = ctx.clock.now()
             batch = replace(
                 batch,
@@ -176,8 +188,15 @@ class BatchFlow:
                 folder_name=folder,
             )
             uow.batches.save(batch)
-            row_ids = uow.batches.queued_row_ids(batch_id)
-            audit(ctx, uow, "BATCH_STARTED", batch_id=str(batch_id), queued_rows=len(row_ids))
+            audit(
+                ctx,
+                uow,
+                "BATCH_STARTED",
+                batch_id=str(batch_id),
+                queued_rows=len(row_ids),
+                limit=limit,
+                skipped_rows=skipped,
+            )
             uow.commit()
             view = describe(uow, batch, queued_rows=len(row_ids))
         ctx.queue.enqueue_rows(batch_id, row_ids)

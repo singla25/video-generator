@@ -8,6 +8,7 @@ from typing import BinaryIO
 from uuid import UUID
 
 from vidgen.domain.codes import FailureCode
+from vidgen.domain.status import BatchListView
 from vidgen.ports.batches import DayStat
 from vidgen.services.batch_create import BatchCreator, MappingRequest
 from vidgen.services.batch_downloads import BatchDownloads, ZipPlan
@@ -72,9 +73,15 @@ class BatchService:
         """Storage key of the rendered preview."""
         return self._flow.preview_key(batch_id)
 
-    def start(self, batch_id: UUID, idempotency_key: str, folder_name: str | None) -> BatchView:
-        """Start the batch."""
-        return self._flow.start(batch_id, idempotency_key, folder_name)
+    def start(
+        self,
+        batch_id: UUID,
+        idempotency_key: str,
+        folder_name: str | None,
+        limit: int | None = None,
+    ) -> BatchView:
+        """Start the batch; with ``limit`` only the first rows in sheet order are rendered."""
+        return self._flow.start(batch_id, idempotency_key, folder_name, limit)
 
     def pause(self, batch_id: UUID) -> BatchView:
         """Pause the batch."""
@@ -101,9 +108,11 @@ class BatchService:
         """One batch."""
         return self._queries.get(batch_id)
 
-    def history(self, page: int, page_size: int) -> tuple[list[BatchView], int]:
-        """Batch history page."""
-        return self._queries.history(page, page_size)
+    def history(
+        self, page: int, page_size: int, view: BatchListView = BatchListView.ALL
+    ) -> tuple[list[BatchView], int]:
+        """Batch history page, filtered by ``view``."""
+        return self._queries.history(page, page_size, view)
 
     def status(self, batch_id: UUID) -> BatchStatus:
         """Live status of a batch."""

@@ -3,6 +3,7 @@ Tests: tests/unit/domain/test_validate_slots.py, tests/unit/domain/test_template
        tests/unit/services/test_fingerprint_extra_slots.py,
        tests/integration/db/test_template_extra_slots_repository.py,
        tests/integration/db/test_migration_0002_extra_slots.py,
+       tests/integration/db/test_row_store_template_slots.py,
        tests/integration/api/test_template_extra_slots.py
 Updated: tests/unit/domain/test_codes.py (SLOTS_INVALID in the code set)
 
@@ -52,9 +53,17 @@ slots per request, video duration 4.0 s. Float-safe boundary values are used on 
 │   │   └── MS-DB-P4 the stored JSON is a list of [start, end] pairs
 │   ├── ❌ Negative
 │   │   └── MS-DB-N1 an unknown template id still reads as None (no crash on the new column)
-│   └── ⚠️ Edge
-│       ├── MS-DB-E1 NULL in the column reads as ()
-│       └── MS-DB-E2 an empty JSON list in the column reads as ()
+│   ├── ⚠️ Edge
+│   │   ├── MS-DB-E1 NULL in the column reads as ()
+│   │   └── MS-DB-E2 an empty JSON list in the column reads as ()
+│
+├── Scenario: The render job's template snapshot (row store, SqlRowStore.preview_job)
+│   ├── ✅ Positive
+│   │   ├── MS-DB-R1 stored extra slots reach the job as a tuple of float tuples
+│   │   ├── MS-DB-R2 job slots are the primary and the extras sorted by start
+│   │   └── MS-DB-R3 no extras: extra_slots () and slots is the primary only
+│   └── ❌ Negative
+│       └── MS-DB-R4 no primary slot: slots is ()
 │
 ├── Scenario: Migration 0002 adds the extra_slots column
 │   ├── ✅ Positive

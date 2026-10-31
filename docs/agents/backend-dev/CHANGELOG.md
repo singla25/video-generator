@@ -209,3 +209,17 @@ Newest first. One entry per task.
 - Transcript (app STT, output row 1): the name, then `जी` at 5.24-5.42 s; `आप से कहता हूँ` follows at 5.42 s, template 5.26 s. Words after the slot sit about 0.24 s later than in the template (`सब` 6.40 vs 6.64, `सिंगला` 11.24 vs 11.48, last `पर` 12.20 vs 12.44). Words before the slot are unchanged within STT noise.
 - Frame mean abs diff (0-255), whole / face (x 200-880, y 300-900): before 1.84 / 1.95; inside 3.03 / 3.04; after 3.47 / 4.34. The after pair is the 0.25 s shift: output at 8.0 s against the template at 7.75 s gives face 1.78.
 - Open: the before pair is not ~0 (about 1.9), most likely from the full re-encode; not measured separately. Whisper's Hindi is weak on both transcripts, so word text is only a rough check. Outputs in `backend/spikes/m2_mac/work/local_out/mid_slot/` (git-ignored, not committed).
+
+## 2026-10-31 - BE-A-GREEN (DD-40 several name slots: model, db column, migration 0002, api)
+- `domain/codes.py`: `FailureCode.SLOTS_INVALID` with the message "The name slots overlap or are too close."
+- `domain/slot_match.py`: `MAX_SLOTS = 5`, `MIN_SLOT_GAP_S = 0.2`, `validate_slots(slots, duration_s)` (each slot through `validate_slot` first, then the count, then the gap between neighbours in start order; set errors are `SLOTS_INVALID`), and `all_slots(primary, extra)` (sorted by start, () without a primary).
+- `ports/models.py`: `TemplateRecord.extra_slots` (default ()) and property `slots`. `ports/rows.py`: `TemplateInfo.extra_slots` (default ()) and property `slots`.
+- `domain/status.py`: `ApprovalFingerprint.extra_slots` (default ()). `services/batch_rules.py`: `fingerprint_for` fills it from the template.
+- `infrastructure/db/models.py`: nullable JSON `templates.extra_slots`. New `infrastructure/db/slot_json.py` (list of [start, end] <-> tuple of float pairs; None and [] read as ()).
+- `migrations/versions/0002_template_extra_slots.py`: revision 0002, down_revision 0001; upgrade adds the nullable JSONB column, downgrade drops it. Not run anywhere.
+- `infrastructure/db/repositories.py`, `infrastructure/db/row_store.py`: map the column (template record, row-job `TemplateInfo`). `infrastructure/db/batch_documents.py`: the stored fingerprint gets `extra_slots`; documents without the key load as ().
+- `services/templates.py`: `set_slot(..., extra_slots=())` validates the primary and the whole set, stores the extras sorted; `analyse` clears them.
+- `api/schemas.py`: `SlotRequest.extra_slots` (list of two finite numbers, max 4, default []); `template_json` gives `extra_slots` and `slots`. `api/routes_templates.py`: PUT passes the extras.
+- Tests: 128 of 128 target tests pass. Unit and integration (excluding test_worker.py): 2618 passed, 1 skipped; 25 failed, all in the pipeline tests of the other agent (test_render_row_multi_slot.py, test_render_row_multi_slot_engine.py, test_lipsync_key_from.py).
+- The row-store test defect (shared cipher) was fixed by commit 724234e (test only). The row-store tests now pass.
+- Mypy strict: errors only in `infrastructure/local_ai/loaders.py` (pre-existing 8). Layering grep (services, domain importing infrastructure): nothing.

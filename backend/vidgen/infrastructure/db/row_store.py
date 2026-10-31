@@ -19,6 +19,7 @@ from vidgen.domain.outcomes import RowOutcomeKind
 from vidgen.infrastructure.db.batch_documents import to_record
 from vidgen.infrastructure.db.batch_store import SqlBatchStore
 from vidgen.infrastructure.db.models import Batch, BatchRow, Template
+from vidgen.infrastructure.db.slot_json import slots_from_json
 from vidgen.ports.rows import (
     ClaimAction,
     ClaimDecision,
@@ -144,6 +145,7 @@ class SqlRowStore:
                 slot=None if start is None or end is None else (start, end),
                 slot_confirmed=template.slot_confirmed,
                 consent_confirmed=template.consent_confirmed,
+                extra_slots=slots_from_json(template.extra_slots),
             ),
         )
 

@@ -7,6 +7,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from vidgen.domain.slot_match import Slot, all_slots
+
 
 @dataclass(frozen=True)
 class SheetRow:
@@ -63,6 +65,7 @@ class TemplateRecord:
     analysed_at: datetime | None = None
     consent_confirmed: bool = False
     created_at: datetime | None = None
+    extra_slots: tuple[Slot, ...] = ()
 
     @property
     def slot(self) -> tuple[float, float] | None:
@@ -70,6 +73,11 @@ class TemplateRecord:
         if self.slot_start_s is None or self.slot_end_s is None:
             return None
         return (self.slot_start_s, self.slot_end_s)
+
+    @property
+    def slots(self) -> tuple[Slot, ...]:
+        """Every slot sorted by start: the primary plus the extras; () without a primary."""
+        return all_slots(self.slot, self.extra_slots)
 
     @property
     def usable(self) -> bool:

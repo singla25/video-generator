@@ -128,6 +128,8 @@ class ApprovalFingerprint:
     slot_end_s: float
     template_id: str
     mapping: tuple[int | None, ...]
+    # Defaulted so fingerprints stored before several slots existed still load (DD-40).
+    extra_slots: tuple[tuple[float, float], ...] = ()
 
 
 @dataclass(frozen=True)

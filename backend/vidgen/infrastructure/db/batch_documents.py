@@ -12,6 +12,7 @@ from uuid import UUID
 
 from vidgen.domain.status import ApprovalFingerprint
 from vidgen.infrastructure.db.models import Batch
+from vidgen.infrastructure.db.slot_json import slots_from_json, slots_to_json
 from vidgen.ports.batches import BatchRecord, MappingRecord, PreviewRecord
 
 if TYPE_CHECKING:
@@ -26,14 +27,20 @@ def _fingerprint_json(fp: ApprovalFingerprint | None) -> dict[str, Any] | None:
         "slot_end_s": fp.slot_end_s,
         "template_id": fp.template_id,
         "mapping": list(fp.mapping),
+        "extra_slots": slots_to_json(fp.extra_slots),
     }
 
 
 def _fingerprint_from(data: dict[str, Any] | None) -> ApprovalFingerprint | None:
     if data is None:
         return None
+    # Documents stored before several slots existed have no "extra_slots" key: they read as ().
     return ApprovalFingerprint(
-        data["slot_start_s"], data["slot_end_s"], data["template_id"], tuple(data["mapping"])
+        data["slot_start_s"],
+        data["slot_end_s"],
+        data["template_id"],
+        tuple(data["mapping"]),
+        extra_slots=slots_from_json(data.get("extra_slots")),
     )
 
 

@@ -70,3 +70,5 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | RM-G3 | Remove the redundant red adapter tests (DD-35) | tester | haiku | ✅ merged in PR #6 (bde91b3) | Yes (Admin approved the deletions) | ✅ |
 | G8 | Production licence gate for Demucs / face-parse / S3FD-FAN weights | backend-dev + CEO | haiku | Plan written: docs/plans/g8-licence-gate.md | Waiting for Admin approval | — |
 | CI-1 | GitHub Actions workflow (ADR-011, scope B) | backend-dev | haiku | In progress | Plan approved (DD-28) | — |
+| DD37-BE | Backend: batch views filter, start limit, template delete | tester → backend-dev | haiku | In progress | Yes (Admin, DD-37) | — |
+| DD37-FE | Dashboard: batch list pages, start limit step, delete template, new template form | tester → frontend-dev | haiku | In progress | Yes (Admin, DD-37) | — |

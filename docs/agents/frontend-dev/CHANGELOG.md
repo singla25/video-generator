@@ -61,3 +61,4 @@ Newest first. One entry per task.
 - Files: api/queries.ts, api/types.ts, layout/AiModeBadge.tsx, layout/AppShell.tsx, pages/wizard/{PreviewPanel,StepUpload}.tsx, pages/templates/TemplateCard.tsx.
 - Tests: ai-mode.test.tsx 17 pass; full Vitest 330/330.
 - 2026-10-30 F-UI-controls: Overview batch controls (Delete draft, Pause/Resume, Cancel batch with confirm), draft rows read "Not started". Files: CurrentBatchPanel, RowsTable, StatusChip, OverviewPage, api/queries (useDeleteDraft). Tests: overview-batch-controls 17/17.
+- 2026-10-31 F-PROG: preview progress list (Preparing, Speaking the name, Matching the lips, Finishing), local first-run note, mode-aware slow warning (30 s fake, 180 s local), fake-AI note in Preview panel. Files: config.ts, api/types.ts, pages/wizard/{PreviewPanel,PreviewProgress,PreviewNotes}.tsx. Tests: preview-progress.test.tsx 55/55; full Vitest 402/402.

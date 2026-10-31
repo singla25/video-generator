@@ -106,6 +106,11 @@ export function rowsPage(rows: Json[], page = 1, pageSize = 50, total = rows.len
   };
 }
 
+/** One page of GET /batches. `total` mirrors the batches given; pages are the caller's choice. */
+export function batchesPage(batches: Json[], page = 1, totalPages = 1): Json {
+  return { batches, page, page_size: 50, total: batches.length, total_pages: totalPages };
+}
+
 export function template(over: Json = {}): Json {
   return {
     id: IDS.template,

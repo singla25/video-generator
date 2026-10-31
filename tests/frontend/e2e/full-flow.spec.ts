@@ -43,7 +43,10 @@ test('TT-UI-E2E-P2a upload a template and its consent on the Templates page', as
     .getByRole('link', { name: 'Templates' })
     .click();
   await page.getByRole('button', { name: 'New template' }).click();
-  await page.getByLabel('Template video').setInputFiles(join(FIXTURES, 'template.mp4'));
+  await page
+    .getByLabel('Template video')
+    .locator('input[type="file"]')
+    .setInputFiles(join(FIXTURES, 'template.mp4'));
   await page.getByLabel('Word to replace').fill('Rahul');
   await page.getByRole('button', { name: 'Upload template' }).click();
   const card = page.getByTestId('template-card').filter({ hasText: 'Rahul' });
@@ -165,9 +168,12 @@ test('TT-UI-E2E-N3 a sheet chosen as a template is refused on the client with a 
   await login(page);
   await go(page, '/templates');
   await page.getByRole('button', { name: 'New template' }).click();
-  await page.getByLabel('Template video').setInputFiles(join(FIXTURES, 'sheet.csv'));
+  await page
+    .getByLabel('Template video')
+    .locator('input[type="file"]')
+    .setInputFiles(join(FIXTURES, 'sheet.csv'));
   await page.getByLabel('Word to replace').fill('Zed');
-  await expect(page.getByText('Use an MP4, MOV, MKV or WebM video.')).toBeVisible();
+  await expect(page.getByText('Choose a video file.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Upload template' })).toBeDisabled();
 });
 
@@ -179,7 +185,10 @@ test('TT-UI-E2E-N4 a corrupt .mp4 is refused by the server and no template card 
   await expect(page.getByTestId('template-card').first()).toBeVisible();
   const before = await page.getByTestId('template-card').count();
   await page.getByRole('button', { name: 'New template' }).click();
-  await page.getByLabel('Template video').setInputFiles(join(FIXTURES, 'corrupt.mp4'));
+  await page
+    .getByLabel('Template video')
+    .locator('input[type="file"]')
+    .setInputFiles(join(FIXTURES, 'corrupt.mp4'));
   await page.getByLabel('Word to replace').fill('Zed');
   await page.getByRole('button', { name: 'Upload template' }).click();
   await expect(page.getByRole('alert')).toBeVisible();

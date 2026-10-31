@@ -172,3 +172,8 @@ Newest first. One entry per task.
 - No migration, no dependency. Target tests: 57 passed (test_batch_views, test_batch_start_limit, test_template_delete).
 - Open: two existing tests conflict with DD-37 and were left unchanged (tests/ is not backend-dev's): tests/unit/domain/test_codes.py::test_failure_code_set_matches_requirements_exactly (exact code set, now + NOT_SELECTED) and tests/integration/api/test_template_profile.py::test_the_slot_cannot_be_changed_through_the_template_resource[DELETE] (expects 404/405, now 204).
 - Open: plan AC1 says `all` excludes DRAFT and CANCELLED, but test_view_all_lists_every_batch_in_every_state expects them; implemented per the test (unfiltered).
+
+## 2026-10-31 - DEMO-TEMPLATE (DD-39 synthetic marketing template, spike)
+- `backend/spikes/m2_mac/make_marketing_template.py`: builds a synthetic Hindi marketing template with the name spoken in the middle (Lekha audio, MuseTalk lip sync of `sun.mp4`, Pillow headline, app Whisper for the name span). Spike only: no product code, no dependency, no migration. Outputs go to the git-ignored `work/marketing_demo/` folder.
+- Result: 12.8 s, 1080x1300, 60 fps, H.264 yuv420p, AAC. Whisper misspelt the name (`सल्मान`), so the slot came from the synthesized parts: 4.7-5.9 s (method noted in the README). Whisper's own word times put the name at 4.5-5.3 s; the Admin should check the slot in the form before use.
+- Open: the parts-based span and the Whisper span differ by 0.3-0.6 s; the frame check is the tie-breaker.

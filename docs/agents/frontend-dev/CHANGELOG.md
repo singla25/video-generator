@@ -84,4 +84,5 @@ Newest first. One entry per task.
 - Wizard resume (`?batch=`): DRAFT with sheet data opens step 3 (also when approved; Next goes to step 4, as before); 404 shows the API message as an alert with Back to Overview; a non-draft shows "This batch can't be continued."; no sheet data shows the message with Delete draft.
 - Files: api/queries.ts (useDraftBatches, useDeleteDraft onDone), components/{DeleteDraftDialog,DraftsSection,KpiCards,CurrentBatchPanel}.tsx, pages/{BatchListPage,OverviewPage,WizardPage}.tsx, pages/wizard/{PreviewPanel,NoSheetDraft,resume}.ts(x).
 - Tests: full Vitest 544/544; typecheck, lint, format:check, build green. No test edited.
+- 2026-10-31 FE-GREEN2 follow-up: the real GET has no `report`, only `counts`. Resume now counts valid rows as report.valid_rows when a report exists, else counts.total - counts.skipped; no sheet data only below 1; otherwise step 3 with a report built from the counts. Files: pages/wizard/resume.ts. Tests: full Vitest 547/547; typecheck, lint, format:check, build green.
 - Open: Overview rows table keeps its own draft labels (unchanged); docs/html not regenerated (outside this task's paths).

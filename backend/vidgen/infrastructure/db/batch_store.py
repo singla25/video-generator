@@ -19,7 +19,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from vidgen.domain.codes import DomainError, FailureCode
+from vidgen.domain.status import BatchListView
 from vidgen.infrastructure.db.batch_documents import apply_to_row, to_record
+from vidgen.infrastructure.db.batch_limit_store import BatchLimitMixin
+from vidgen.infrastructure.db.batch_list_filter import view_condition
 from vidgen.infrastructure.db.batch_stats_store import BatchStatsMixin
 from vidgen.infrastructure.db.models import Batch, BatchRow
 from vidgen.ports.batches import (
@@ -37,7 +40,7 @@ FINISHED_STATUSES = ("COMPLETED", "CANCELLED")
 FALLBACK_FAILURE_CODE = FailureCode.INTERNAL_ERROR.value
 
 
-class SqlBatchStore(BatchStatsMixin):
+class SqlBatchStore(BatchStatsMixin, BatchLimitMixin):
     """Batches and rows in Postgres."""
 
     def __init__(self, session: Session, cipher: AesGcmCipher) -> None:
@@ -73,11 +76,18 @@ class SqlBatchStore(BatchStatsMixin):
         """Delete a batch; the database cascades to its rows."""
         self._session.execute(delete(Batch).where(Batch.id == batch_id))
 
-    def list_page(self, offset: int, limit: int) -> tuple[list[BatchRecord], int]:
-        """Newest-first page of batches and the total."""
+    def list_page(
+        self, offset: int, limit: int, view: BatchListView = BatchListView.ALL
+    ) -> tuple[list[BatchRecord], int]:
+        """Newest-first page of the batches in ``view`` and the total of that view."""
+        condition = view_condition(view)
         query = select(Batch).order_by(Batch.created_at.desc(), Batch.id.desc())
+        count = select(func.count()).select_from(Batch)
+        if condition is not None:
+            query = query.where(condition)
+            count = count.where(condition)
         rows = self._session.scalars(query.offset(offset).limit(limit))
-        total = self._session.execute(select(func.count()).select_from(Batch)).scalar_one()
+        total = self._session.execute(count).scalar_one()
         return [to_record(r, self._cipher) for r in rows], int(total)
 
     def by_idempotency_key(self, key: str) -> UUID | None:

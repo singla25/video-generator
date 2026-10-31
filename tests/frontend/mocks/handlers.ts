@@ -44,6 +44,7 @@ export const handlers = [
     HttpResponse.json({ templates: [template(), TEMPLATE_NO_CONSENT] }),
   ),
   http.get("*/templates/:id", () => HttpResponse.json(template())),
+  http.delete("*/templates/:id", () => new HttpResponse(null, { status: 204 })),
   http.get("*/batches", () =>
     HttpResponse.json({
       batches: [batch()],
@@ -58,5 +59,6 @@ export const handlers = [
     HttpResponse.json(rowsPage(ROWS_BY_STATUS)),
   ),
   http.get("*/batches/:id/report", () => HttpResponse.json(report())),
+  http.post("*/batches/:id/start", () => HttpResponse.json(batch())),
   http.get("*/batches/:id", () => HttpResponse.json(batch())),
 ];

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -58,9 +59,13 @@ class SqlTemplateRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get(self, template_id: UUID) -> TemplateRecord | None:
-        """Return the template or None."""
-        row = self._session.get(Template, template_id)
+    def get(self, template_id: UUID, *, lock: bool = False) -> TemplateRecord | None:
+        """Return the template or None; ``lock`` takes a row lock for the transaction."""
+        if lock:
+            query = select(Template).where(Template.id == template_id).with_for_update()
+            row = self._session.execute(query).scalar_one_or_none()
+        else:
+            row = self._session.get(Template, template_id)
         return None if row is None else _to_record(row)
 
     def list(self) -> list[TemplateRecord]:
@@ -97,6 +102,20 @@ class SqlTemplateRepository:
             )
         )
         self._session.flush()
+
+    def batch_count(self, template_id: UUID) -> int:
+        """How many batches of any status use the template."""
+        query = select(func.count()).select_from(Batch).where(Batch.template_id == template_id)
+        return int(self._session.execute(query).scalar_one())
+
+    def consent_file_keys(self, template_id: UUID) -> Sequence[str]:
+        """Storage keys of every consent file recorded for the template."""
+        query = select(ConsentRecord.file_key).where(ConsentRecord.template_id == template_id)
+        return list(self._session.scalars(query))
+
+    def delete(self, template_id: UUID) -> None:
+        """Delete the template; the database cascades to its consent records."""
+        self._session.execute(delete(Template).where(Template.id == template_id))
 
 
 class AuditRepository:

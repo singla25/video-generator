@@ -35,6 +35,15 @@ class BatchState(StrEnum):
     CANCELLED = "CANCELLED"
 
 
+class BatchListView(StrEnum):
+    """Filters of the batch list: ALL lists everything, the others follow the dashboard pages."""
+
+    ALL = "all"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class BatchAction(StrEnum):
     """Operations that move a batch between states."""
 

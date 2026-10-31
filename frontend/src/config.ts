@@ -1,6 +1,9 @@
 /** Live-data polling interval for running batches (milliseconds). */
 export const POLL_INTERVAL_MS = 2000;
 
+/** The Running batches list refreshes this often (milliseconds). */
+export const BATCH_LIST_POLL_INTERVAL_MS = 5 * 1000;
+
 /** Duration of the KPI count-up animation (milliseconds). */
 export const COUNT_UP_DURATION_MS = 800;
 

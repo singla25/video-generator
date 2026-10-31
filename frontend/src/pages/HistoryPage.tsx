@@ -3,21 +3,14 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { apiFetch } from '../api/client';
-import { useTemplates } from '../api/queries';
+import { useTemplateNames } from '../api/queries';
 import type { BatchList } from '../api/types';
+import { Pager } from '../components/Pager';
 import { EmptyState, ErrorState, Skeleton } from '../components/states';
-import { formatNumber } from '../format';
+import { formatDate, formatNumber } from '../format';
 
 const PAGE_SIZE = 50;
 const HEADERS = ['Date', 'Batch', 'Template', 'Total', 'Success rate'];
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
 
 function formatRate(rate: number | null): string {
   return rate === null || !Number.isFinite(rate) ? '-' : `${Math.round(rate * 100)} %`;
@@ -26,13 +19,12 @@ function formatRate(rate: number | null): string {
 /** Past batches, newest first, each linking to its detail page. */
 export function HistoryPage() {
   const [page, setPage] = useState(1);
-  const templates = useTemplates();
+  const names = useTemplateNames();
   const query = useQuery({
     queryKey: ['batches', 'history', page],
     queryFn: () => apiFetch<BatchList>(`/batches?page=${page}&page_size=${PAGE_SIZE}`),
     placeholderData: keepPreviousData,
   });
-  const names = new Map((templates.data?.templates ?? []).map((t) => [t.id, t.original_name]));
 
   if (query.isPending) return <Skeleton className="h-72" />;
   if (query.isError)
@@ -70,25 +62,7 @@ export function HistoryPage() {
           </tbody>
         </table>
       </div>
-      <div className="mt-4 flex items-center justify-end gap-3 text-sm">
-        <button
-          type="button"
-          className="rounded-full border px-3 py-1 disabled:opacity-50"
-          disabled={page <= 1}
-          onClick={() => setPage(page - 1)}
-        >
-          Previous page
-        </button>
-        <span>{`Page ${query.data.page} of ${pages}`}</span>
-        <button
-          type="button"
-          className="rounded-full border px-3 py-1 disabled:opacity-50"
-          disabled={page >= pages}
-          onClick={() => setPage(page + 1)}
-        >
-          Next page
-        </button>
-      </div>
+      <Pager page={query.data.page} pages={pages} onPage={setPage} />
     </section>
   );
 }

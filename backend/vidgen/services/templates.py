@@ -18,7 +18,13 @@ from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.domain.slot_match import select_target_word, validate_slot
 from vidgen.ports import Clock, SpeechToText, Storage, TemplateRecord, UnitOfWork, VideoProbe
 from vidgen.services.audit import ACTOR_ADMIN, UowFactory
-from vidgen.services.errors import InvalidInputError, PreconditionError, TemplateNotFoundError
+from vidgen.services.errors import (
+    InvalidInputError,
+    PreconditionError,
+    TemplateInUseError,
+    TemplateNotFoundError,
+)
+from vidgen.services.storage_cleanup import delete_stored
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +71,23 @@ class TemplateService:
             return uow.templates.list()
 
     # ---- commands ----------------------------------------------------------------------
+
+    def delete(self, template_id: UUID) -> None:
+        """Delete an unused template with its consent records and stored files (DD-37).
+
+        The in-use check runs under the template's row lock, before any row or file is removed.
+        Files are removed only after the commit, so a refused delete never touches storage.
+        """
+        with self._uow() as uow:
+            template = self._load(uow, template_id, lock=True)
+            in_use = uow.templates.batch_count(template_id)
+            if in_use:
+                raise TemplateInUseError(in_use)
+            file_keys = [template.video_key, *uow.templates.consent_file_keys(template_id)]
+            uow.templates.delete(template_id)
+            self._audit(uow, "TEMPLATE_DELETED", template_id=str(template_id))
+            uow.commit()
+        delete_stored(self._storage, file_keys)
 
     def upload_template(self, video: Path, original_name: str) -> TemplateRecord:
         """Check, store and register a template video (AC1, D-13)."""
@@ -184,8 +207,8 @@ class TemplateService:
     # ---- helpers -----------------------------------------------------------------------
 
     @staticmethod
-    def _load(uow: UnitOfWork, template_id: UUID) -> TemplateRecord:
-        template = uow.templates.get(template_id)
+    def _load(uow: UnitOfWork, template_id: UUID, *, lock: bool = False) -> TemplateRecord:
+        template = uow.templates.get(template_id, lock=lock)
         if template is None:
             raise TemplateNotFoundError
         return template

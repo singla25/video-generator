@@ -81,6 +81,15 @@ export interface BatchList {
   total_pages: number;
 }
 
+/** The dashboard batch lists: running, completed and failed (DD-37). */
+export type BatchView = 'running' | 'completed' | 'failed';
+
+/** Body of POST /batches/<id>/start. `limit` is sent only when fewer videos than rows are wanted. */
+export interface StartBody {
+  folder_name: string;
+  limit?: number;
+}
+
 export interface FailureGroup {
   code: string;
   count: number;

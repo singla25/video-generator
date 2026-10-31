@@ -5,9 +5,14 @@ import { apiFetch, apiUpload, type UploadOptions } from '../../api/client';
 import type { Template } from '../../api/types';
 import { useUpload } from '../../api/useUpload';
 import { UploadFeedback } from '../../components/UploadFeedback';
+import { VideoDropZone } from './VideoDropZone';
+import { templateVideoProblem } from './videoRules';
 
-const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.mkv', '.webm'];
-const FIELD = 'w-full rounded-tile border px-3 py-2';
+const FIELD =
+  'w-full rounded-tile border px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald';
+const BUTTON_BASE =
+  'rounded-full px-5 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald';
+const WORD_HELP = "The word spoken where each person's name goes, for example Krishan.";
 
 /** Upload a template video and the word in it that will be replaced by each name. */
 export function NewTemplateForm({ onDone }: { onDone: () => void }) {
@@ -33,35 +38,36 @@ export function NewTemplateForm({ onDone }: { onDone: () => void }) {
     });
   }
 
-  function choose(file: File | undefined) {
-    if (!file) return;
-    const ok = VIDEO_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext));
-    setProblem(
-      file.size === 0 ? 'The video is empty.' : ok ? null : 'Use an MP4, MOV, MKV or WebM video.',
-    );
-    setVideo(ok && file.size > 0 ? file : null);
+  function choose(file: File) {
+    const issue = templateVideoProblem(file);
+    setProblem(issue);
+    setVideo(issue === null ? file : null);
   }
 
   return (
     <form
-      className="mb-6 space-y-3 rounded-card border bg-card p-5"
+      className="mb-6 space-y-5 rounded-card border bg-card p-6"
       onSubmit={(e) => {
         e.preventDefault();
         if (video && word.trim()) submit();
       }}
     >
-      <h2 className="font-semibold">New template</h2>
-      <div>
-        <label htmlFor="template-video" className="mb-1 block text-sm font-semibold">
-          Template video
-        </label>
-        <input
-          id="template-video"
-          type="file"
-          accept="video/*"
-          onChange={(e) => choose(e.target.files?.[0])}
-          className="block w-full text-sm"
+      <h2 className="text-lg font-bold">New template</h2>
+      <div className="space-y-2">
+        <span className="block text-sm font-semibold">Template video</span>
+        <VideoDropZone
+          file={video}
+          onChoose={choose}
+          onRemove={() => {
+            setVideo(null);
+            setProblem(null);
+          }}
         />
+        {problem && (
+          <p role="alert" className="text-sm font-semibold text-status-failed">
+            {problem}
+          </p>
+        )}
       </div>
       <div>
         <label htmlFor="template-word" className="mb-1 block text-sm font-semibold">
@@ -72,11 +78,14 @@ export function NewTemplateForm({ onDone }: { onDone: () => void }) {
           type="text"
           value={word}
           maxLength={100}
+          aria-describedby="template-word-help"
           onChange={(e) => setWord(e.target.value)}
           className={FIELD}
         />
+        <p id="template-word-help" className="mt-1 text-sm text-muted">
+          {WORD_HELP}
+        </p>
       </div>
-      {problem && <p className="text-sm text-status-failed">{problem}</p>}
       <UploadFeedback
         pending={create.pending}
         percent={create.percent}
@@ -87,23 +96,23 @@ export function NewTemplateForm({ onDone }: { onDone: () => void }) {
       <p className="text-sm text-muted">
         After uploading, add the consent file on the template card.
       </p>
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={!video || !word.trim() || create.pending}
-          className="rounded-full bg-lime px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
-        >
-          Upload template
-        </button>
+      <div className="flex justify-end gap-3 border-t pt-4">
         <button
           type="button"
           onClick={() => {
             create.cancel();
             onDone();
           }}
-          className="rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint"
+          className={`${BUTTON_BASE} border font-semibold hover:bg-mint`}
         >
           Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={!video || !word.trim() || create.pending}
+          className={`${BUTTON_BASE} bg-lime font-semibold disabled:opacity-50`}
+        >
+          Upload template
         </button>
       </div>
     </form>

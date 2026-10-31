@@ -25,7 +25,7 @@ from vidgen.api.schemas_batches import (
 from vidgen.api.uploads import PAYLOAD_TOO_LARGE, UploadTooLargeError, read_upload
 from vidgen.api.video_response import video_response
 from vidgen.domain.codes import FailureCode, plain_message
-from vidgen.domain.status import RowStatus
+from vidgen.domain.status import BatchListView, RowStatus
 from vidgen.services.batch_create import MappingRequest
 from vidgen.services.batch_rules import page_count
 
@@ -97,10 +97,13 @@ async def inspect_sheet(request: Request) -> dict[str, Any]:
 
 @router.get("")
 def list_batches(
-    request: Request, page: Page = 1, page_size: PageSize = DEFAULT_PAGE_SIZE
+    request: Request,
+    page: Page = 1,
+    page_size: PageSize = DEFAULT_PAGE_SIZE,
+    view: BatchListView = BatchListView.ALL,
 ) -> dict[str, Any]:
-    """Batch history, newest first."""
-    views, total = container(request).batches.history(page, page_size)
+    """Batch history, newest first; ``view`` picks running, completed or failed batches."""
+    views, total = container(request).batches.history(page, page_size, view)
     return {
         "batches": [batch_json(v) for v in views],
         "page": page,
@@ -207,7 +210,8 @@ def start_batch(
     if key is None:
         raise ApiError(422, VALIDATION_ERROR)
     folder = None if body is None else body.folder_name
-    return batch_json(container(request).batches.start(batch_id, key, folder))
+    limit = None if body is None else body.limit
+    return batch_json(container(request).batches.start(batch_id, key, folder, limit))
 
 
 @router.post("/{batch_id}/pause")

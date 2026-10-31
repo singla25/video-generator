@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-10-31 — PR #9 merged; DD-37 started
+- PR #9 (e4b0cee): preview progress, batch controls, queue-depth fix, local autostart files. Database emptied at the Admin's request (backup in .dev/backups, old media moved to .dev/media-*).
+- DD-37 built and verified (not merged yet): Running, Completed and Failed pages show real batch lists (`GET /batches?view=`); a "Videos to generate" choice on the last wizard step (All, First 5/10/15, custom; rows beyond the limit become SKIPPED with code NOT_SELECTED); Delete template (refused with 409 TEMPLATE_IN_USE while any batch uses it; removes the template, consent records and stored files); a redesigned New template form with a drop zone and an extension fallback for empty file types. No migration. Checks: backend 2381 passed, Vitest 488, E2E 21 passed. Known: `mypy --strict` reports 8 errors only in local_ai/loaders.py when the optional local-ai packages are installed (CI installs without them).
+
 ## 2026-10-30 — M2 local real AI merged (PRs #5, #6, #7)
 - PR #5 (bf14a93): local real AI on the Admin's Mac (pilot): faster-whisper, Qwen3-4B spelling pre-fill, Chatterbox voice, MuseTalk lip sync with only a mouth oval replaced, confirm-spelling step and mode badge, stuck-queue sweep, Redis saves to disk, optional local-ai install group with uv.lock, worker-health fix (PR #4 closed as contained).
 - DD-32/36: AI label is a small see-through bubble at the bottom-right (48 px at 1080, white ring), band kept as an option. DD-34: 0.25 s real gap after the name (video 0.25 s longer than the template). DD-33: pause setting has no effect when the name fits the slot.

@@ -8,6 +8,7 @@ from uuid import UUID
 
 from vidgen.domain.codes import FailureCode, plain_message
 from vidgen.domain.stats import ETA_WINDOW, eta_seconds
+from vidgen.domain.status import BatchListView
 from vidgen.ports.batches import DayStat, RowView
 from vidgen.services.batch_rules import (
     counts_from,
@@ -46,10 +47,12 @@ class BatchQueries:
         with self._ctx.uow() as uow:
             return describe_preview(self._ctx, uow, load_batch(uow, batch_id))
 
-    def history(self, page: int, page_size: int) -> tuple[list[BatchView], int]:
-        """Newest-first page of batches (each with counts) and the total."""
+    def history(
+        self, page: int, page_size: int, view: BatchListView = BatchListView.ALL
+    ) -> tuple[list[BatchView], int]:
+        """Newest-first page of the batches in ``view`` (each with counts) and the view's total."""
         with self._ctx.uow() as uow:
-            batches, total = uow.batches.list_page((page - 1) * page_size, page_size)
+            batches, total = uow.batches.list_page((page - 1) * page_size, page_size, view)
             counts = uow.batches.counts([b.id for b in batches])
             views = [
                 replace(

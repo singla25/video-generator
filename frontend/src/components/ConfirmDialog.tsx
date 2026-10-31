@@ -7,6 +7,10 @@ interface Props {
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /** True while the confirmed action runs: the confirm button is disabled. */
+  pending?: boolean;
+  /** A failure message shown inside the dialog; the dialog stays open. */
+  error?: string | null;
 }
 
 /** Modal question for actions that cannot be undone. Escape or the cancel button closes it. */
@@ -17,6 +21,8 @@ export function ConfirmDialog({
   cancelLabel,
   onConfirm,
   onCancel,
+  pending = false,
+  error = null,
 }: Props) {
   const titleId = useId();
   return (
@@ -32,6 +38,11 @@ export function ConfirmDialog({
           {title}
         </h2>
         {body && <p className="text-sm text-muted">{body}</p>}
+        {error && (
+          <p role="alert" className="text-sm font-semibold text-status-failed">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end gap-3">
           <button
             type="button"
@@ -43,8 +54,9 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
+            disabled={pending}
             onClick={onConfirm}
-            className="rounded-full bg-status-failed px-5 py-2 font-semibold text-white"
+            className="rounded-full bg-status-failed px-5 py-2 font-semibold text-white disabled:opacity-50"
           >
             {confirmLabel}
           </button>

@@ -5,6 +5,7 @@ import { setUnauthorizedHandler } from './api/client';
 import { LOGIN_PATH } from './config';
 import { AppShell } from './layout/AppShell';
 import { BatchDetailPage } from './pages/BatchDetailPage';
+import { BatchListPage } from './pages/BatchListPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { LoginPage } from './pages/LoginPage';
 import { SecurityPage } from './pages/SecurityPage';
@@ -38,6 +39,9 @@ function useRedirectOnUnauthorized(): void {
 
 const IMPLEMENTED = new Set([
   '/',
+  '/batches/running',
+  '/batches/completed',
+  '/batches/failed',
   '/batches/new',
   '/batches/:id',
   '/templates',
@@ -67,6 +71,13 @@ export function App() {
       <Route path={LOGIN_PATH} element={<LoginPage />} />
       <Route element={<AppShell />}>
         <Route path="/" element={<OverviewPage />} />
+        {/* The key makes each list start on page 1 when the sidebar switches between them. */}
+        <Route path="/batches/running" element={<BatchListPage key="running" view="running" />} />
+        <Route
+          path="/batches/completed"
+          element={<BatchListPage key="completed" view="completed" />}
+        />
+        <Route path="/batches/failed" element={<BatchListPage key="failed" view="failed" />} />
         <Route path="/batches/new" element={<WizardPage />} />
         <Route path="/batches/:id" element={<BatchDetailPage />} />
         <Route path="/templates" element={<TemplatesPage />} />

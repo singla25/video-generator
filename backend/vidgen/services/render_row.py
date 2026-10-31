@@ -58,6 +58,7 @@ from vidgen.services.render_support import (
     is_silent,
     logger,
 )
+from vidgen.services.spoken_text import spoken_text
 
 __all__ = ["RenderConfig", "RowOutcome", "RowOutcomeKind", "RowRenderer"]
 
@@ -214,9 +215,10 @@ class RowRenderer:
             template.write_bytes(source.read())
         speech = folder / "speech.wav"
         with run.stage("tts"):
-            seconds = self._synthesize(
-                effective_spoken_name(job.name, job.spoken_name), template, speech
+            spoken = spoken_text(
+                effective_spoken_name(job.name, job.spoken_name), self._config.spoken_suffix
             )
+            seconds = self._synthesize(spoken, template, speech)
         plan = plan_timing(
             round(slot[1] - slot[0], SECONDS_DIGITS),
             self._config.pause_s,

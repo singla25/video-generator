@@ -177,3 +177,13 @@ Newest first. One entry per task.
 - `backend/spikes/m2_mac/make_marketing_template.py`: builds a synthetic Hindi marketing template with the name spoken in the middle (Lekha audio, MuseTalk lip sync of `sun.mp4`, Pillow headline, app Whisper for the name span). Spike only: no product code, no dependency, no migration. Outputs go to the git-ignored `work/marketing_demo/` folder.
 - Result: 12.8 s, 1080x1300, 60 fps, H.264 yuv420p, AAC. Whisper misspelt the name (`सल्मान`), so the slot came from the synthesized parts: 4.7-5.9 s (method noted in the README). Whisper's own word times put the name at 4.5-5.3 s; the Admin should check the slot in the form before use.
 - Open: the parts-based span and the Whisper span differ by 0.3-0.6 s; the frame check is the tie-breaker.
+
+## 2026-10-31 - SUF-GREEN (DD-39 spoken suffix after the name)
+- `services/spoken_text.py` (new): pure `spoken_text(name, suffix)`. Strips the ends, returns the name alone for an empty suffix or an empty name's "", and skips the suffix when the last words of the name equal it (casefold, word-wise, so multi-word suffixes work).
+- `settings.py`: `spoken_suffix` (env `VIDGEN_SPOKEN_SUFFIX`, default "जी", max 20 characters, "" allowed).
+- `services/render_support.py`: `RenderConfig.spoken_suffix` (default "", speaks the name only).
+- `worker/runner.py`: `render_config` copies the setting.
+- `services/render_row.py`: `_produce_video` hands `spoken_text(effective_spoken_name(...), config.spoken_suffix)` to the voice; batch rows and previews both go through it.
+- Tests: 64 passed (test_spoken_text, test_spoken_suffix_setting, test_render_row_spoken_suffix). Full unit and integration run (excluding test_worker.py): 2487 passed, 1 skipped.
+- Mypy strict: errors only in `infrastructure/local_ai/loaders.py` (pre-existing).
+- No migration, no dependency. `.env.example` (not in backend-dev's domain) should gain `VIDGEN_SPOKEN_SUFFIX` for the CEO to assign.

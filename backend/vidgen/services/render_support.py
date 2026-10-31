@@ -51,6 +51,7 @@ class RenderConfig:
     stale_margin_s: float = 60.0  # a PROCESSING row older than timeout + margin is abandoned
     label_style: str = "bubble"  # "bubble" (corner badge) or "band" (top band), DD-32
     name_gap_s: float = 0.0  # DD-34: extra silence and held frame after the new name
+    spoken_suffix: str = ""  # DD-39: honorific spoken after the name; "" speaks the name only
 
     def __post_init__(self) -> None:
         if self.label_style not in LABEL_STYLES:

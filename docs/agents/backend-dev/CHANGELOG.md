@@ -172,3 +172,40 @@ Newest first. One entry per task.
 - No migration, no dependency. Target tests: 57 passed (test_batch_views, test_batch_start_limit, test_template_delete).
 - Open: two existing tests conflict with DD-37 and were left unchanged (tests/ is not backend-dev's): tests/unit/domain/test_codes.py::test_failure_code_set_matches_requirements_exactly (exact code set, now + NOT_SELECTED) and tests/integration/api/test_template_profile.py::test_the_slot_cannot_be_changed_through_the_template_resource[DELETE] (expects 404/405, now 204).
 - Open: plan AC1 says `all` excludes DRAFT and CANCELLED, but test_view_all_lists_every_batch_in_every_state expects them; implemented per the test (unfiltered).
+
+## 2026-10-31 - DEMO-TEMPLATE (DD-39 synthetic marketing template, spike)
+- `backend/spikes/m2_mac/make_marketing_template.py`: builds a synthetic Hindi marketing template with the name spoken in the middle (Lekha audio, MuseTalk lip sync of `sun.mp4`, Pillow headline, app Whisper for the name span). Spike only: no product code, no dependency, no migration. Outputs go to the git-ignored `work/marketing_demo/` folder.
+- Result: 12.8 s, 1080x1300, 60 fps, H.264 yuv420p, AAC. Whisper misspelt the name (`सल्मान`), so the slot came from the synthesized parts: 4.7-5.9 s (method noted in the README). Whisper's own word times put the name at 4.5-5.3 s; the Admin should check the slot in the form before use.
+- Open: the parts-based span and the Whisper span differ by 0.3-0.6 s; the frame check is the tie-breaker.
+
+## 2026-10-31 - SUF-GREEN (DD-39 spoken suffix after the name)
+- `services/spoken_text.py` (new): pure `spoken_text(name, suffix)`. Strips the ends, returns the name alone for an empty suffix or an empty name's "", and skips the suffix when the last words of the name equal it (casefold, word-wise, so multi-word suffixes work).
+- `settings.py`: `spoken_suffix` (env `VIDGEN_SPOKEN_SUFFIX`, default "जी", max 20 characters, "" allowed).
+- `services/render_support.py`: `RenderConfig.spoken_suffix` (default "", speaks the name only).
+- `worker/runner.py`: `render_config` copies the setting.
+- `services/render_row.py`: `_produce_video` hands `spoken_text(effective_spoken_name(...), config.spoken_suffix)` to the voice; batch rows and previews both go through it.
+- Tests: 64 passed (test_spoken_text, test_spoken_suffix_setting, test_render_row_spoken_suffix). Full unit and integration run (excluding test_worker.py): 2487 passed, 1 skipped.
+- Mypy strict: errors only in `infrastructure/local_ai/loaders.py` (pre-existing).
+- No migration, no dependency. `.env.example` (not in backend-dev's domain) should gain `VIDGEN_SPOKEN_SUFFIX` for the CEO to assign.
+
+## 2026-10-31 - DEMO-TEMPLATE fix (DD-39 slot from the real word span)
+- The slot is no longer the parts sum (4.7-5.9 s, wrong). The script now matches the misspelt first name by similarity (difflib >= 0.6), takes Whisper's span, cross-checks ffmpeg silencedetect (noise -32 dB, 0.06 s), and uses the silence-bounded speech run rounded to one decimal: slot 4.5-5.4 s. The literal rule (Whisper span widened 0.05 s = 4.4-5.3 s) is printed but not used: it ends before the speech does. `--slot-only` re-times the existing template. Parts method removed.
+
+## 2026-10-31 - MID-GREEN (DD-39 part B lip sync starts at the slot)
+- `ports/interfaces.py`: `LipSyncer.sync(video, audio, out, start_s=0.0)`. `infrastructure/fakes/adapters.py`: `FakeLipSyncer.sync` accepts `start_s` and still copies the video.
+- `services/render_row.py`: the lip sync gets `start_s=slot[0]` (the name's start, not the end or the length).
+- `infrastructure/local_ai/lipsync.py`: `MuseTalkLipSyncer.sync` rejects a negative or non-finite `start_s` with `ValueError` before the model loads or any output is written; forwards `start_s` as the 4th positional argument of `run`.
+- `infrastructure/local_ai/loaders.py`: `_MuseTalkModel.run(video, audio, out, start_s=0.0)` extracts frames from `start_s`, keys the face-box cache with `landmark_key`, and assembles with `start_s`. `_blend` and `_boxes_and_frames` take the cache key instead of the video.
+- `infrastructure/local_ai/musetalk_support.py`: `landmark_key(fingerprint, start_s)` (0.0 keeps the fingerprint; else `-s<ms>`); `extract_frames(..., *, start_s=0.0)` seeks with `-ss` before `-i`; `assemble_video(..., *, start_s=0.0)` keeps the old filter graph for 0.0, otherwise splices original 0..start_s, blended frames, original from start_s + frames/25, with `-t` set to the original duration (the tail is left out when the blended part reaches the end); new `video_duration(video)` via ffprobe.
+- Tests: 32 passed (test_mid_slot_support, test_mid_slot_adapter, test_render_row_mid_slot). Full unit and integration run (excluding test_worker.py): 2519 passed, 1 skipped.
+- Mypy strict: 8 errors, all in `infrastructure/local_ai/loaders.py` (same count as before). Layering grep (services, domain importing infrastructure): nothing.
+- Callers that pass three arguments (`backend/scripts/local_ai_smoke.py`) keep working through the default 0.0. `backend/spikes/` not touched.
+- No migration, no dependency.
+
+## 2026-10-31 - SMOKE-MID (DD-39 smoke script on the mid-video name slot)
+- `backend/scripts/local_ai_smoke.py`: new optional `--template PATH`, `--slot START END` (manual slot; the transcript still gives the pause after the name), `--sheet PATH.csv` (header `Name,VID`, read with `csv`; blank lines skipped; errors give line numbers only), `--out-name NAME` (sub-folder of `local_out/`). Defaults unchanged when omitted.
+- Lip sync now gets `start_s=slot.start_s`; `plan_timing` gets `gap_s=settings.name_gap_s`; the honorific goes through `spoken_text`; the duration check uses `plan.duration_delta_s` (extension plus gap). The fidelity report reads the face-box cache with `landmark_key(fingerprint, start_s)`, the key the product writes (found when the first run failed on the plain key).
+- Run (manual slot 4.5-5.4 s, csv sheet, 2 rows, `--out-name mid_slot`): exit 0, peak RSS 5.5 GB, MPS 7.5 GB, total 66 s. Both rows: 1080x1300, 60 fps, 13.07 s against the template's 12.82 s (+0.25 s = the name gap, zero extension). Lower-face fidelity SSIM 0.987.
+- Transcript (app STT, output row 1): the name, then `जी` at 5.24-5.42 s; `आप से कहता हूँ` follows at 5.42 s, template 5.26 s. Words after the slot sit about 0.24 s later than in the template (`सब` 6.40 vs 6.64, `सिंगला` 11.24 vs 11.48, last `पर` 12.20 vs 12.44). Words before the slot are unchanged within STT noise.
+- Frame mean abs diff (0-255), whole / face (x 200-880, y 300-900): before 1.84 / 1.95; inside 3.03 / 3.04; after 3.47 / 4.34. The after pair is the 0.25 s shift: output at 8.0 s against the template at 7.75 s gives face 1.78.
+- Open: the before pair is not ~0 (about 1.9), most likely from the full re-encode; not measured separately. Whisper's Hindi is weak on both transcripts, so word text is only a rough check. Outputs in `backend/spikes/m2_mac/work/local_out/mid_slot/` (git-ignored, not committed).

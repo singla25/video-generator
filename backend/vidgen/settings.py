@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     pause_seconds: float = Field(default=0.5, ge=0)  # DD-7: pause after the name, until measured
     # DD-34: extra silence and held frame after the new name
     name_gap_s: float = Field(default=0.25, ge=0, le=1.0)
+    # DD-39: honorific spoken after the name; empty switches it off
+    spoken_suffix: str = Field(default="जी", max_length=20)
 
     # Local models: load each once at worker start, then release it (off: nothing stays in memory)
     warm_up_on_start: bool = False

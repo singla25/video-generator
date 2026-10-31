@@ -3,17 +3,20 @@
 Usage (one process only, a render peaks at 16-18 GB; do not start the app meanwhile):
 
     PYTHONPATH=backend .venv-m2/bin/python backend/scripts/local_ai_smoke.py [--rows 2]
+        [--template PATH] [--slot START END] [--sheet PATH.csv] [--out-name NAME]
 
-Pipeline per sheet row: transcribe the template once -> find the name slot -> pre-fill the spoken
-name (Qwen) -> clone the voice (Chatterbox) -> lip sync (MuseTalk) -> splice, add the AI label
-(FFmpeg encoder). Models run one stage at a time and are released in between so they fit in RAM.
-Only row indexes are printed, never names or ids. Outputs go to the git-ignored work folder.
-Pilot weights, this Mac only (DD-31): nothing leaves the machine.
+Pipeline per sheet row: transcribe the template once -> find the name slot (or take --slot) ->
+pre-fill the spoken name (Qwen) -> clone the voice (Chatterbox) -> lip sync (MuseTalk) -> splice,
+add the AI label (FFmpeg encoder). Models run one stage at a time and are released in between
+so they fit in RAM. Only row indexes are printed, never names or ids. Outputs go to the
+git-ignored work folder (or its sub-folder NAME). Pilot weights, this Mac only (DD-31): nothing
+leaves the machine.
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
 import resource
@@ -33,6 +36,7 @@ SAMPLE_RATE = 16000
 VOICE_SAMPLE_START_S, VOICE_SAMPLE_LEN_S = 2.0, 10.0
 HONORIFIC = "जी"  # the template says "<name> ji"
 DEFAULT_PAUSE_S = 0.3
+CSV_HEADER = ["Name", "VID"]
 BYTES_PER_GB = 1024**3
 # Placeholder values only: the smoke run never uses secrets, but Settings insists on them.
 PLACEHOLDER_ENV = {
@@ -97,14 +101,15 @@ def _probe(path: Path) -> dict[str, float]:
     }
 
 
-def _fidelity_report(template: Path, synced: Path, tmp: Path) -> str:
+def _fidelity_report(template: Path, synced: Path, tmp: Path, start_s: float) -> str:
     """Lower-face (without the mouth) similarity of the lip-synced frames to the template."""
     import cv2  # type: ignore[import-not-found,unused-ignore]
 
     from vidgen.infrastructure.local_ai import musetalk_support as support
     from vidgen.infrastructure.local_ai.fidelity import frame_fidelity, mean_fidelity
 
-    cached = WEIGHTS / "musetalk" / support.CACHE_DIR_NAME / f"{support.video_fingerprint(template)}.json"
+    key = support.landmark_key(support.video_fingerprint(template), start_s)
+    cached = WEIGHTS / "musetalk" / support.CACHE_DIR_NAME / f"{key}.json"
     boxes = [tuple(int(v) for v in box) for box in json.loads(cached.read_text())]
     folders = {}
     for name, video in (("orig", template), ("sync", synced)):
@@ -143,8 +148,18 @@ class Timer:
         )
 
 
-def _template_slot(adapters, template: Path, tmp: Path, timer: Timer):  # type: ignore[no-untyped-def]
-    """Transcribe the template and return (slot, pause_s, voice_sample)."""
+def _template_slot(  # type: ignore[no-untyped-def]
+    adapters,
+    template: Path,
+    tmp: Path,
+    timer: Timer,
+    manual: tuple[float, float] | None,
+):
+    """Transcribe the template and return (slot, pause_s, voice_sample).
+
+    The transcript always gives the pause after the name; the slot itself is the manual one
+    when ``manual`` is given, otherwise the first word that matches the opening name.
+    """
     from vidgen.infrastructure.local_ai.name_slot import detect_name_slot
 
     audio = tmp / "template16k.wav"
@@ -171,7 +186,7 @@ def _template_slot(adapters, template: Path, tmp: Path, timer: Timer):  # type: 
     timer.stage("stt", started)
     if not words:
         raise SystemExit("no speech found in the template")
-    slot = detect_name_slot(words, words[0].text)  # the template opens with the name
+    slot = detect_name_slot(words, words[0].text, manual=manual)  # default: opening name
     following = [w.start_s for w in words if w.start_s >= slot.end_s]
     pause = (following[0] - slot.end_s) if following else DEFAULT_PAUSE_S
     print(
@@ -190,29 +205,77 @@ def _names(sheet: Path, count: int) -> list[tuple[str, str]]:
     ]
 
 
-def main() -> int:
-    """Run the smoke test; returns the process exit code."""
+def _csv_names(sheet: Path, count: int) -> list[tuple[str, str]]:
+    """The first ``count`` (name, id) pairs of a csv sheet whose header row is ``Name,VID``.
+
+    Blank lines are skipped. Errors name the line number only, never the content of a row.
+    """
+    with sheet.open(newline="", encoding="utf-8-sig") as handle:
+        reader = csv.reader(handle)
+        header = [cell.strip() for cell in next(reader, [])]
+        if header != CSV_HEADER:
+            raise SystemExit(f"the sheet header must be {','.join(CSV_HEADER)}")
+        pairs: list[tuple[str, str]] = []
+        for line_no, row in enumerate(reader, start=2):
+            if len(pairs) == count:
+                break
+            if not any(cell.strip() for cell in row):
+                continue
+            if len(row) != len(CSV_HEADER):
+                raise SystemExit(f"csv line {line_no} must have exactly two cells")
+            pairs.append((row[0].strip(), row[1].strip()))
+    return pairs
+
+
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    """Command line options; every option keeps the old default when omitted."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rows", type=int, default=2)
-    args = parser.parse_args()
+    parser.add_argument("--template", type=Path, default=SAMPLES / "template_video.mp4")
+    parser.add_argument(
+        "--slot",
+        nargs=2,
+        type=float,
+        metavar=("START", "END"),
+        help="manual name slot in seconds; skips the transcript-based slot search",
+    )
+    parser.add_argument("--sheet", type=Path, help="csv sheet with header Name,VID")
+    parser.add_argument("--out-name", help="sub-folder of local_out/ for the outputs")
+    args = parser.parse_args(argv)
+    if args.slot is not None and not 0 <= args.slot[0] < args.slot[1]:
+        parser.error("--slot needs START >= 0 and END > START")
+    if args.out_name is not None and Path(args.out_name).name != args.out_name:
+        parser.error("--out-name must be a plain folder name")
+    return args
+
+
+def main() -> int:
+    """Run the smoke test; returns the process exit code."""
+    args = _parse_args(None)
     _prepare_environment()
 
     from vidgen.domain.timing import TimingRules, plan_timing
     from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
     from vidgen.infrastructure.ffmpeg.label import build_label_renderer, label_band_height
     from vidgen.infrastructure.local_ai.factory import build_ai_adapters
+    from vidgen.services.spoken_text import spoken_text
     from vidgen.settings import Settings
     from vidgen.worker.runner import DEVANAGARI_FONT, FONT_DIR, LATIN_FONT
 
     settings = Settings()  # type: ignore[call-arg]  # secrets come from the placeholder env
     adapters: Any = build_ai_adapters(settings)  # the real classes also have release()
-    template = SAMPLES / "template_video.mp4"
-    people = _names(SAMPLES / "source_list.xlsx", args.rows)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = OUT_DIR / "_tmp"
+    template = args.template.resolve()
+    if args.sheet is not None:
+        people = _csv_names(args.sheet.resolve(), args.rows)
+    else:
+        people = _names(SAMPLES / "source_list.xlsx", args.rows)
+    out_dir = OUT_DIR / args.out_name if args.out_name else OUT_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tmp = out_dir / "_tmp"
     tmp.mkdir(exist_ok=True)
     timer, info = Timer(), _probe(template)
-    slot, pause, sample = _template_slot(adapters, template, tmp, timer)
+    manual = (args.slot[0], args.slot[1]) if args.slot is not None else None
+    slot, pause, sample = _template_slot(adapters, template, tmp, timer, manual)
 
     started = time.perf_counter()
     spoken = [adapters.transliterator.transliterate(name, "Devanagari") for name, _ in people]
@@ -223,7 +286,7 @@ def main() -> int:
     started = time.perf_counter()
     for index, text in enumerate(spoken):
         wav = tmp / f"speech{index}.wav"
-        seconds = adapters.voice.synthesize(f"{text} {HONORIFIC}", sample, wav)
+        seconds = adapters.voice.synthesize(spoken_text(text, HONORIFIC), sample, wav)
         speech.append((wav, seconds))
         print(f"row {index}: speech {seconds:.2f}s")
     adapters.voice.release()
@@ -247,17 +310,18 @@ def main() -> int:
     for index, ((_, voter_id), (wav, seconds)) in enumerate(zip(people, speech, strict=True)):
         started = time.perf_counter()
         synced = tmp / f"synced{index}.mp4"
-        adapters.lipsync.sync(template, wav, synced)
+        adapters.lipsync.sync(template, wav, synced, start_s=slot.start_s)
         timer.stage("lipsync", started)
-        print(f"row {index}: {_fidelity_report(template, synced, tmp)}")
+        print(f"row {index}: {_fidelity_report(template, synced, tmp, slot.start_s)}")
         started = time.perf_counter()
-        out = OUT_DIR / f"{voter_id}.mp4"
+        out = out_dir / f"{voter_id}.mp4"
         out.unlink(missing_ok=True)
         plan = plan_timing(
             slot.end_s - slot.start_s,
             pause,
             seconds,
             TimingRules(crossfade_ms=settings.crossfade_ms),
+            gap_s=settings.name_gap_s,
         )
         encoder.render(
             synced,
@@ -270,9 +334,8 @@ def main() -> int:
         )
         timer.stage("encode", started)
         result = _probe(out)
-        ok = (
-            abs(result["duration"] - info["duration"] - plan.extension_s) < 0.1
-            and (bubble or band / result["height"] >= 0.10)
+        ok = abs(result["duration"] - info["duration"] - plan.duration_delta_s) < 0.1 and (
+            bubble or band / result["height"] >= 0.10
         )
         failures += 0 if ok else 1
         share = band / result["height"]

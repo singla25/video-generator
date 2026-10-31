@@ -64,8 +64,8 @@ class FakeVoiceCloner:
 class FakeLipSyncer:
     """Passes the frames through unchanged."""
 
-    def sync(self, video: Path, audio: Path, out: Path) -> None:
-        """Copy ``video`` to ``out``."""
+    def sync(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
+        """Copy ``video`` to ``out``; ``start_s`` is accepted and ignored."""
         shutil.copyfile(video, out)
 
 

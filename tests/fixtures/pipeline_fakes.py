@@ -122,12 +122,14 @@ class FakeLipSync:
         self.marker = b""  # appended to the output so tests can see the chain
         self.video_bytes: list[bytes] = []
         self.audio_existed: list[bool] = []
+        self.start_s: list[float] = []  # the start_s each call received (DD-39 part B)
         self.order = calls if calls is not None else []
 
-    def sync(self, video: Path, audio: Path, out: Path) -> None:
-        """Pass the video through."""
+    def sync(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
+        """Pass the video through; record the start."""
         self.order.append("lipsync")
         self.count += 1
+        self.start_s.append(start_s)
         self.video_bytes.append(video.read_bytes())
         self.audio_existed.append(audio.exists())
         error = _next_error(self.errors)

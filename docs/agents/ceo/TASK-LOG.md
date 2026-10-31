@@ -74,3 +74,6 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | DD37-FE | Dashboard: batch list pages, start limit step, delete template, new template form, .mkv fallback | tester → frontend-dev | haiku | ✅ red 0728071, 69f315a · green d2f8ea5, 99e9d1a — CEO-verified: Vitest 488/488, typecheck, lint, format, build clean; E2E 21 passed (a766ff0) with screenshots in media/review/ui/dd37-*.png | Yes (Admin, DD-37) | PR pending |
 | DD38-BE | Backend: keep the confirmed spoken name on a new preview; GET /batches?view=drafts | tester → backend-dev | haiku | In progress | Yes (Admin, DD-38) | — |
 | DD38-FE | Dashboard: drafts on Running, resume the wizard, Overview draft button, Confirm spelling regenerates | tester → frontend-dev | haiku | In progress | Yes (Admin, DD-38) | — |
+| DD39-A | Spoken suffix after the name (setting, spoken_text, batch and preview) | tester → backend-dev | haiku | In progress | Yes (Admin, DD-39) | — |
+| DD39-DEMO | Synthetic marketing template with the name in the middle (script and outputs) | backend-dev | haiku | In progress | Yes (Admin, DD-39) | — |
+| DD39-B | Mid-video slot support for the lip sync | tester → backend-dev | haiku | Planned (after the demo template exists) | Yes (Admin, DD-39) | — |

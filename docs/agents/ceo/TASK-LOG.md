@@ -77,3 +77,7 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | DD39-A | Spoken suffix after the name (setting, spoken_text, batch and preview) | tester → backend-dev | haiku | In progress | Yes (Admin, DD-39) | — |
 | DD39-DEMO | Synthetic marketing template with the name in the middle (script and outputs) | backend-dev | haiku | In progress | Yes (Admin, DD-39) | — |
 | DD39-B | Mid-video slot support for the lip sync | tester → backend-dev | haiku | Planned (after the demo template exists) | Yes (Admin, DD-39) | — |
+| DD40-BE-A | Template extra slots: model, validation, DB column, migration 0002, API, fingerprint | tester → backend-dev | haiku | In progress | Yes (Admin, DD-40) | — |
+| DD40-BE-B | Pipeline: lip sync and encoder once per slot, key_from, transparent intermediate label | tester → backend-dev | haiku | In progress | Yes (Admin, DD-40) | — |
+| DD40-FE | Dashboard: slot editor with several slots, template card | tester → frontend-dev | haiku | In progress | Yes (Admin, DD-40) | — |
+| DD40-MIG | Rehearse migration 0002 on a throwaway database; Admin runs it | backend-dev + Admin | haiku | Planned | Yes (Admin, DD-40); running it needs the Admin | — |

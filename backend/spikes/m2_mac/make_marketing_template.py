@@ -3,26 +3,31 @@
 Usage (one process at a time: a lip sync peaks at 16-18 GB of the 24 GB; do not start the app):
 
     PYTHONPATH=backend .venv-m2/bin/python backend/spikes/m2_mac/make_marketing_template.py
+    ... make_marketing_template.py --slot-only   (re-times the name; no say, lip sync or compose)
 
 Steps: macOS ``say`` (Lekha) makes the Hindi audio; the app's MuseTalk adapter lip syncs a stock
-face clip to the whole audio; FFmpeg composes a 1080x1300 template with a Pillow headline; the
-app's Whisper adapter transcribes the final audio to find the name span. If Whisper misspells the
-name, the span is timed from the separately synthesized parts instead. Everything is synthetic:
-no sample data is read. Outputs go to the git-ignored work folder. Pilot weights, this Mac only
-(DD-31): nothing leaves the machine.
+face clip to the whole audio; FFmpeg composes a 1080x1300 template with a Pillow headline. The
+app's Whisper adapter gives the word times of the final audio; the name slot is the speech run
+that ffmpeg silencedetect finds around the name, rounded to one decimal. ``--slot-only`` re-times
+the name in the existing template without re-rendering it. Everything is synthetic: no sample
+data is read. Outputs go to the git-ignored work folder. Pilot weights, this Mac only (DD-31):
+nothing leaves the machine.
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
+import difflib
 import itertools
 import json
-import math
+import re
 import string
 import subprocess
 import sys
 import time
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -35,12 +40,13 @@ ROOT = Path(__file__).resolve().parents[3]
 WORK = ROOT / "backend" / "spikes" / "m2_mac" / "work"
 MARKETING = WORK / "marketing_demo"
 TMP = MARKETING / "_tmp"
+TEMPLATE = MARKETING / "marketing_template.mp4"
 FACE_CLIP = WORK / "musetalk" / "data" / "video" / "sun.mp4"
 FONT = ROOT / "backend" / "vidgen" / "assets" / "fonts" / "NotoSansDevanagari-Bold.ttf"
 sys.path.insert(0, str(ROOT / "backend" / "scripts"))
 import local_ai_smoke as smoke  # noqa: E402
 
-# The script is built from parts so the fallback can time each one; SCRIPT_TEXT is their join.
+# The script is built from parts; SCRIPT_TEXT is their join.
 BEFORE_NAME = "हाय दोस्तो, आज बजाज की नई बाइक सिंगला टीवीएस पर आ गई है।"
 NAME_LEAD = "मैं"
 NAME = "सलमान खान"
@@ -66,7 +72,12 @@ BACKGROUND = (11, 31, 75)
 BANNER = (6, 20, 50)
 TEXT_COLOUR = (255, 255, 255)
 ACCENT_COLOUR = (255, 196, 60)
-BUBBLE_CORNER_PX = 150  # the AI label bubble (bottom-right) stays free of text
+SILENCE_NOISE_DB = -32
+SILENCE_MIN_S = 0.06
+SILENCE_EVENT = re.compile(r"silence_(start|end): (-?\d+(?:\.\d+)?)")
+NAME_MATCH_RATIO = 0.6  # SequenceMatcher similarity for the misspelt first name (सल्मान)
+WIDEN_S = 0.05  # only used for the printed comparison with the raw Whisper span
+SLOT_DECIMALS = 1
 SHEET = (
     ("Rahul Verma", "MKT0001"),
     ("Priya Sharma", "MKT0002"),
@@ -78,12 +89,28 @@ SHEET = (
 PUNCTUATION = string.punctuation + "।॥"
 
 
-def _run(*command: str) -> str:
-    """Run a tool and return its stdout; on failure stop with the tool's own error line."""
+@dataclass(frozen=True)
+class SlotChoice:
+    """The slot to enter, with the measurements it was chosen from (all in seconds)."""
+
+    start: float
+    end: float
+    whisper: tuple[float, float]
+    run: tuple[float, float]
+    widened: tuple[float, float]
+
+
+def _execute(*command: str) -> subprocess.CompletedProcess[str]:
+    """Run a tool; on failure stop with the tool's own error line."""
     result = subprocess.run(command, capture_output=True, text=True, check=False)  # noqa: S603
     if result.returncode != 0:
         raise SystemExit(f"{command[0]} failed: {result.stderr.strip()[-300:]}")
-    return result.stdout
+    return result
+
+
+def _run(*command: str) -> str:
+    """Run a tool and return its stdout."""
+    return _execute(*command).stdout
 
 
 def _duration(path: Path) -> float:
@@ -136,24 +163,66 @@ def normal(text: str) -> str:
     return text.strip().strip(PUNCTUATION).casefold()
 
 
+def _similar(heard: str, wanted: str) -> bool:
+    """Whisper often misspells a Hindi name (सल्मान for सलमान), so compare by similarity."""
+    ratio = difflib.SequenceMatcher(None, normal(heard), normal(wanted)).ratio()
+    return ratio >= NAME_MATCH_RATIO
+
+
 def name_span_from_words(words: Sequence[Word]) -> tuple[float, float] | None:
-    """Start of the first name word to the end of the last, or None if Whisper misspells it."""
-    first, last = normal(FIRST_NAME), normal(LAST_NAME)
+    """Start of the first name word to the end of the last, or None if the name is not heard.
+
+    The surname must match exactly; the first name may be misspelt but must be similar.
+    """
     for this, following in itertools.pairwise(words):
-        if normal(this.text) == first and normal(following.text) == last:
+        if _similar(this.text, FIRST_NAME) and normal(following.text) == normal(LAST_NAME):
             return this.start_s, following.end_s
     return None
 
 
-def name_span_from_parts(tmp: Path) -> tuple[float, float, dict[str, float]]:
-    """Span of the name from the synthesized parts: the lead-in lengths, then the name's length."""
-    names = ("before", "lead", "name", "after")
-    lengths = {
-        label: _say(text, tmp / f"part_{label}.wav")
-        for label, text in zip(names, SCRIPT_PARTS, strict=True)
-    }
-    start = lengths["before"] + lengths["lead"]
-    return start, start + lengths["name"], lengths
+def silence_runs(wav: Path, length_s: float) -> list[tuple[float, float]]:
+    """Speech runs (start, end) between the silences ffmpeg silencedetect reports."""
+    log = _execute(
+        "ffmpeg", "-hide_banner", "-nostats", "-i", str(wav),
+        "-af", f"silencedetect=noise={SILENCE_NOISE_DB}dB:d={SILENCE_MIN_S}",
+        "-f", "null", "-",
+    ).stderr  # fmt: skip
+    events = SILENCE_EVENT.findall(log)
+    starts = [float(value) for kind, value in events if kind == "start"]
+    ends = [float(value) for kind, value in events if kind == "end"]
+    silences = [(s, ends[i] if i < len(ends) else length_s) for i, s in enumerate(starts)]
+    runs: list[tuple[float, float]] = []
+    cursor = 0.0
+    for silence_start, silence_end in silences:
+        if silence_start > cursor:
+            runs.append((cursor, silence_start))
+        cursor = silence_end
+    if cursor < length_s:
+        runs.append((cursor, length_s))
+    return runs
+
+
+def choose_slot(words: Sequence[Word], runs: Sequence[tuple[float, float]]) -> SlotChoice:
+    """The speech run that holds the name's Whisper span, rounded to one decimal.
+
+    The raw span widened by 0.05 s is kept for comparison: it ends before the speech does,
+    so it would cut the end of the name. The silence-bounded run is the real extent.
+    """
+    span = name_span_from_words(words)
+    if span is None:
+        raise SystemExit("the name is not in the transcript; mark the slot by hand")
+    middle = (span[0] + span[1]) / 2
+    run = next(((s, e) for s, e in runs if s <= middle <= e), None)
+    if run is None:
+        raise SystemExit("no silence-bounded speech run holds the name; mark the slot by hand")
+    widened = (round(span[0] - WIDEN_S, SLOT_DECIMALS), round(span[1] + WIDEN_S, SLOT_DECIMALS))
+    return SlotChoice(
+        start=round(run[0], SLOT_DECIMALS),
+        end=round(run[1], SLOT_DECIMALS),
+        whisper=span,
+        run=run,
+        widened=widened,
+    )
 
 
 def draw_background(out: Path) -> None:
@@ -228,20 +297,28 @@ def write_sheet(out: Path) -> None:
         writer.writerows(SHEET)
 
 
-def write_readme(out: Path, facts: dict[str, Any]) -> None:
+def write_readme(out: Path, length_s: float, slot: SlotChoice) -> None:
     """Plain-text notes for the Admin: the script, the clip used and the slot to enter."""
+    method = (
+        f"ffmpeg silencedetect speech run {slot.run[0]:.3f}-{slot.run[1]:.3f} s "
+        f"(noise {SILENCE_NOISE_DB} dB, {SILENCE_MIN_S} s) that holds the Whisper span of the "
+        f"misspelt name ({slot.whisper[0]:.2f}-{slot.whisper[1]:.2f} s), rounded to one decimal. "
+        f"Widening the Whisper span by {WIDEN_S} s each side gives "
+        f"{slot.widened[0]}-{slot.widened[1]} s; the silence-bounded run is used because it "
+        "matches where the speech stops."
+    )
     text = (
         "Synthetic marketing template (DD-39). Spike output, not campaign data.\n\n"
         f"Script text (Hindi, macOS Lekha voice):\n{SCRIPT_TEXT}\n\n"
-        f"Video: marketing_template.mp4, {facts['length']:.1f} s, 1080x1300, 60 fps, H.264 + AAC.\n"
+        f"Video: marketing_template.mp4, {length_s:.1f} s, 1080x1300, 60 fps, H.264 + AAC.\n"
         "Headline (top banner, whole video): सिंगला टीवीएस / बजाज बाइक्स\n"
         f"Face clip: {FACE_CLIP.name} (front-facing stock clip from the MuseTalk test set), "
         "lip synced to the whole script.\n\n"
         "Enter in the template form:\n"
         f"  Word to replace: {WORD_TO_REPLACE}\n"
-        f"  Slot start (s): {facts['start']:.1f}\n"
-        f"  Slot end (s): {facts['end']:.1f}\n\n"
-        f"Slot method: {facts['method']}.\n"
+        f"  Slot start (s): {slot.start:.1f}\n"
+        f"  Slot end (s): {slot.end:.1f}\n\n"
+        f"Slot method: {method}\n"
         "Sheet: names_marketing.csv (6 synthetic rows, MKT0001 to MKT0006).\n"
     )
     out.write_text(text, encoding="utf-8")
@@ -259,18 +336,8 @@ def _check_middle_third(start: float, end: float, length: float) -> None:
         raise SystemExit(f"name slot {start:.2f}-{end:.2f}s is outside the middle third")
 
 
-def main() -> int:
-    """Build the template and its outputs; returns the process exit code."""
-    smoke._prepare_environment()
-    from vidgen.infrastructure.local_ai.factory import build_ai_adapters
-    from vidgen.settings import Settings
-
-    settings = Settings()  # type: ignore[call-arg]  # secrets come from the placeholder env
-    adapters: Any = build_ai_adapters(settings)
-    MARKETING.mkdir(parents=True, exist_ok=True)
-    TMP.mkdir(parents=True, exist_ok=True)
-    timer = smoke.Timer()
-
+def build_template(adapters: Any, timer: smoke.Timer) -> float:
+    """Say, lip sync and compose the template; returns the audio length in seconds."""
     started = time.perf_counter()
     speech = TMP / "speech.wav"
     length = _say(SCRIPT_TEXT, speech)
@@ -287,14 +354,41 @@ def main() -> int:
 
     background = TMP / "background.png"
     draw_background(background)
-    template = MARKETING / "marketing_template.mp4"
-    template.unlink(missing_ok=True)
-    compose(background, synced, speech, length, template)
+    TEMPLATE.unlink(missing_ok=True)
+    compose(background, synced, speech, length, TEMPLATE)
     timer.stage("compose", started)
+    return length
+
+
+def main() -> int:
+    """Build (or re-time) the template and its outputs; returns the process exit code."""
+    parser = argparse.ArgumentParser(description="Build the synthetic marketing template.")
+    parser.add_argument(
+        "--slot-only", action="store_true", help="re-time the name in the existing template"
+    )
+    args = parser.parse_args()
+    smoke._prepare_environment()
+    from vidgen.infrastructure.local_ai.factory import build_ai_adapters
+    from vidgen.settings import Settings
+
+    settings = Settings()  # type: ignore[call-arg]  # secrets come from the placeholder env
+    adapters: Any = build_ai_adapters(settings)
+    MARKETING.mkdir(parents=True, exist_ok=True)
+    TMP.mkdir(parents=True, exist_ok=True)
+    timer = smoke.Timer()
+
+    if args.slot_only:
+        if not TEMPLATE.is_file():
+            raise SystemExit("no template to re-time; run without --slot-only first")
+        length = _duration(TEMPLATE)
+    else:
+        length = build_template(adapters, timer)
 
     final_audio = TMP / "template_16k.wav"
-    _run("ffmpeg", "-v", "error", "-y", "-i", str(template), "-vn", "-ac", "1", "-ar",
-         str(SAMPLE_RATE), str(final_audio))  # fmt: skip
+    _run(
+        "ffmpeg", "-v", "error", "-y", "-i", str(TEMPLATE), "-vn", "-ac", "1",
+        "-ar", str(SAMPLE_RATE), str(final_audio),
+    )  # fmt: skip
     started = time.perf_counter()
     words: list[Word] = adapters.stt.transcribe(final_audio)
     adapters.stt.release()
@@ -302,30 +396,23 @@ def main() -> int:
     print("transcript (app Whisper, word times):")
     _report_transcript(words)
 
-    span = name_span_from_words(words)
-    parts_start, parts_end, lengths = name_span_from_parts(TMP)
-    print(f"parts timing: {', '.join(f'{k} {v:.2f}s' for k, v in lengths.items())}")
-    print(f"parts-based name span {parts_start:.2f}-{parts_end:.2f}s")
-    if span is None:
-        method = "timed from the separately synthesized Lekha parts (transcript misspelt the name)"
-        start, end = parts_start, parts_end
-    else:
-        method = "app Whisper word timestamps (first word start to last word end)"
-        start, end = span
-    print(f"name span {start:.2f}-{end:.2f}s, method: {method}")
-    _check_middle_third(start, end, length)
-    facts = {
-        "length": length,
-        "start": math.floor(start * 10) / 10,  # rounded outwards so the slot covers both words
-        "end": math.ceil(end * 10) / 10,
-        "method": method,
-    }
-    extract_frame(template, (start + end) / 2, MARKETING / "frame_name.png")
-    extract_frame(template, 0.5, MARKETING / "frame_start.png")
-    write_sheet(MARKETING / "names_marketing.csv")
-    write_readme(MARKETING / "README.txt", facts)
+    runs = silence_runs(final_audio, length)
+    print("silencedetect speech runs: " + ", ".join(f"{s:.3f}-{e:.3f}" for s, e in runs))
+    slot = choose_slot(words, runs)
+    print(
+        f"whisper name span {slot.whisper[0]:.2f}-{slot.whisper[1]:.2f}s; "
+        f"silencedetect run {slot.run[0]:.3f}-{slot.run[1]:.3f}s; "
+        f"whisper widened 0.05s {slot.widened[0]}-{slot.widened[1]}s; "
+        f"CHOSEN slot {slot.start:.1f}-{slot.end:.1f}s"
+    )
+    _check_middle_third(slot.start, slot.end, length)
 
-    info = describe(template)
+    extract_frame(TEMPLATE, (slot.start + slot.end) / 2, MARKETING / "frame_name.png")
+    extract_frame(TEMPLATE, 0.5, MARKETING / "frame_start.png")
+    write_sheet(MARKETING / "names_marketing.csv")
+    write_readme(MARKETING / "README.txt", length, slot)
+
+    info = describe(TEMPLATE)
     print(f"template: {info}")
     if (info["width"], info["height"]) != (CANVAS_W, CANVAS_H) or info["audio"] == "none":
         raise SystemExit("the template does not match the required format")

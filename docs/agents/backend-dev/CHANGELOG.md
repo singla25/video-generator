@@ -187,3 +187,6 @@ Newest first. One entry per task.
 - Tests: 64 passed (test_spoken_text, test_spoken_suffix_setting, test_render_row_spoken_suffix). Full unit and integration run (excluding test_worker.py): 2487 passed, 1 skipped.
 - Mypy strict: errors only in `infrastructure/local_ai/loaders.py` (pre-existing).
 - No migration, no dependency. `.env.example` (not in backend-dev's domain) should gain `VIDGEN_SPOKEN_SUFFIX` for the CEO to assign.
+
+## 2026-10-31 - DEMO-TEMPLATE fix (DD-39 slot from the real word span)
+- The slot is no longer the parts sum (4.7-5.9 s, wrong). The script now matches the misspelt first name by similarity (difflib >= 0.6), takes Whisper's span, cross-checks ffmpeg silencedetect (noise -32 dB, 0.06 s), and uses the silence-bounded speech run rounded to one decimal: slot 4.5-5.4 s. The literal rule (Whisper span widened 0.05 s = 4.4-5.3 s) is printed but not used: it ends before the speech does. `--slot-only` re-times the existing template. Parts method removed.

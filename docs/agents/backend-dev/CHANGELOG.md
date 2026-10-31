@@ -223,3 +223,16 @@ Newest first. One entry per task.
 - Tests: 128 of 128 target tests pass. Unit and integration (excluding test_worker.py): 2618 passed, 1 skipped; 25 failed, all in the pipeline tests of the other agent (test_render_row_multi_slot.py, test_render_row_multi_slot_engine.py, test_lipsync_key_from.py).
 - The row-store test defect (shared cipher) was fixed by commit 724234e (test only). The row-store tests now pass.
 - Mypy strict: errors only in `infrastructure/local_ai/loaders.py` (pre-existing 8). Layering grep (services, domain importing infrastructure): nothing.
+
+## 2026-10-31 - BE-B-GREEN (DD-40 lip sync and encode once per name slot)
+- `ports/interfaces.py`: `LipSyncer.sync(video, audio, out, start_s=0.0, key_from=None)`; `key_from` names the video whose face boxes are the cache key (None = the input video).
+- `infrastructure/fakes/adapters.py`: `FakeLipSyncer.sync` accepts `key_from` and ignores it (still copies the video).
+- `infrastructure/local_ai/lipsync.py`: `MuseTalkLipSyncer.sync` forwards `key_from` as the 5th positional argument of `model.run`; the start validation is unchanged.
+- `infrastructure/local_ai/loaders.py`: `_MuseTalkModel.run(video, audio, out, start_s=0.0, key_from=None)` keys the face-box cache with the fingerprint of `key_from or video`. The lip sync still uses `video`. Mypy strict: still 8 errors, all pre-existing, all in this file.
+- `services/render_support.py`: `TRANSPARENT_PNG` (valid 1x1 RGBA PNG, alpha 0) built at import with `struct` and `zlib`.
+- `services/slot_passes.py` (new, 74 lines): `lip_sync_slots` (ascending; pass i starts at slot i's start; first pass without key source, later passes take the template as key source; one slot writes `lipsync.mp4`, otherwise `lipsync{i}.mp4`) and `encode_slots` (descending; pass i takes the previous output; only slot 0 gets the real label and writes `output.mp4`; other passes get `no-label.png` written from `TRANSPARENT_PNG` and write `encode{i}.mp4`).
+- `services/render_row.py`: `_produce_video` uses `job.template.slots`; the voice is made once; one `plan_timing` per slot (`_slot_plan`); the lip sync and encode loops run inside the existing `lipsync` and `encode` stages. Stage order, error handling and the quality check are unchanged.
+- Tests: `test_render_row_multi_slot.py` 25 of 25 pass; `test_lipsync_key_from.py` 6 of 6 pass. `test_render_row_multi_slot_engine.py` 0 of 2 pass: the test helper `multi_slot_renderer` falls back to `world.encoder` (the recording FakeEncoder) because the test does not pass `encoder=`, so the stored output is the fake's bytes and ffprobe rejects them. With the real FFmpeg engine injected (checked with a scratch plugin outside the repo), both engine tests pass. Open for the tester: pass `encoder=engine` in `test_render_row_multi_slot_engine.py`.
+- Unit and integration (excluding test_worker.py): 2645 passed, 2 failed (the two engine tests above), 1 skipped.
+- Layering grep (services, domain importing infrastructure): nothing.
+- No migration, no dependency, no test edited.

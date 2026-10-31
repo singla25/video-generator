@@ -1,0 +1,44 @@
+Feature: Keep the confirmed spelling on regenerate, and a drafts view (DD-38)
+Tests: tests/integration/api/test_preview_spelling_kept.py, tests/integration/worker/test_preview_uses_confirmed_name.py, tests/integration/api/test_batch_views_drafts.py
+
+├── Scenario: Regenerate the preview after confirming the spoken name (POST /batches/{id}/preview)
+│   ├── ✅ Positive
+│   │   ├── K-P1 confirm then regenerate: preview JSON keeps spoken_name = confirmed text and spoken_name_confirmed true (test_regenerate_keeps_the_confirmed_name_in_the_preview_json)
+│   │   ├── K-P2 confirm, regenerate, render, regenerate again: the name is still there (test_regenerate_twice_keeps_the_confirmed_name)
+│   │   ├── K-P3 confirm, regenerate, render, approve: 200, approved true (test_approve_after_regenerate_succeeds_with_the_kept_name)
+│   │   ├── K-P4 confirmed name kept for every accepted shape: Devanagari, 200 chars, Latin with apostrophe and hyphen (test_regenerate_keeps_every_accepted_name_shape)
+│   │   └── K-P5 the kept name is read from the database by a new app instance (test_kept_name_survives_a_new_app_instance)
+│   ├── ❌ Negative
+│   │   ├── K-N1 regenerate after the batch started is 409 INVALID_STATE and the confirmed name is unchanged (test_regenerate_after_start_is_409_and_keeps_the_name)
+│   │   └── K-N2 regenerate when nothing was confirmed keeps spoken_name null (test_regenerate_without_confirmation_keeps_spoken_name_null)
+│   └── ⚠️ Edge
+│       ├── K-E1 regenerate clears the approval but keeps the name (test_regenerate_clears_approval_and_keeps_the_name)
+│       ├── K-E2 confirm again, then regenerate: the new name wins (test_confirming_again_then_regenerate_keeps_the_new_name)
+│       ├── K-E3 regenerate keeps status PENDING and deletes the old preview file (test_regenerate_still_resets_status_and_deletes_the_old_file)
+│       └── K-E4 batch with no confirmed name: regenerate twice keeps spoken_name null (test_no_confirmation_stays_null_across_regenerations)
+│
+├── Scenario: The preview render speaks the confirmed name (worker, row store and voice)
+│   ├── ✅ Positive
+│   │   └── W-P1 confirm then regenerate: the voice is given the confirmed text, not the row name (test_preview_speaks_the_confirmed_name_after_regenerate)
+│   ├── ❌ Negative
+│   │   └── W-N1 whitespace-only confirmed name is not used: the voice gets the row name (test_blank_confirmed_name_falls_back_to_the_row_name)
+│   └── ⚠️ Edge
+│       ├── W-E1 no confirmation at all: the voice gets the row name (test_preview_speaks_the_row_name_when_nothing_was_confirmed)
+│       ├── W-E2 the confirmed spelling belongs to the preview row only; another row is spoken with its own name (test_confirmed_name_is_not_used_for_a_different_row)
+│       └── W-E3 rendering the preview does not change the stored row (test_confirmed_name_never_appears_in_the_stored_row)
+│
+└── Scenario: Batch list view=drafts (GET /batches?view=drafts)
+    ├── ✅ Positive
+    │   ├── D-P1 lists DRAFT batches only, including a draft with a FAILED row or a pending preview (test_drafts_view_lists_only_draft_batches)
+    │   ├── D-P2 newest first (test_drafts_view_is_newest_first)
+    │   ├── D-P3 page_size 1 walks only drafts, newest first; total and total_pages count drafts (test_drafts_pages_walk_only_drafts_newest_first)
+    │   ├── D-P4 view=all still lists drafts (test_view_all_still_lists_drafts)
+    │   └── D-P5 existing views running, completed, failed never list drafts (test_existing_views_never_list_drafts)
+    ├── ❌ Negative
+    │   └── D-N1 values that are not one of all, running, completed, failed, drafts are 422 VALIDATION_ERROR, incl. singular "draft" (test_unknown_view_value_including_singular_draft_is_422)
+    └── ⚠️ Edge
+        ├── D-E1 running, paused, completed, cancelled batches are excluded (test_drafts_view_excludes_started_completed_and_cancelled)
+        ├── D-E2 a draft that gets started leaves the drafts view (test_started_draft_leaves_the_drafts_view)
+        ├── D-E3 no drafts: empty page, total 0 (test_drafts_view_with_no_drafts_is_empty)
+        ├── D-E4 empty history: empty page, total 0 (test_drafts_view_on_an_empty_history_is_empty)
+        └── D-E5 page past the end keeps the drafts total (test_page_past_the_end_keeps_the_drafts_total)

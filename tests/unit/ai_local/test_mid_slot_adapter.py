@@ -35,8 +35,16 @@ class StubMuseTalk:
     def __init__(self) -> None:
         self.runs: list[tuple[Path, Path, Path, float]] = []
 
-    def run(self, video: Path, audio: Path, out: Path, start_s: float, /) -> None:
-        """Record the call and write a placeholder output."""
+    def run(
+        self,
+        video: Path,
+        audio: Path,
+        out: Path,
+        start_s: float = 0.0,
+        key_from: Path | None = None,
+        /,
+    ) -> None:
+        """Record the call (start only, as before) and write a placeholder output."""
         self.runs.append((video, audio, out, start_s))
         out.write_bytes(b"lip-synced")
 

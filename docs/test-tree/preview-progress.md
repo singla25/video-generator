@@ -9,13 +9,13 @@ CONTRACT (the developer implements exactly this)
 3. In-memory double `FakeStageReporter` in tests/fixtures/doubles.py (you add it).
 4. The render-row service accepts optional kwarg `stage_reporter` (default None = no-op). During a PREVIEW job, each `run.stage(name)` start reports the raw stage name for the preview's batch id, in order fetch, tts, lipsync, encode, check, publish; after `preview_rendered` or `preview_failed` the reporter is cleared. Row (non-preview) jobs do not report. A reporter that raises must NOT fail the render (error is logged).
 5. API: GET batch JSON `preview` gains `stage`: while preview status is pending: "preparing" for fetch or no stage yet, "voice" for tts, "lipsync" for lipsync, "finishing" for encode/check/publish; otherwise null (READY, FAILED, no preview). Unknown raw stage -> "preparing".
-6. Settings `warm_up_on_start: bool = False` (env VIDGEN_WARM_UP_ON_START). Function `vidgen.worker.warm_up.warm_up_if_enabled(settings, warmables) -> bool`: returns False and calls nothing when disabled or when ai_mode is not "local"; when enabled and local, calls `warm_up()` on each warmable once, then `release()` on each (models must NOT stay in memory), returns True; a warmable that raises is logged and skipped, never crashes startup.
+6. Settings `warm_up_on_start: bool = False` (env VIDGEN_WARM_UP_ON_START). Function `vidgen.worker.warm_up.warm_up_if_enabled(settings, warmables) -> bool`: returns False and calls nothing when disabled or when ai_mode is not "local"; when enabled and local, one model at a time: for each warmable in order, `warm_up()` then `release()` before the next one is touched (w1.warm_up, w1.release, w2.warm_up, w2.release, ...). Never more than one model is resident at once. Returns True. A `warm_up()` that raises is logged, `release()` is still tried best-effort, then the next model runs. A `release()` that raises is logged and the next model still runs. Nothing crashes start-up.
 
 Assumptions the tests make beyond the contract (flagged to CEO):
 - A. The API gets the reporter through `AppDeps.stage_reporter` (default: Redis adapter on settings.redis_url).
 - A. An API read of the stage never fails the batch page: if the reporter raises, the stage is "preparing" and GET still returns 200.
 - A. The adapter does not swallow Redis errors (the render service logs them); `ttl_seconds` must be positive.
-- A. Warm-up runs warm_up() on all warmables first, then release() on all (literal reading of item 6). A release() error is logged and does not stop the others.
+- A. Warm-up is one model at a time (warm_up then release per model, before the next): never more than one model resident. A warm_up() error still triggers a best-effort release(). Any warm_up() or release() error is logged and does not stop the others.
 
 Scenario: Worker reports the preview stage (render_row, preview job)
 ├── ✅ Positive  — P1 log is [stage:fetch, stage:tts, stage:lipsync, stage:encode, stage:check, stage:publish, rendered, clear]; reports carry the batch id
@@ -64,12 +64,15 @@ Scenario: Opt-in warm-up setting
 │                  — N2 falsy env values ("false", "0", "no", "off") -> False
 └── ⚠️ Edge      — E1 env var name is exactly VIDGEN_WARM_UP_ON_START (other names ignored)
 
-Scenario: Warm-up at worker start (warm_up_if_enabled)
-├── ✅ Positive  — P1 enabled + local: warm_up on each, then release on each, returns True
+Scenario: Warm-up at worker start (warm_up_if_enabled, one model at a time)
+├── ✅ Positive  — P1 enabled + local: w1.warm_up, w1.release, w2.warm_up, w2.release; returns True
 │                  — P2 each warmable warmed and released exactly once
+│                  — P3 never more than one model resident at a time; none left loaded at the end
 ├── ❌ Negative  — N1 disabled (local or fake): returns False, nothing called
 │                  — N2 enabled + fake mode: returns False, nothing called
-│                  — N3 a warmable whose warm_up raises: logged, others still warmed and released, no exception
-│                  — N4 a release() that raises: logged, the other releases still run
+│                  — N3 a warmable whose warm_up raises: logged, its release still tried, next model still runs, no exception
+│                  — N4 a release() that raises: logged, the next model still runs
+│                  — N5 warm_up and release both raise for one model: both logged, next model still warmed and released
 └── ⚠️ Edge      — E1 empty list when enabled + local: returns True, no error
                    — E2 warmables given as a one-shot iterator: all still warmed and released
+                   — E3 a failing last model: returns True, nothing left resident

@@ -38,7 +38,7 @@ def test_csv_upload_creates_a_draft_batch_with_a_validation_report(env: Env) -> 
     body = response.json()
     assert body["status"] == "DRAFT"
     assert body["template_id"] == template_id
-    assert body["preview"] == {"status": "NONE", "approved": False}
+    assert body["preview"] == {"status": "NONE", "approved": False, "stage": None}
     assert body["report"] == {"total_rows": 5, "valid_rows": 5, "skipped_rows": 0, "problems": []}
 
 

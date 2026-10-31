@@ -147,3 +147,6 @@ Newest first. One entry per task.
 
 ## 2026-10-31 - T-PROG-FE RED (preview progress, slow warning, fake-AI note)
 - Tree docs/test-tree/preview-progress-ui.md; red tests tests/frontend/unit/preview-progress.test.tsx (55 tests: 30 red, 25 guards pass; existing 347 frontend tests untouched and passing).
+
+## 2026-10-31 - T-PROG-FIX (stage key in shape asserts, one-model-at-a-time warm-up, cookie tests robust to httpx2)
+- Shape asserts take `"stage"` (None for READY/NONE, "preparing" for the PENDING POST response); warm-up tests rewritten for one-model-at-a-time (6 red); cookie tampering via new tests/fixtures/cookies.py `send_only_cookie`; logs test checks app records only (httpx2 client log excluded). Tree and commit: see git log.

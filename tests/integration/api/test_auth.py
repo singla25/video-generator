@@ -9,6 +9,7 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
+from tests.fixtures.cookies import send_only_cookie
 from tests.integration.api.conftest import PASSWORD, Env, EnvFactory
 from vidgen.api.app import create_app
 from vidgen.api.deps import AppDeps
@@ -140,14 +141,14 @@ def test_tampered_session_cookie_is_401(env: Env) -> None:
     """TT-AC16-N3."""
     value = env.client.cookies["vidgen_session"]
     flipped = value[:-2] + ("A" if value[-2] != "A" else "B") + value[-1]
-    env.client.cookies.set("vidgen_session", flipped)
+    send_only_cookie(env.client, "vidgen_session", flipped)
     assert env.client.get("/templates").status_code == 401
 
 
 def test_cookie_signed_with_another_secret_is_401(make_env: EnvFactory) -> None:
     """TT-AC16-N3."""
     first, second = make_env(), make_env()
-    second.client.cookies.set("vidgen_session", first.client.cookies["vidgen_session"])
+    send_only_cookie(second.client, "vidgen_session", first.client.cookies["vidgen_session"])
     assert second.client.get("/templates").status_code == 401
 
 

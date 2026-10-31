@@ -27,7 +27,8 @@ from alembic import command
 from alembic.config import Config
 from argon2 import PasswordHasher
 
-from tests.fixtures.templates import make_template
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from tests.fixtures.templates import make_template  # repo root must be on sys.path first
 
 ROOT = Path(__file__).resolve().parents[3]
 FRONTEND = ROOT / "frontend"

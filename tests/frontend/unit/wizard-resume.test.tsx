@@ -184,6 +184,40 @@ describe("negative", () => {
     },
   );
 
+  it("TT-DD38-D-N6 a draft with zero valid rows and an unapproved preview shows the no-sheet message", async () => {
+    serveBatch(
+      draftWith(report({ total_rows: 2, valid_rows: 0, skipped_rows: 2 }), {
+        status: "NONE",
+        approved: false,
+      }),
+    );
+    renderApp(RESUME);
+    expect(await screen.findByText(NO_SHEET)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete draft" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("spinbutton", { name: "Slot start (s)" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("TT-DD38-D-N7 a draft with zero valid rows and an approved preview shows the no-sheet message, not step 4", async () => {
+    serveBatch(
+      draftWith(report({ total_rows: 2, valid_rows: 0, skipped_rows: 2 }), {
+        status: "READY",
+        approved: true,
+      }),
+    );
+    renderApp(RESUME);
+    expect(await screen.findByText(NO_SHEET)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete draft" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "Output folder" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("TT-DD38-D-N4 Keep in the delete dialog sends nothing and stays on the page", async () => {
     const deleted: string[] = [];
     serveBatch(draftWith(null));

@@ -63,6 +63,7 @@ Feature: D. Resume a batch from /batches/new?batch=<id> (WizardPage)
 │   └── ❌ E1 "Back to Overview" opens the Overview
 ├── Scenario: a draft with no sheet data
 │   ├── ❌ P1 DRAFT with report null or missing: "This draft has no sheet data yet. Delete it and upload the sheet again." and a "Delete draft" button
+│   ├── ❌ N6 valid_rows 0 (any preview state) shows the same no-sheet message, not step 3 or 4
 │   ├── ❌ N3 Delete draft asks first; Keep sends nothing
 │   ├── ❌ N4 a failed DELETE shows its message and stays on the page
 │   ├── ❌ P2 confirm Delete sends DELETE /batches/<id>, then opens the Overview
@@ -78,4 +79,4 @@ Feature: D. Resume a batch from /batches/new?batch=<id> (WizardPage)
     └── (no edge cases beyond the above)
 ```
 
-Notes on the contract left open (not tested, see the report): a draft with `valid_rows: 0` and an unapproved preview (contract says step 3, the old code said step 2); the failure message location for a failed Delete draft in the wizard (only "role=alert" is asserted).
+Decided (coordinator): a DRAFT with report null, missing, or valid_rows 0 shows the no-sheet message with Delete draft (tests D-N3, D-N6, D-N7). Open: the location of a failed Delete draft message (only role=alert is asserted).

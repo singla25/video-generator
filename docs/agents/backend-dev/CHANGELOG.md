@@ -201,3 +201,11 @@ Newest first. One entry per task.
 - Mypy strict: 8 errors, all in `infrastructure/local_ai/loaders.py` (same count as before). Layering grep (services, domain importing infrastructure): nothing.
 - Callers that pass three arguments (`backend/scripts/local_ai_smoke.py`) keep working through the default 0.0. `backend/spikes/` not touched.
 - No migration, no dependency.
+
+## 2026-10-31 - SMOKE-MID (DD-39 smoke script on the mid-video name slot)
+- `backend/scripts/local_ai_smoke.py`: new optional `--template PATH`, `--slot START END` (manual slot; the transcript still gives the pause after the name), `--sheet PATH.csv` (header `Name,VID`, read with `csv`; blank lines skipped; errors give line numbers only), `--out-name NAME` (sub-folder of `local_out/`). Defaults unchanged when omitted.
+- Lip sync now gets `start_s=slot.start_s`; `plan_timing` gets `gap_s=settings.name_gap_s`; the honorific goes through `spoken_text`; the duration check uses `plan.duration_delta_s` (extension plus gap). The fidelity report reads the face-box cache with `landmark_key(fingerprint, start_s)`, the key the product writes (found when the first run failed on the plain key).
+- Run (manual slot 4.5-5.4 s, csv sheet, 2 rows, `--out-name mid_slot`): exit 0, peak RSS 5.5 GB, MPS 7.5 GB, total 66 s. Both rows: 1080x1300, 60 fps, 13.07 s against the template's 12.82 s (+0.25 s = the name gap, zero extension). Lower-face fidelity SSIM 0.987.
+- Transcript (app STT, output row 1): the name, then `जी` at 5.24-5.42 s; `आप से कहता हूँ` follows at 5.42 s, template 5.26 s. Words after the slot sit about 0.24 s later than in the template (`सब` 6.40 vs 6.64, `सिंगला` 11.24 vs 11.48, last `पर` 12.20 vs 12.44). Words before the slot are unchanged within STT noise.
+- Frame mean abs diff (0-255), whole / face (x 200-880, y 300-900): before 1.84 / 1.95; inside 3.03 / 3.04; after 3.47 / 4.34. The after pair is the 0.25 s shift: output at 8.0 s against the template at 7.75 s gives face 1.78.
+- Open: the before pair is not ~0 (about 1.9), most likely from the full re-encode; not measured separately. Whisper's Hindi is weak on both transcripts, so word text is only a rough check. Outputs in `backend/spikes/m2_mac/work/local_out/mid_slot/` (git-ignored, not committed).

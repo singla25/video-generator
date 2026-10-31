@@ -144,3 +144,6 @@ Newest first. One entry per task.
 
 ## 2026-10-31 - T-PROG-BE RED (preview stage progress and opt-in warm-up)
 - Tree docs/test-tree/preview-progress.md; red tests in tests/unit/infra/test_redis_stage_reporter.py, tests/unit/services/test_render_preview_stage.py, tests/unit/infra/test_warm_up_setting.py, tests/unit/worker/test_warm_up.py, tests/integration/api/test_preview_stage.py; FakeStageReporter added to tests/fixtures/doubles.py.
+
+## 2026-10-31 - T-PROG-FE RED (preview progress, slow warning, fake-AI note)
+- Tree docs/test-tree/preview-progress-ui.md; red tests tests/frontend/unit/preview-progress.test.tsx (55 tests: 30 red, 25 guards pass; existing 347 frontend tests untouched and passing).

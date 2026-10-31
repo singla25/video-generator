@@ -430,7 +430,7 @@ describe('step 3 slot and preview gate', () => {
     await userEvent.clear(end);
     await userEvent.type(end, '6');
     await userEvent.click(screen.getByRole('button', { name: 'Save slot' }));
-    await waitFor(() => expect(body).toEqual({ start_s: 4, end_s: 6 }));
+    await waitFor(() => expect(body).toEqual({ start_s: 4, end_s: 6, extra_slots: [] }));
   });
 
   it('TT-UI-AC5-E3 a slot beyond the video duration is refused locally', async () => {

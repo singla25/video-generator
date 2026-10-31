@@ -1,0 +1,207 @@
+# CI for the Dynamic Video Generator (ADR-011, scope B; plan docs/plans/ci-github-actions.md).
+# Install: mkdir -p .github/workflows && cp docs/patches/ci.yml .github/workflows/ci.yml
+# No secrets are used. Postgres and Redis run as job services with throwaway credentials
+# that match the hard-coded test defaults (tests/integration/conftest.py). Synthetic data only.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vidgen
+          POSTGRES_PASSWORD: devpassword
+          POSTGRES_DB: vidgen
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vidgen -d vidgen"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      VIDGEN_DATABASE_URL: postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen
+      VIDGEN_REDIS_URL: redis://127.0.0.1:6379/0
+      VIDGEN_CREATOR_ENTITY: CI Test Org
+      VIDGEN_AI_MODE: fake
+      VIDGEN_COOKIE_SECURE: "false"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv and Python 3.11
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Install system packages for the pipeline
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libraqm0 libfribidi0 fonts-noto-core
+
+      - name: Install Python dependencies (no local-ai extra)
+        run: uv sync --locked
+
+      - name: Generate throwaway app secrets for this job
+        run: |
+          uv run python - <<'PY'
+          import os
+          import secrets
+
+          from argon2 import PasswordHasher
+
+          # Random values, never printed and never stored outside this job.
+          admin_password = secrets.token_hex(16)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"VIDGEN_ENCRYPTION_KEY={secrets.token_hex(32)}\n")
+              env_file.write(f"VIDGEN_INDEX_KEY={secrets.token_hex(32)}\n")
+              env_file.write(f"VIDGEN_SESSION_SECRET={secrets.token_hex(32)}\n")
+              env_file.write(
+                  f"VIDGEN_ADMIN_PASSWORD_HASH={PasswordHasher().hash(admin_password)}\n"
+              )
+          PY
+
+      - name: Lint (ruff check)
+        run: uv run ruff check backend tests
+
+      - name: Format check (ruff format)
+        run: uv run ruff format --check backend tests
+
+      - name: Types (mypy strict)
+        run: uv run mypy --strict backend/vidgen
+
+      - name: Tests (pytest)
+        run: uv run pytest -q -p no:cacheprovider
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Node 22
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Types (typecheck)
+        run: npm run typecheck
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Format check (prettier)
+        run: npm run format:check
+
+      - name: Unit tests (vitest)
+        run: npm test
+
+      - name: Dependency audit (production, high and up)
+        run: npm audit --omit=dev --audit-level=high
+
+  e2e:
+    needs: [python, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vidgen
+          POSTGRES_PASSWORD: devpassword
+          POSTGRES_DB: vidgen
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vidgen -d vidgen"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv and Python 3.11
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Install system packages for the pipeline
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libraqm0 libfribidi0 fonts-noto-core
+
+      - name: Install Python dependencies (no local-ai extra)
+        run: uv sync --locked
+
+      - name: Install Node 22
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dashboard dependencies (npm ci)
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright Chromium with system deps
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # tests/frontend/e2e/run_stack.py starts the API (8000), one worker and the Vite dev
+      # server (5173) with random test secrets and a throwaway database, then runs
+      # `npx playwright test` in frontend/. It tears everything down afterwards.
+      # Plain `npm run e2e` would NOT start the API, so it is not used here.
+      - name: Run end-to-end tests against the started stack
+        run: uv run python tests/frontend/e2e/run_stack.py

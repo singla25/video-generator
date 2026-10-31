@@ -43,11 +43,13 @@ test('TT-UI-E2E-P2a upload a template and its consent on the Templates page', as
     .getByRole('link', { name: 'Templates' })
     .click();
   await page.getByRole('button', { name: 'New template' }).click();
+  await shot(page, 'dd37-templates-form-empty');
   await page
     .getByLabel('Template video')
     .locator('input[type="file"]')
     .setInputFiles(join(FIXTURES, 'template.mp4'));
   await page.getByLabel('Word to replace').fill('Rahul');
+  await shot(page, 'dd37-templates-form-filled');
   await page.getByRole('button', { name: 'Upload template' }).click();
   const card = page.getByTestId('template-card').filter({ hasText: 'Rahul' });
   await expect(card).toBeVisible();
@@ -73,6 +75,12 @@ test('TT-UI-E2E-P2b the slot is set and confirmed in the UI and the template bec
   await card.getByRole('button', { name: 'Confirm slot' }).click();
   await expect(card).toContainText('Ready to use');
   await shot(page, 'templates');
+  await card.getByRole('button', { name: 'Delete template' }).click();
+  await shot(page, 'dd37-templates-delete-dialog');
+  await page
+    .getByRole('dialog', { name: 'Delete this template?' })
+    .getByRole('button', { name: 'Cancel' })
+    .click();
 });
 
 test('TT-UI-E2E-P5 a refresh or deep link on a SPA route renders the app, not API JSON', async ({
@@ -126,6 +134,7 @@ test('TT-UI-E2E-P2c wizard: sheet, mapping with invalid rows, preview, approval,
   await expect(page.getByRole('textbox', { name: 'Output folder' })).toHaveValue(
     /^\d{4}-\d{2}-\d{2}-\d+$/,
   );
+  await shot(page, 'dd37-wizard-count');
   await page.getByRole('button', { name: 'Review and start' }).click();
   await expect(page.getByRole('dialog', { name: 'Start 3 videos?' })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm and start' }).click();
@@ -150,6 +159,12 @@ test('TT-UI-E2E-P2d progress to completion, batch detail, rows, ZIP and failures
   expect((await response.body()).subarray(0, 2).toString()).toBe('PK');
   const [download] = await Promise.all([page.waitForEvent('download'), zip.click()]);
   expect(download.suggestedFilename()).toMatch(/\.zip$/);
+  await go(page, '/batches/completed');
+  await shot(page, 'dd37-list-completed');
+  await go(page, '/batches/running');
+  await shot(page, 'dd37-list-running');
+  await go(page, '/batches/failed');
+  await shot(page, 'dd37-list-failed');
 });
 
 test('TT-UI-E2E-P2e overview and security views with real data', async ({ page }) => {

@@ -164,10 +164,20 @@ def install(monkeypatch: pytest.MonkeyPatch, world: World, *, mps: bool = False)
     module("transformers", WhisperModel=Whisper)
     assert pre is not None and util is not None
 
-    def extract(video: Path, folder: Path, count: int, ffmpeg: str = "ffmpeg") -> list[Path]:
+    def extract(
+        video: Path, folder: Path, count: int, ffmpeg: str = "ffmpeg", *, start_s: float = 0.0
+    ) -> list[Path]:
         return [folder / f"{i:08d}.png" for i in range(count)]
 
-    def assemble(blended: Path, count: int, video: Path, out: Path, ffmpeg: str = "ffmpeg") -> None:
+    def assemble(
+        blended: Path,
+        count: int,
+        video: Path,
+        out: Path,
+        ffmpeg: str = "ffmpeg",
+        *,
+        start_s: float = 0.0,
+    ) -> None:
         world.assembled.append((blended, count, video, out))
         out.write_bytes(b"video")
 

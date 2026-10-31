@@ -269,13 +269,13 @@ def test_one_failing_row_does_not_poison_the_adapter_for_the_next_row(
 
 
 class StubMuseTalk:
-    """``run(video, audio, out)`` writes bytes to ``out`` (and may then fail)."""
+    """``run(video, audio, out, start_s)`` writes bytes to ``out`` (and may then fail)."""
 
     def __init__(self, fail: bool = False) -> None:
         self.fail = fail
         self.runs: list[tuple[Path, Path, Path]] = []
 
-    def run(self, video: Path, audio: Path, out: Path) -> None:
+    def run(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
         """Write a partial file, then fail if asked to."""
         self.runs.append((video, audio, out))
         out.write_bytes(b"partial")

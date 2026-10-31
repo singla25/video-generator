@@ -86,3 +86,13 @@ Newest first. One entry per task.
 - Tests: full Vitest 544/544; typecheck, lint, format:check, build green. No test edited.
 - 2026-10-31 FE-GREEN2 follow-up: the real GET has no `report`, only `counts`. Resume now counts valid rows as report.valid_rows when a report exists, else counts.total - counts.skipped; no sheet data only below 1; otherwise step 3 with a report built from the counts. Files: pages/wizard/resume.ts. Tests: full Vitest 547/547; typecheck, lint, format:check, build green.
 - Open: Overview rows table keeps its own draft labels (unchanged); docs/html not regenerated (outside this task's paths).
+
+## 2026-10-31 - FE-GREEN (DD-40)
+- Several name slots in the slot editor (wizard step 3 and the Templates card): "Add another name slot" adds a Slot N pair (up to 5 slots in all), each extra pair has "Remove slot N"; removing renumbers the rest. Extra pairs prefill from `extra_slots`.
+- Client checks run while typing; Save slot is disabled and each message shows as a role=alert: "Slots must not overlap or touch." (gap under 0.2 s, checked after sorting), "Fill in every slot or remove it.", "Each slot must end after it starts.", "Slot N ends after the video." (extra slots only). The primary slot keeps its existing messages.
+- PUT body is `{start_s, end_s, extra_slots}` with numbers, extra slots sorted by start, `[]` when none. Confirm stays off while the typed extra slots differ from the saved ones.
+- Template card: "Slot 4.2 s - 5.1 s" for one slot, "Slots 2 s - 3 s, 10 s - 11 s" for several.
+- Template type gains `extra_slots` and `slots`. Editor remounts when the saved slots change (`slotStateKey`).
+- Files: api/types.ts, pages/wizard/{SlotEditor,SlotField,ExtraSlotRow,slotChecks,StepSlot}.tsx/ts, pages/templates/TemplateCard.tsx.
+- Tests: full Vitest 600/600 (48 DD-40 tests now green); typecheck, lint, format:check, build green. No test edited.
+- Open: negative extra start is not refused locally (the API validates it; no message was specified); docs/html not regenerated (outside this task's paths).

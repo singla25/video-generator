@@ -84,12 +84,16 @@ Feature: D. New template form (drop zone)
 │   ├── ✅ P7 size line has one decimal for a larger file
 │   ├── ✅ P8 Upload enabled only when a file is chosen and the word is not blank (guard, passes today)
 │   ├── ✅ P9 multipart upload with the trimmed word (guard, passes today)
+│   ├── ✅ P10 empty type + clip.MKV / clip.mp4 / clip.mov / clip.m4v / clip.webm is accepted by extension (case-insensitive)
+│   ├── ✅ P11 the same empty-type rule through a dropped clip.MKV
 │   ├── ⚠️ E2 unicode and spaces in the file name are shown intact
 │   └── ⚠️ E3 after Remove file a new video can be chosen
 ├── Scenario: refusing a file
 │   ├── ❌ N1 a non-video file: role=alert "Choose a video file.", not shown, Upload disabled
 │   ├── ❌ N2 a dropped non-video file is refused the same way
-│   ├── ❌ N3 an .mp4 name with a non-video MIME type is refused (the MIME type decides)
+│   ├── ❌ N3 text/plain named clip.mp4 is refused (a non-empty non-video type wins)
+│   ├── ❌ N4 the same refusal when the file is dropped
+│   ├── ❌ N5 empty type with notes.txt or no extension is refused
 │   └── ⚠️ E1 a word of spaces only keeps Upload disabled (guard, passes today)
 └── Scenario: Cancel
     └── ✅ P3 (see Layout) Cancel stays
@@ -102,4 +106,4 @@ Feature: D. New template form (drop zone)
 | A. Batch list pages, routes, columns, progress, empty, error, paging, polling | A-P1..P12, A-N1..N4, A-E1..E4 |
 | B. Wizard step 4 "Videos to generate", limit, custom number | B-P1..P10, B-N1..N3, B-E1..E4 |
 | C. Template delete dialog, 204, 409, disabled while pending | C-P1..P4, C-N1..N3, C-E1..E3 |
-| D. New template drop zone, file summary, refusal, helper text | D-P1..P9, D-N1..N3, D-E1..E3 |
+| D. New template drop zone, file summary, refusal, helper text, extension fallback for empty file type | D-P1..P11, D-N1..N5, D-E1..E3 |

@@ -162,13 +162,32 @@ describe('negative', () => {
     expect(uploadButton()).toBeDisabled();
   });
 
-  it('TT-DD37-D-N3 the decision is the MIME type: an .mp4 name with no video type is refused', async () => {
+  it('TT-DD37-D-N3 a text/plain file named clip.mp4 is refused: a non-empty non-video type wins', async () => {
     await openForm();
     await userEvent.type(screen.getByLabelText('Word to replace'), 'Zed');
-    await chooseVideo(videoFile('intro.mp4', SMALL_BYTES, ''));
+    await chooseVideo(videoFile('clip.mp4', SMALL_BYTES, 'text/plain'));
     expect(await screen.findByRole('alert')).toHaveTextContent(NOT_VIDEO);
     expect(uploadButton()).toBeDisabled();
   });
+
+  it('TT-DD37-D-N4 a dropped text/plain file named clip.mp4 is refused the same way', async () => {
+    await openForm();
+    await userEvent.type(screen.getByLabelText('Word to replace'), 'Zed');
+    drop(videoFile('clip.mp4', SMALL_BYTES, 'text/plain'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(NOT_VIDEO);
+    expect(uploadButton()).toBeDisabled();
+  });
+
+  it.each(['notes.txt', 'clip'])(
+    'TT-DD37-D-N5 an empty type with %s (not a listed video extension, or none) is refused',
+    async (name) => {
+      await openForm();
+      await userEvent.type(screen.getByLabelText('Word to replace'), 'Zed');
+      await chooseVideo(videoFile(name, SMALL_BYTES, ''));
+      expect(await screen.findByRole('alert')).toHaveTextContent(NOT_VIDEO);
+      expect(uploadButton()).toBeDisabled();
+    },
+  );
 });
 
 describe('edge', () => {
@@ -191,5 +210,27 @@ describe('edge', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Remove file' }));
     await chooseVideo(videoFile('second.mp4'));
     expect(dropZone()).toHaveTextContent('second.mp4 · 0.1 MB');
+  });
+});
+
+describe('extension fallback when the browser gives no file type', () => {
+  it.each(['clip.MKV', 'clip.mp4', 'clip.mov', 'clip.m4v', 'clip.webm'])(
+    'TT-DD37-D-P10 an empty type with %s is accepted by its extension (case-insensitive)',
+    async (name) => {
+      await openForm();
+      await userEvent.type(screen.getByLabelText('Word to replace'), 'Zed');
+      await chooseVideo(videoFile(name, SMALL_BYTES, ''));
+      expect(dropZone()).toHaveTextContent(`${name} · 0.1 MB`);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(uploadButton()).toBeEnabled();
+    },
+  );
+
+  it('TT-DD37-D-P11 a dropped file with an empty type and clip.MKV is accepted the same way', async () => {
+    await openForm();
+    await userEvent.type(screen.getByLabelText('Word to replace'), 'Zed');
+    drop(videoFile('clip.MKV', SMALL_BYTES, ''));
+    expect(await screen.findByText(/clip\.MKV · 0\.1 MB/)).toBeInTheDocument();
+    expect(uploadButton()).toBeEnabled();
   });
 });

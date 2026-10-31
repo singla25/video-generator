@@ -11,6 +11,7 @@ from sqlalchemy import ColumnElement, exists
 from vidgen.domain.status import BatchListView
 from vidgen.infrastructure.db.models import Batch, BatchRow
 
+DRAFT_STATUS = "DRAFT"
 LIVE_STATUSES = ("RUNNING", "PAUSED")
 STARTED_STATUSES = ("RUNNING", "PAUSED", "COMPLETED")
 
@@ -28,4 +29,6 @@ def view_condition(view: BatchListView) -> ColumnElement[bool] | None:
         return (Batch.status == "COMPLETED") & ~_has_failed_row()
     if view is BatchListView.FAILED:
         return Batch.status.in_(STARTED_STATUSES) & _has_failed_row()
+    if view is BatchListView.DRAFTS:
+        return Batch.status == DRAFT_STATUS
     return None

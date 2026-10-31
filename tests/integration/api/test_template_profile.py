@@ -263,7 +263,8 @@ def test_unknown_template_is_404_for_profile_actions(env: Env, path: str) -> Non
 # ---- content lock (AC18) --------------------------------------------------------------
 
 
-@pytest.mark.parametrize("method", ["PATCH", "PUT", "DELETE"])
+# DELETE is the delete-template route since DD-37; it is covered in test_template_delete.py.
+@pytest.mark.parametrize("method", ["PATCH", "PUT"])
 def test_the_slot_cannot_be_changed_through_the_template_resource(env: Env, method: str) -> None:
     """TT-AC18-E6: slot changes exist only on the slot endpoints."""
     template_id = new_template(env)

@@ -1,22 +1,26 @@
 // DD-38 D: resuming a batch from /batches/new?batch=<id>. Cases: TT-DD38-D-*
 //
-// CONTRACT (frontend/src/pages/WizardPage.tsx; GET /batches/<id>):
-//   Missing (404)                The existing error alert (role=alert, the API message), plus a link
-//                                "Back to Overview" (-> /)
-//   Exists, not DRAFT            "This batch can't be continued." and a link "Back to Overview" (-> /)
-//   DRAFT, report null or missing "This draft has no sheet data yet. Delete it and upload the sheet
-//                                 again." and a "Delete draft" button (dialog "Delete this draft?",
-//                                 then DELETE /batches/<id>, then navigate to /)
-//   DRAFT with report (valid_rows >= 1)            step 3 "Slot & preview" (stepper aria-current), with
-//                                                  or without an approved preview; Next goes to step 4
-//   No batch parameter                             unchanged: step 1 "Upload", no batch request
+// CONTRACT (frontend/src/pages/WizardPage.tsx, frontend/src/pages/wizard/resume.ts; GET /batches/<id>):
+//   The real GET never sends `report` (only the create and mapping responses do); it sends `counts`.
+//   Valid rows of a resumed draft = report.valid_rows when a report is present, else
+//   counts.total - counts.skipped.
+//   Missing (404)                  the existing error alert (role=alert, the API message) and a link
+//                                  "Back to Overview" (-> /)
+//   Exists, not DRAFT              "This batch can't be continued." and a link "Back to Overview" (-> /)
+//   DRAFT, valid rows below 1      "This draft has no sheet data yet. Delete it and upload the sheet
+//                                  again." and a "Delete draft" button (dialog "Delete this draft?",
+//                                  then DELETE /batches/<id>, then navigate to /)
+//   DRAFT, valid rows 1 or more    step 3 "Slot & preview" (stepper aria-current), with or without an
+//                                  approved preview; Next goes to step 4 "Output & start", which shows
+//                                  "All N rows" with the same N
+//   No batch parameter             unchanged: step 1 "Upload", no batch request
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { renderApp } from "../helpers";
-import { IDS, batch, batchesPage, report } from "../mocks/data";
+import { COUNTS, IDS, batch, batchesPage, report } from "../mocks/data";
 import { apiError } from "../mocks/handlers";
 import { server } from "../mocks/server";
 
@@ -40,17 +44,26 @@ function serveBatch(body: Json | null): string[] {
   return requested;
 }
 
-/** A DRAFT. `sheet` null means report: null; undefined means the report key is missing. */
+/** Live counts as the real GET sends them: `total` rows, of which `skipped` are skipped. */
+function countsOf(total: number, skipped: number): Record<string, number> {
+  return { ...COUNTS, total, skipped };
+}
+
+/** A DRAFT as the real GET sends it: counts present, no report unless `over` adds one. */
 function draftWith(
-  sheet: Record<string, unknown> | null | undefined,
-  preview = {},
+  preview: Record<string, unknown> = {},
+  over: Record<string, unknown> = {},
 ): Json {
-  const over: Record<string, unknown> = {
+  return batch({
     status: "DRAFT",
     preview: { status: "NONE", approved: false, ...preview },
-  };
-  if (sheet !== undefined) over.report = sheet;
-  return batch(over);
+    ...over,
+  });
+}
+
+/** A DRAFT with no valid rows: every row is skipped. */
+function noSheetDraft(preview: Record<string, unknown> = {}): Json {
+  return draftWith(preview, { counts: countsOf(10, 10) });
 }
 
 /** The stepper item marked as the current step. */
@@ -68,7 +81,7 @@ describe("positive", () => {
   ])(
     "TT-DD38-D-P3 a draft with sheet data and %s opens step 3 Slot & preview",
     async (_label, preview) => {
-      serveBatch(draftWith(report({ valid_rows: 8 }), preview));
+      serveBatch(draftWith(preview, { counts: countsOf(10, 2) }));
       renderApp(RESUME);
       expect(
         await screen.findByRole("spinbutton", { name: "Slot start (s)" }),
@@ -77,9 +90,12 @@ describe("positive", () => {
     },
   );
 
-  it("TT-DD38-D-P4 an approved preview still opens step 3 with it shown, and Next goes to step 4", async () => {
+  it("TT-DD38-D-P4 an approved preview still opens step 3 with it shown; Next goes to step 4 with All 8 rows", async () => {
     serveBatch(
-      draftWith(report({ valid_rows: 8 }), { status: "READY", approved: true }),
+      draftWith(
+        { status: "READY", approved: true },
+        { counts: countsOf(10, 2) },
+      ),
     );
     renderApp(RESUME);
     expect(
@@ -93,14 +109,15 @@ describe("positive", () => {
       await screen.findByRole("textbox", { name: "Output folder" }),
     ).toBeInTheDocument();
     expect(currentStep()).toHaveTextContent("Output & start");
+    expect(screen.getByText("All 8 rows")).toBeInTheDocument();
   });
 
-  it("TT-DD38-D-P5 step 4 of an approved draft counts the sheet valid rows", async () => {
+  it("TT-DD38-D-P5 step 4 of an approved draft counts the valid rows", async () => {
     serveBatch(
-      draftWith(report({ total_rows: 7, valid_rows: 5, skipped_rows: 2 }), {
-        status: "READY",
-        approved: true,
-      }),
+      draftWith(
+        { status: "READY", approved: true },
+        { counts: countsOf(7, 2) },
+      ),
     );
     renderApp(RESUME);
     await userEvent.click(await screen.findByRole("button", { name: "Next" }));
@@ -121,7 +138,7 @@ describe("positive", () => {
   });
 
   it("TT-DD38-D-P1 a draft with no sheet data says so and offers Delete draft", async () => {
-    serveBatch(draftWith(null));
+    serveBatch(noSheetDraft());
     renderApp(RESUME);
     expect(await screen.findByText(NO_SHEET)).toBeInTheDocument();
     expect(
@@ -131,7 +148,7 @@ describe("positive", () => {
 
   it("TT-DD38-D-P2 Delete draft confirms, sends DELETE, then opens the Overview", async () => {
     const deleted: string[] = [];
-    serveBatch(draftWith(null));
+    serveBatch(noSheetDraft());
     server.use(
       http.delete("*/batches/:id", ({ params }) => {
         deleted.push(String(params.id));
@@ -152,6 +169,32 @@ describe("positive", () => {
     expect(await screen.findByText("No batches yet")).toBeInTheDocument();
     expect(deleted).toEqual([IDS.batch]);
   });
+
+  it("TT-DD38-D-P7 the real API shape (counts, no report) with 10 valid rows opens step 3", async () => {
+    serveBatch(draftWith({}, { counts: countsOf(10, 0) }));
+    renderApp(RESUME);
+    expect(
+      await screen.findByRole("spinbutton", { name: "Slot start (s)" }),
+    ).toBeInTheDocument();
+    expect(currentStep()).toHaveTextContent("Slot & preview");
+    expect(screen.queryByText(NO_SHEET)).not.toBeInTheDocument();
+  });
+
+  it("TT-DD38-D-P8 when a report is present its valid_rows win over the counts", async () => {
+    serveBatch(
+      draftWith(
+        { status: "READY", approved: true },
+        {
+          counts: countsOf(10, 0),
+          report: report({ total_rows: 10, valid_rows: 7, skipped_rows: 3 }),
+        },
+      ),
+    );
+    renderApp(RESUME);
+    await userEvent.click(await screen.findByRole("button", { name: "Next" }));
+    expect(await screen.findByText("All 7 rows")).toBeInTheDocument();
+    expect(screen.queryByText("All 10 rows")).not.toBeInTheDocument();
+  });
 });
 
 describe("negative", () => {
@@ -169,7 +212,7 @@ describe("negative", () => {
   it.each(["RUNNING", "COMPLETED", "CANCELLED"])(
     "TT-DD38-D-N2 a %s batch cannot be resumed in the wizard",
     async (state) => {
-      serveBatch(batch({ status: state, report: report() }));
+      serveBatch(batch({ status: state }));
       renderApp(RESUME);
       expect(await screen.findByText(CANNOT)).toBeInTheDocument();
       expect(
@@ -182,12 +225,18 @@ describe("negative", () => {
   );
 
   it.each([
-    ["report is null", null],
-    ["report is missing", undefined],
+    ["every row is skipped", countsOf(10, 10), undefined],
+    ["the sheet has no rows", countsOf(0, 0), undefined],
+    ["report is null and every row is skipped", countsOf(10, 10), null],
   ])(
-    "TT-DD38-D-N3 a draft whose %s shows the no-sheet message",
-    async (_label, value) => {
-      serveBatch(draftWith(value as Record<string, unknown> | null));
+    "TT-DD38-D-N3 a draft where %s shows the no-sheet message",
+    async (_label, counts, sheet) => {
+      serveBatch(
+        draftWith(
+          {},
+          sheet === undefined ? { counts } : { counts, report: sheet },
+        ),
+      );
       renderApp(RESUME);
       expect(await screen.findByText(NO_SHEET)).toBeInTheDocument();
       expect(
@@ -196,12 +245,14 @@ describe("negative", () => {
     },
   );
 
-  it("TT-DD38-D-N6 a draft with zero valid rows and an unapproved preview shows the no-sheet message", async () => {
+  it("TT-DD38-D-N6 a report with zero valid rows and an unapproved preview shows the no-sheet message", async () => {
     serveBatch(
-      draftWith(report({ total_rows: 2, valid_rows: 0, skipped_rows: 2 }), {
-        status: "NONE",
-        approved: false,
-      }),
+      draftWith(
+        { status: "NONE", approved: false },
+        {
+          report: report({ total_rows: 2, valid_rows: 0, skipped_rows: 2 }),
+        },
+      ),
     );
     renderApp(RESUME);
     expect(await screen.findByText(NO_SHEET)).toBeInTheDocument();
@@ -213,12 +264,14 @@ describe("negative", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("TT-DD38-D-N7 a draft with zero valid rows and an approved preview shows the no-sheet message, not step 4", async () => {
+  it("TT-DD38-D-N7 a report with zero valid rows and an approved preview shows the no-sheet message, not step 4", async () => {
     serveBatch(
-      draftWith(report({ total_rows: 2, valid_rows: 0, skipped_rows: 2 }), {
-        status: "READY",
-        approved: true,
-      }),
+      draftWith(
+        { status: "READY", approved: true },
+        {
+          report: report({ total_rows: 2, valid_rows: 0, skipped_rows: 2 }),
+        },
+      ),
     );
     renderApp(RESUME);
     expect(await screen.findByText(NO_SHEET)).toBeInTheDocument();
@@ -232,7 +285,7 @@ describe("negative", () => {
 
   it("TT-DD38-D-N4 Keep in the delete dialog sends nothing and stays on the page", async () => {
     const deleted: string[] = [];
-    serveBatch(draftWith(null));
+    serveBatch(noSheetDraft());
     server.use(
       http.delete("*/batches/:id", ({ params }) => {
         deleted.push(String(params.id));
@@ -253,7 +306,7 @@ describe("negative", () => {
   });
 
   it("TT-DD38-D-N5 a failed DELETE shows its message and keeps the page", async () => {
-    serveBatch(draftWith(null));
+    serveBatch(noSheetDraft());
     server.use(
       http.delete("*/batches/:id", () =>
         apiError(500, "INTERNAL_ERROR", "The draft could not be deleted."),
@@ -289,7 +342,7 @@ describe("edge", () => {
 
   it("TT-DD38-D-E2 a double click on Delete confirm sends one DELETE", async () => {
     const deleted: string[] = [];
-    serveBatch(draftWith(null));
+    serveBatch(noSheetDraft());
     server.use(
       http.delete("*/batches/:id", async ({ params }) => {
         deleted.push(String(params.id));

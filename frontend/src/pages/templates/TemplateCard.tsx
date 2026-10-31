@@ -6,6 +6,7 @@ import type { Template } from '../../api/types';
 import { hasDevanagari } from '../../format';
 import { SlotEditor } from '../wizard/SlotEditor';
 import { ConsentForm } from './ConsentForm';
+import { DeleteTemplateDialog } from './DeleteTemplateDialog';
 
 function slotText(template: Template): string {
   return template.slot
@@ -16,6 +17,7 @@ function slotText(template: Template): string {
 /** One template: placeholder thumbnail, name, slot, consent badge and usable state. */
 export function TemplateCard({ template }: { template: Template }) {
   const [asking, setAsking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fakeAi = useSystemStatus().data?.ai_mode === 'fake';
   const Badge = template.consent_confirmed ? BadgeCheck : ShieldAlert;
   return (
@@ -67,6 +69,18 @@ export function TemplateCard({ template }: { template: Template }) {
         </div>
       )}
       {asking && <ConsentForm templateId={template.id} onDone={() => setAsking(false)} />}
+      <div className="mt-4 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setDeleting(true)}
+          className="rounded-full border px-4 py-1.5 text-sm font-semibold text-status-failed hover:bg-mint"
+        >
+          Delete template
+        </button>
+      </div>
+      {deleting && (
+        <DeleteTemplateDialog templateId={template.id} onClose={() => setDeleting(false)} />
+      )}
     </article>
   );
 }

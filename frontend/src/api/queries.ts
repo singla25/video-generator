@@ -1,9 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef } from 'react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useRef } from 'react';
 
-import { POLL_INTERVAL_MS } from '../config';
+import { BATCH_LIST_POLL_INTERVAL_MS, POLL_INTERVAL_MS } from '../config';
 import { apiFetch } from './client';
-import type { Batch, BatchList, BatchStatus, DailyStat, SystemStatus, Template } from './types';
+import type {
+  Batch,
+  BatchList,
+  BatchStatus,
+  BatchView,
+  DailyStat,
+  StartBody,
+  SystemStatus,
+  Template,
+} from './types';
 
 /** One batch; polled while its preview is being generated. */
 export function useBatch(batchId: string | undefined) {
@@ -24,6 +33,18 @@ export function useTemplates() {
   });
 }
 
+/** Template id to template name, for the lists that show a template name. */
+export function useTemplateNames(): Map<string, string> {
+  const templates = useTemplates();
+  return useMemo(
+    () =>
+      new Map(
+        (templates.data?.templates ?? []).map((t): [string, string] => [t.id, t.original_name]),
+      ),
+    [templates.data],
+  );
+}
+
 /** One template (slot, duration, consent). */
 export function useTemplate(templateId: string | undefined) {
   return useQuery({
@@ -41,6 +62,33 @@ export function useBatchList(options: { poll?: boolean } = {}) {
     queryKey: ['batches', 'list'],
     queryFn: () => apiFetch<BatchList>(`/batches?page=1&page_size=${LIST_PAGE_SIZE}`),
     refetchInterval: options.poll ? POLL_INTERVAL_MS : false,
+  });
+}
+
+/**
+ * One page of a dashboard batch list (running, completed or failed). Only the running list polls.
+ * The previous page stays on screen while the next one loads.
+ */
+export function useBatchView(view: BatchView, page: number) {
+  return useQuery({
+    queryKey: ['batches', 'view', view, page],
+    queryFn: () =>
+      apiFetch<BatchList>(`/batches?page=${page}&page_size=${LIST_PAGE_SIZE}&view=${view}`),
+    placeholderData: keepPreviousData,
+    refetchInterval: view === 'running' ? BATCH_LIST_POLL_INTERVAL_MS : false,
+  });
+}
+
+/** Start a previewed batch. The Idempotency-Key makes a repeated submit start it only once. */
+export function startBatch(
+  batchId: string,
+  body: StartBody,
+  idempotencyKey: string,
+): Promise<unknown> {
+  return apiFetch(`/batches/${batchId}/start`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(body),
   });
 }
 
@@ -113,6 +161,30 @@ export function useBatchAction(batchId: string) {
     mutation.mutate(action);
   };
   return { run, isPending: mutation.isPending, isError: mutation.isError, error: mutation.error };
+}
+
+/**
+ * Delete a template (DD-37). The API refuses with 409 while a batch uses it. `run` ignores calls
+ * while a request is in flight; `onDone` runs only after a successful delete.
+ */
+export function useDeleteTemplate(templateId: string) {
+  const client = useQueryClient();
+  const busy = useRef(false);
+  const mutation = useMutation({
+    mutationFn: () => apiFetch(`/templates/${templateId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['templates'] });
+    },
+    onSettled: () => {
+      busy.current = false;
+    },
+  });
+  const run = (onDone?: () => void) => {
+    if (busy.current) return;
+    busy.current = true;
+    mutation.mutate(undefined, { onSuccess: onDone });
+  };
+  return { run, isPending: mutation.isPending, error: mutation.error };
 }
 
 /**

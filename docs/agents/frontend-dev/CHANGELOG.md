@@ -2,6 +2,17 @@
 
 Newest first. One entry per task.
 
+## 2026-10-31 - FE-GREEN (DD-37: batch lists, start limit, delete template, new template form)
+- Batch lists: `pages/BatchListPage.tsx` and `components/BatchListTable.tsx` on /batches/running|completed|failed (replaces the "coming soon" placeholders); `useBatchView` in `api/queries.ts` polls every 5 s for running only; `BATCH_LIST_POLL_INTERVAL_MS` in `config.ts`.
+- Shared: `components/Pager.tsx` (History uses it too); `formatDate`, `formatMegabytes`, `formatProgress` in `format.ts`; `useTemplateNames` hook.
+- Wizard step 4 "Videos to generate": `pages/wizard/VideoCountChoice.tsx` (radio group, Custom number field, summary) and `pages/wizard/videoCount.ts` (pure rules). `StepOutput` posts `limit` only when fewer videos than rows are wanted (`startBody`); `startBatch` and `StartBody` added. The start dialog shows the planned count.
+- Delete template: `pages/templates/DeleteTemplateDialog.tsx` on `ConfirmDialog` (new optional `pending` and `error` props); `useDeleteTemplate` in `api/queries.ts`; Delete button on `TemplateCard`.
+- New template form: `pages/templates/VideoDropZone.tsx` (label named "Template video", click or drop, dashed box with inline SVG icon, highlight while dragging, file name and MB, Remove file), `pages/templates/videoRules.ts`. `NewTemplateForm` keeps the upload flow; helper text under "Word to replace".
+- Decisions (defaults, undo by reverting this commit): size shown in decimal MB (1,000,000 bytes). A file must have a video/* MIME type and a supported extension (the old extension check is kept).
+- Test defect to note for the CEO: `tests/frontend/unit/start-limit.test.tsx` header says Custom accepts 1 to N-1, but TT-DD37-B-E2 and the message "Enter a number from 1 to N" require N to be accepted. Implemented 1..N (N sends no limit); test bodies were followed, nothing edited.
+- Open: some systems report an empty MIME type for .mkv, so such files are refused with "Choose a video file." (N3 requires the MIME type to decide). Not changed; Admin to decide.
+- Tests: full Vitest 479/479 (was 406/479); typecheck, lint, format:check and build exit 0. Not run: `scripts/build_docs.py` (CEO).
+
 ## 2026-10-28 - FIX-WORKER-3
 - `useSystemStatus` (2 s polling of GET /system/status) and `useBatchList({poll})` in `api/queries.ts`; `SystemStatus` type; `SLOW_PREVIEW_MS` in `config.ts`.
 - `layout/WorkerBanner.tsx` in the app shell: role=alert, only when worker_alive is false and a batch has queued rows or a pending preview; silent while loading or failing.

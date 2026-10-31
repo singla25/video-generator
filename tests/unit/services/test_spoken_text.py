@@ -168,3 +168,39 @@ def test_applying_the_function_twice_adds_the_suffix_once(name: str) -> None:
     """SS-F-E8: the output is stable; a second pass changes nothing."""
     once = spoken_text(name, SUFFIX)
     assert spoken_text(once, SUFFIX) == once
+
+
+# ---- multi-word suffix (coordinator decision, DD-39) -----------------------------------
+
+
+def test_multi_word_suffix_already_at_the_end_is_not_doubled() -> None:
+    """SS-F-N7: the last words of the name equal the suffix words; nothing is added."""
+    assert spoken_text("Amit ji sahab", "ji sahab") == "Amit ji sahab"
+
+
+def test_multi_word_suffix_match_ignores_case() -> None:
+    """SS-F-N7: the word comparison uses casefold."""
+    assert spoken_text("Amit JI Sahab", "ji sahab") == "Amit JI Sahab"
+
+
+def test_only_one_word_of_a_multi_word_suffix_at_the_end_is_not_a_match() -> None:
+    """SS-F-N8: the last two words are 'Amit ji', not 'ji sahab', so the suffix is added."""
+    assert spoken_text("Amit ji", "ji sahab") == "Amit ji ji sahab"
+
+
+def test_multi_word_suffix_is_added_to_a_one_word_name() -> None:
+    """SS-F-P6: a one-word name gets the whole multi-word suffix after it."""
+    assert spoken_text("Amit", "ji sahab") == "Amit ji sahab"
+
+
+def test_multi_word_match_with_extra_spaces_inside_the_name_is_not_doubled() -> None:
+    """SS-F-E10: the words are compared after splitting, so inner spacing does not matter."""
+    assert spoken_text("Amit  ji   sahab", "ji sahab") == "Amit  ji   sahab"
+
+
+# ---- spacing inside the name (coordinator decision, DD-39) -----------------------------
+
+
+def test_repeated_spaces_inside_the_name_are_kept() -> None:
+    """SS-F-E9: only the ends of the name are stripped; inner spacing is not changed."""
+    assert spoken_text("Amit  Kumar", SUFFIX) == f"Amit  Kumar {SUFFIX}"

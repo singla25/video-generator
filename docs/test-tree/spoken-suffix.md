@@ -15,12 +15,15 @@ Feature: spoken suffix after the name (DD-39)
 │   ├── ✅ SS-F-P3 title kept in front: "Smt. Asha Verma" -> "Smt. Asha Verma जी"
 │   ├── ✅ SS-F-P4 single-word name: "Asha" -> "Asha जी"
 │   ├── ✅ SS-F-P5 Roman suffix "Ji" is added as typed
+│   ├── ✅ SS-F-P6 multi-word suffix "ji sahab" on a one-word name: "Amit ji sahab"
 │   ├── ❌ SS-F-N1 empty suffix -> name unchanged (feature off)
 │   ├── ❌ SS-F-N2 suffix of only spaces counts as empty
 │   ├── ❌ SS-F-N3 name ends with the suffix -> not doubled ("Asha जी" + "जी")
 │   ├── ❌ SS-F-N4 Roman last word equal in any case ("Asha ji" + "Ji", "JI", "ji")
 │   ├── ❌ SS-F-N5 a MIDDLE word equal to the suffix does not stop the suffix
 │   ├── ❌ SS-F-N6 name that only ends with the letters ("Amitजी", "Amitji") gets the suffix
+│   ├── ❌ SS-F-N7 multi-word suffix already at the end ("Amit ji sahab" + "ji sahab") is unchanged, any case
+│   ├── ❌ SS-F-N8 only one suffix word at the end ("Amit ji" + "ji sahab") -> "Amit ji ji sahab"
 │   ├── ⚠️ SS-F-E1 spaces, tabs and newlines around both arguments are stripped
 │   ├── ⚠️ SS-F-E2 trailing spaces in the name give exactly one space before the suffix
 │   ├── ⚠️ SS-F-E3 empty or blank name -> "" (never the suffix alone); both empty -> ""
@@ -28,7 +31,9 @@ Feature: spoken suffix after the name (DD-39)
 │   ├── ⚠️ SS-F-E5 ZWJ and ZWNJ inside the name are kept; a joiner at the end is not the suffix
 │   ├── ⚠️ SS-F-E6 emoji and right-to-left letters pass through; suffix last
 │   ├── ⚠️ SS-F-E7 forty-grapheme name still gets the suffix
-│   └── ⚠️ SS-F-E8 applying the function twice adds the suffix once (stable output)
+│   ├── ⚠️ SS-F-E8 applying the function twice adds the suffix once (stable output)
+│   ├── ⚠️ SS-F-E9 repeated spaces inside the name are kept: "Amit  Kumar" -> "Amit  Kumar जी"
+│   └── ⚠️ SS-F-E10 extra inner spaces in a multi-word match ("Amit  ji   sahab") are not doubled
 ├── Scenario: the Admin sets the suffix  (tests/unit/infra/test_spoken_suffix_setting.py)
 │   ├── ✅ SS-S-P1 default "जी" when the variable is not set
 │   ├── ✅ SS-S-P2 VIDGEN_SPOKEN_SUFFIX overrides it (Devanagari or Roman)

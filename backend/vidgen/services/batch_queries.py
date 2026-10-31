@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, timedelta
 from uuid import UUID
 
@@ -15,7 +16,13 @@ from vidgen.services.batch_rules import (
     page_count,
     progress_percent,
 )
-from vidgen.services.batch_support import BatchContext, describe, describe_preview, load_batch
+from vidgen.services.batch_support import (
+    BatchContext,
+    describe,
+    describe_preview,
+    load_batch,
+    read_preview_stage,
+)
 from vidgen.services.batch_views import BatchStatus, BatchView, FailureGroup, RowsPage
 from vidgen.services.errors import BatchNotFoundError
 
@@ -44,7 +51,13 @@ class BatchQueries:
         with self._ctx.uow() as uow:
             batches, total = uow.batches.list_page((page - 1) * page_size, page_size)
             counts = uow.batches.counts([b.id for b in batches])
-            views = [describe(uow, b, counts=counts_from(counts[b.id])) for b in batches]
+            views = [
+                replace(
+                    describe(uow, b, counts=counts_from(counts[b.id])),
+                    preview_stage=read_preview_stage(self._ctx, b),
+                )
+                for b in batches
+            ]
         return views, total
 
     def status(self, batch_id: UUID) -> BatchStatus:

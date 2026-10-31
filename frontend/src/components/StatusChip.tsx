@@ -12,9 +12,9 @@ const CHIPS: Record<RowStatus, { label: string; tone: ChipTone }> = {
 };
 
 /** Small pill with a coloured dot for a row or batch status. */
-export function StatusChip({ status }: { status: RowStatus }) {
+export function StatusChip({ status, label: override }: { status: RowStatus; label?: string }) {
   const known = CHIPS[status] as { label: string; tone: ChipTone } | undefined;
-  const { label, tone } = known ?? { label: String(status), tone: 'grey' as const };
+  const { label: shown, tone } = known ?? { label: String(status), tone: 'grey' as const };
   const { text, background } = chipColors[tone];
   return (
     <span
@@ -28,7 +28,7 @@ export function StatusChip({ status }: { status: RowStatus }) {
         style={{ backgroundColor: text }}
         className="size-1.5 rounded-full"
       />
-      {label}
+      {override ?? shown}
     </span>
   );
 }

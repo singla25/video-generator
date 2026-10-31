@@ -70,7 +70,7 @@ class BatchFlow:
             audit(ctx, uow, "PREVIEW_REQUESTED", batch_id=str(batch_id))
             ctx.queue.enqueue_preview(batch_id, row_id)  # inside: a queue error rolls back
             uow.commit()
-            view = describe(uow, batch)
+            view = describe_preview(ctx, uow, batch)
         if old_key:
             ctx.storage.delete(old_key)
         return view

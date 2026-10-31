@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # DD-34: extra silence and held frame after the new name
     name_gap_s: float = Field(default=0.25, ge=0, le=1.0)
 
+    # Local models: load each once at worker start, then release it (off: nothing stays in memory)
+    warm_up_on_start: bool = False
+
     # Retention
     retention_days: int = Field(default=30, gt=0)
 

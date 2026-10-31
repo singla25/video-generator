@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 
 import { ApiError, apiFetch, apiUrl } from '../../api/client';
 import { useConfirmSpelling, useSystemStatus } from '../../api/queries';
-import type { Batch } from '../../api/types';
-import { SLOW_PREVIEW_MS } from '../../config';
+import type { Batch, SystemStatus } from '../../api/types';
+import { SLOW_PREVIEW_MS_FAKE, SLOW_PREVIEW_MS_LOCAL } from '../../config';
+import { PreviewProgress } from './PreviewProgress';
+import { FakeAiNote, FirstRunNote } from './PreviewNotes';
 
 const FIELD_ID = 'spoken-name';
 const BUTTON =
@@ -14,16 +16,25 @@ function message(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Something went wrong.';
 }
 
-/** True once the preview has been pending for SLOW_PREVIEW_MS; a new `restart` value resets the clock. */
-function useSlowPending(pending: boolean, restart: number): boolean {
-  // Remember which wait timed out, so a new wait starts as not slow without resetting state in the effect.
-  const [timedOut, setTimedOut] = useState<number | null>(null);
+/** Local models load slowly, so a local preview gets a longer wait before it counts as slow. */
+function slowPreviewMs(aiMode: SystemStatus['ai_mode']): number {
+  return aiMode === 'local' ? SLOW_PREVIEW_MS_LOCAL : SLOW_PREVIEW_MS_FAKE;
+}
+
+/**
+ * True once the preview has been pending for `delayMs`. A new `restart` value or delay starts a
+ * fresh wait that is not slow yet.
+ */
+function useSlowPending(pending: boolean, restart: number, delayMs: number): boolean {
+  // Key the timeout by restart and delay, so a new wait is not slow until its own timer fires.
+  const waitKey = `${restart}:${delayMs}`;
+  const [timedOut, setTimedOut] = useState<string | null>(null);
   useEffect(() => {
     if (!pending) return undefined;
-    const timer = setTimeout(() => setTimedOut(restart), SLOW_PREVIEW_MS);
+    const timer = setTimeout(() => setTimedOut(waitKey), delayMs);
     return () => clearTimeout(timer);
-  }, [pending, restart]);
-  return pending && timedOut === restart;
+  }, [pending, waitKey, delayMs]);
+  return pending && timedOut === waitKey;
 }
 
 interface SpokenNameProps {
@@ -74,7 +85,10 @@ export function PreviewPanel({ batch }: { batch: Batch }) {
   const refresh = () => client.invalidateQueries({ queryKey: ['batches'] });
   const state = batch.preview?.status ?? 'NONE';
   const approved = Boolean(batch.preview?.approved);
-  const localAi = useSystemStatus().data?.ai_mode === 'local';
+  // One status read serves the AI mode and the worker health; undefined while loading or failing.
+  const status = useSystemStatus().data;
+  const aiMode = status?.ai_mode;
+  const localAi = aiMode === 'local';
   const [spoken, setSpoken] = useState(
     batch.preview?.spoken_name ?? batch.preview?.suggested_spoken_name ?? '',
   );
@@ -91,14 +105,20 @@ export function PreviewPanel({ batch }: { batch: Batch }) {
     onSuccess: refresh,
   });
   const error = generate.error ?? approve.error;
-  const slow = useSlowPending(state === 'PENDING', generate.submittedAt);
+  const slow = useSlowPending(state === 'PENDING', generate.submittedAt, slowPreviewMs(aiMode));
   // Only a successful status read may blame the worker; a failing call stays silent.
-  const workerDown = useSystemStatus().data?.worker_alive === false;
+  const workerDown = status?.worker_alive === false;
 
   return (
     <div className="space-y-4 rounded-card border bg-card p-5">
       <h2 className="font-semibold">Preview</h2>
-      {state === 'PENDING' && <p role="status">Generating preview...</p>}
+      {state === 'PENDING' && (
+        <>
+          <p role="status">Generating preview...</p>
+          <PreviewProgress stage={batch.preview?.stage} />
+          {localAi && <FirstRunNote />}
+        </>
+      )}
       {state === 'PENDING' && slow && (
         <div className="flex flex-wrap items-center gap-3">
           <p role="status" className="text-sm text-status-skipped">
@@ -140,6 +160,7 @@ export function PreviewPanel({ batch }: { batch: Batch }) {
           {message(error)}
         </p>
       )}
+      {aiMode === 'fake' && <FakeAiNote />}
       <div className="flex gap-2">
         <button
           type="button"

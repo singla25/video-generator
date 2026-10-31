@@ -114,3 +114,31 @@ export function useBatchAction(batchId: string) {
   };
   return { run, isPending: mutation.isPending, isError: mutation.isError, error: mutation.error };
 }
+
+/**
+ * Delete a never-started draft batch, then refresh the dashboard data.
+ * `run` ignores calls while a request is in flight, so a double click sends one request.
+ */
+export function useDeleteDraft(batchId: string) {
+  const client = useQueryClient();
+  const busy = useRef(false);
+  const mutation = useMutation({
+    mutationFn: () => apiFetch(`/batches/${batchId}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['batches'] }),
+        client.invalidateQueries({ queryKey: ['batch-status'] }),
+        client.invalidateQueries({ queryKey: ['rows'] }),
+      ]);
+    },
+    onSettled: () => {
+      busy.current = false;
+    },
+  });
+  const run = () => {
+    if (busy.current) return;
+    busy.current = true;
+    mutation.mutate();
+  };
+  return { run, isPending: mutation.isPending, isError: mutation.isError, error: mutation.error };
+}

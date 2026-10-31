@@ -229,6 +229,20 @@ def test_retention_with_nothing_to_do_is_harmless(env: Env) -> None:
 # ---- privacy of logs and errors -------------------------------------------------------
 
 
+# The HTTP test client logs every request URL at INFO (httpx2 under the TestClient, httpx
+# otherwise), query strings included. That is the harness talking, not the app, so it is left out.
+TEST_CLIENT_LOGGERS = ("httpx", "httpx2", "httpcore")
+
+
+def app_log_text(caplog: pytest.LogCaptureFixture) -> str:
+    """Every captured log record except the test client's own request log, fully formatted."""
+    return "\n".join(
+        caplog.handler.format(record)
+        for record in caplog.records
+        if record.name.split(".")[0] not in TEST_CLIENT_LOGGERS
+    )
+
+
 def test_no_personal_data_in_logs_during_the_whole_batch_flow(
     env: Env, db: Engine, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -240,8 +254,9 @@ def test_no_personal_data_in_logs_during_the_whole_batch_flow(
         post_action(env, batch_id, "pause")
         post_action(env, batch_id, "cancel")
         env.client.delete(f"/batches/{batch_id}", headers=env.csrf)
-    assert "Canary" not in caplog.text
-    assert "CANARY1" not in caplog.text
+    logged = app_log_text(caplog)
+    assert "Canary" not in logged
+    assert "CANARY1" not in logged
 
 
 def test_error_bodies_never_contain_personal_data(env: Env) -> None:

@@ -242,7 +242,7 @@ def test_fake_mode_preview_shape_is_unchanged(env: Env) -> None:
     batch_id = new_batch(env)
     post_action(env, batch_id, "preview")
     render_preview(env, batch_id)
-    assert preview_of(env, batch_id) == {"status": "READY", "approved": False}
+    assert preview_of(env, batch_id) == {"status": "READY", "approved": False, "stage": None}
 
 
 def test_fake_mode_approve_needs_no_confirmation(env: Env) -> None:

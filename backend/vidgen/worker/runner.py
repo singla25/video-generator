@@ -17,7 +17,12 @@ from dramatiq.brokers.redis import RedisBroker
 from sqlalchemy.orm import sessionmaker
 
 import vidgen
-from vidgen.api.container import AppDeps, build_container, default_heartbeat
+from vidgen.api.container import (
+    AppDeps,
+    build_container,
+    default_heartbeat,
+    default_stage_reporter,
+)
 from vidgen.domain.retry import RetryPolicy
 from vidgen.domain.timing import TimingRules
 from vidgen.infrastructure.clock import SystemClock
@@ -31,17 +36,20 @@ from vidgen.infrastructure.local_ai.factory import (
     build_ai_adapters,
     effective_worker_threads,
     log_startup_warning,
+    warmable_adapters,
 )
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
 from vidgen.infrastructure.queue.redis_heartbeat import HeartbeatLoop
 from vidgen.infrastructure.storage.local import LocalStorage
 from vidgen.logging import configure_logging
+from vidgen.ports.progress import StageReporter
 from vidgen.ports.rows import PreviewSink
 from vidgen.services.render_row import RenderConfig, RowRenderer
 from vidgen.services.requeue import requeue_stuck_rows
 from vidgen.settings import Settings, get_settings
 from vidgen.worker.actors import WorkerConfig, register_actors
 from vidgen.worker.periodic import PeriodicTask
+from vidgen.worker.warm_up import warm_up_if_enabled
 
 FONT_DIR = Path(vidgen.__file__).parent / "assets" / "fonts"
 DEVANAGARI_FONT = "NotoSansDevanagari-Bold.ttf"
@@ -70,7 +78,9 @@ def render_config(settings: Settings) -> RenderConfig:
     )
 
 
-def build_renderer(settings: Settings, sink: PreviewSink) -> RowRenderer:
+def build_renderer(
+    settings: Settings, sink: PreviewSink, stage_reporter: StageReporter | None = None
+) -> RowRenderer:
     """The row renderer; AI adapters follow ``ai_mode`` (fake or local), the engine is real."""
     if settings.ai_backend != "fake":
         raise RuntimeError("Real AI adapters arrive in M2; set VIDGEN_AI_MODE=local instead.")
@@ -100,6 +110,7 @@ def build_renderer(settings: Settings, sink: PreviewSink) -> RowRenderer:
         clock=SystemClock(),
         config=render_config(settings),
         preview_sink=sink,
+        stage_reporter=stage_reporter,
     )
 
 
@@ -132,10 +143,13 @@ def run() -> None:  # pragma: no cover
     settings = get_settings()
     configure_logging()
     log_startup_warning(settings)
+    if settings.ai_mode == "local":
+        warm_up_if_enabled(settings, warmable_adapters(build_ai_adapters(settings)))
     broker = RedisBroker(url=settings.redis_url)  # type: ignore[no-untyped-call]
     dramatiq.set_broker(broker)
     sink = build_container(settings, AppDeps()).batches
-    register_actors(broker, build_renderer(settings, sink), WorkerConfig.from_settings(settings))
+    renderer = build_renderer(settings, sink, default_stage_reporter(settings))
+    register_actors(broker, renderer, WorkerConfig.from_settings(settings))
     worker = Worker(broker, worker_threads=effective_worker_threads(settings))
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):

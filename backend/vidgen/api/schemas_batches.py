@@ -78,7 +78,11 @@ def _iso(value: datetime | None) -> str | None:
 
 def _preview_json(view: BatchView) -> dict[str, Any]:
     """Preview state; the spoken-name fields are the human-confirmation step (local mode)."""
-    body: dict[str, Any] = {"status": view.preview_status, "approved": view.preview_approved}
+    body: dict[str, Any] = {
+        "status": view.preview_status,
+        "approved": view.preview_approved,
+        "stage": view.preview_stage,
+    }
     if not view.spelling_required:
         return body
     spoken = view.record.preview.spoken_name

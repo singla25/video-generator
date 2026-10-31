@@ -47,10 +47,14 @@ export interface SheetInspection {
   row_count: number;
 }
 
+/** Step of a pending preview; null or missing while it is still queued. */
+export type PreviewStage = 'preparing' | 'voice' | 'lipsync' | 'finishing';
+
 /** Preview state; the spoken-name fields exist in local AI mode only. */
 export interface Preview {
   status: PreviewState;
   approved: boolean;
+  stage?: PreviewStage | null;
   suggested_spoken_name?: string | null;
   spoken_name?: string | null;
   spoken_name_confirmed?: boolean;

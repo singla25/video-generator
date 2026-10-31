@@ -63,7 +63,7 @@ export function OverviewPage() {
         <VideosChart />
         <CurrentBatchPanel batch={current} status={status.data} />
       </div>
-      <RowsTable batchId={current.id} />
+      <RowsTable batchId={current.id} batchStatus={current.status} />
     </div>
   );
 }

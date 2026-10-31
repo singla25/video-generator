@@ -43,7 +43,11 @@ def test_preview_request_is_queued_not_rendered_in_the_request(env: Env, db: Eng
     batch_id = new_batch(env, [["", "A1"], ["Bina", "B2"], ["Chand", "C3"]])
     response = post_action(env, batch_id, "preview")
     assert response.status_code == 202
-    assert response.json()["preview"] == {"status": "PENDING", "approved": False}
+    assert response.json()["preview"] == {
+        "status": "PENDING",
+        "approved": False,
+        "stage": "preparing",
+    }
     assert env.queue.previews == [(UUID(batch_id), row_ids(db, batch_id)[3])]  # row 2 was invalid
     assert env.queue.rows == []
 
@@ -53,7 +57,11 @@ def test_preview_becomes_ready_when_the_worker_reports_it(env: Env) -> None:
     batch_id = new_batch(env)
     post_action(env, batch_id, "preview")
     render_preview(env, batch_id)
-    assert get_batch(env, batch_id)["preview"] == {"status": "READY", "approved": False}
+    assert get_batch(env, batch_id)["preview"] == {
+        "status": "READY",
+        "approved": False,
+        "stage": None,
+    }
 
 
 def test_ready_preview_can_be_downloaded(env: Env) -> None:
@@ -78,7 +86,11 @@ def test_approval_makes_start_possible_and_is_audited(env: Env) -> None:
     """TT-AC7-P2, P3."""
     batch_id = new_batch(env)
     approve_preview(env, batch_id)
-    assert get_batch(env, batch_id)["preview"] == {"status": "READY", "approved": True}
+    assert get_batch(env, batch_id)["preview"] == {
+        "status": "READY",
+        "approved": True,
+        "stage": None,
+    }
     assert start(env, batch_id).status_code == 200
     actions = audit_actions(env)
     assert "PREVIEW_REQUESTED" in actions

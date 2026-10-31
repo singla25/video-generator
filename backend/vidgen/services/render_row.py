@@ -32,6 +32,7 @@ from vidgen.ports import (
     VideoEncoder,
     VoiceCloner,
 )
+from vidgen.ports.progress import StageReporter
 from vidgen.ports.rows import (
     ClaimDecision,
     ClaimSnapshot,
@@ -53,6 +54,7 @@ from vidgen.services.render_support import (
     Run,
     band_height,
     classify_failure,
+    clear_stage,
     is_silent,
     logger,
 )
@@ -76,6 +78,7 @@ class RowRenderer:
         clock: Clock,
         config: RenderConfig,
         preview_sink: PreviewSink,
+        stage_reporter: StageReporter | None = None,
     ) -> None:
         self._store = row_store_factory()
         self._storage = storage
@@ -87,6 +90,7 @@ class RowRenderer:
         self._clock = clock
         self._config = config
         self._preview_sink = preview_sink
+        self._stage_reporter = stage_reporter
 
     # ---- rows --------------------------------------------------------------------------
 
@@ -166,7 +170,7 @@ class RowRenderer:
         job = self._store.preview_job(batch_id, row_id)
         if job is None:
             return RowOutcome(RowOutcomeKind.NOOP)
-        run = Run(job)
+        run = Run(job, self._stage_reporter)
         try:
             self._ensure_allowed(job)
             key = PREVIEW_KEY.format(batch_id=batch_id)
@@ -178,8 +182,10 @@ class RowRenderer:
             if self._config.retry.should_retry(kind, attempt):
                 return RowOutcome(RowOutcomeKind.RETRY, code, self._config.retry.delay_seconds)
             self._preview_sink.preview_failed(batch_id, code)
+            clear_stage(self._stage_reporter, batch_id)
             return RowOutcome(RowOutcomeKind.FAILED, code)
         self._preview_sink.preview_rendered(batch_id, stored)
+        clear_stage(self._stage_reporter, batch_id)
         return RowOutcome(RowOutcomeKind.COMPLETED)
 
     # ---- pipeline ----------------------------------------------------------------------

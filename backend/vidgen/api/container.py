@@ -21,6 +21,7 @@ from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
 from vidgen.infrastructure.local_ai.factory import build_ai_adapters
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
 from vidgen.infrastructure.queue.redis_heartbeat import RedisWorkerHeartbeat
+from vidgen.infrastructure.queue.redis_progress import RedisStageReporter
 from vidgen.infrastructure.sheets.reader import FileSheetReader
 from vidgen.infrastructure.storage.local import LocalStorage
 from vidgen.ports import (
@@ -33,6 +34,7 @@ from vidgen.ports import (
     WorkerHeartbeat,
 )
 from vidgen.ports.models import TemplateRecord
+from vidgen.ports.progress import StageReporter
 from vidgen.services.audit import AuditTrail
 from vidgen.services.batch_support import BatchContext
 from vidgen.services.batches import BatchService
@@ -51,6 +53,7 @@ class AppDeps:
     storage: Storage | None = None
     job_queue: JobQueue | None = None
     worker_heartbeat: WorkerHeartbeat | None = None
+    stage_reporter: StageReporter | None = None
 
 
 class _NotConfiguredSpeechToText:
@@ -100,6 +103,11 @@ def default_heartbeat(settings: Settings) -> RedisWorkerHeartbeat:
         key=settings.heartbeat_key,
         ttl_seconds=settings.heartbeat_ttl_seconds,
     )
+
+
+def default_stage_reporter(settings: Settings) -> RedisStageReporter:
+    """The preview stage store on the configured Redis (the connection opens on first use)."""
+    return RedisStageReporter(redis.Redis.from_url(settings.redis_url))
 
 
 def build_container(settings: Settings, deps: AppDeps) -> Container:
@@ -154,6 +162,7 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
             retention_days=settings.retention_days,
             transliterator=ai.transliterator,
             require_spelling=settings.ai_mode == "local",
+            stage_reporter=deps.stage_reporter or default_stage_reporter(settings),
         )
     )
     return Container(

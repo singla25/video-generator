@@ -24,6 +24,8 @@ interface Props {
   batchId: string;
   status?: RowStatus;
   failureCode?: string;
+  /** Batch status; a DRAFT batch shows its queued rows as "Not started". */
+  batchStatus?: string;
   onPreview?: (url: string, name: string) => void;
   /** Called with the counts of each loaded page, so a header can show the same snapshot (W-4b). */
   onSnapshot?: (snapshot: Snapshot) => void;
@@ -92,7 +94,14 @@ function RowActions({
 }
 
 /** Paged table of a batch's rows with search, status filter and row actions. */
-export function RowsTable({ batchId, status, failureCode, onPreview, onSnapshot }: Props) {
+export function RowsTable({
+  batchId,
+  batchStatus,
+  status,
+  failureCode,
+  onPreview,
+  onSnapshot,
+}: Props) {
   const client = useQueryClient();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -203,7 +212,14 @@ export function RowsTable({ batchId, status, failureCode, onPreview, onSnapshot 
                       </td>
                       <td className="px-3 py-2">{row.voter_id}</td>
                       <td className="px-3 py-2">
-                        <StatusChip status={row.status} />
+                        <StatusChip
+                          status={row.status}
+                          label={
+                            batchStatus === 'DRAFT' && row.status === 'QUEUED'
+                              ? 'Not started'
+                              : undefined
+                          }
+                        />
                       </td>
                       <td className="px-3 py-2">{row.message ?? '-'}</td>
                       <td className="px-3 py-2">{formatRenderTime(row.render_seconds)}</td>

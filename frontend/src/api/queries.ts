@@ -79,6 +79,19 @@ export function useBatchView(view: BatchView, page: number) {
   });
 }
 
+/**
+ * Batches created but never started (DRAFT), for the Running page's Not started section (DD-38).
+ * Polled like the running list, so a draft that starts leaves the section. Off unless `enabled`.
+ */
+export function useDraftBatches(enabled: boolean) {
+  return useQuery({
+    queryKey: ['batches', 'drafts'],
+    queryFn: () => apiFetch<BatchList>(`/batches?page=1&page_size=${LIST_PAGE_SIZE}&view=drafts`),
+    enabled,
+    refetchInterval: enabled ? BATCH_LIST_POLL_INTERVAL_MS : false,
+  });
+}
+
 /** Start a previewed batch. The Idempotency-Key makes a repeated submit start it only once. */
 export function startBatch(
   batchId: string,
@@ -188,16 +201,18 @@ export function useDeleteTemplate(templateId: string) {
 }
 
 /**
- * Delete a never-started draft batch, then refresh the dashboard data.
- * `run` ignores calls while a request is in flight, so a double click sends one request.
+ * Delete a never-started draft batch, then refresh the dashboard data. `run` ignores calls while a
+ * request is in flight, so a double click sends one request; `onDone` runs after a successful delete.
+ * The refresh is not awaited: a caller that leaves the page must not wait for a refetch of the
+ * deleted batch (which now answers 404).
  */
 export function useDeleteDraft(batchId: string) {
   const client = useQueryClient();
   const busy = useRef(false);
   const mutation = useMutation({
     mutationFn: () => apiFetch(`/batches/${batchId}`, { method: 'DELETE' }),
-    onSuccess: async () => {
-      await Promise.all([
+    onSuccess: () => {
+      void Promise.all([
         client.invalidateQueries({ queryKey: ['batches'] }),
         client.invalidateQueries({ queryKey: ['batch-status'] }),
         client.invalidateQueries({ queryKey: ['rows'] }),
@@ -207,10 +222,10 @@ export function useDeleteDraft(batchId: string) {
       busy.current = false;
     },
   });
-  const run = () => {
+  const run = (onDone?: () => void) => {
     if (busy.current) return;
     busy.current = true;
-    mutation.mutate();
+    mutation.mutate(undefined, { onSuccess: onDone });
   };
   return { run, isPending: mutation.isPending, isError: mutation.isError, error: mutation.error };
 }

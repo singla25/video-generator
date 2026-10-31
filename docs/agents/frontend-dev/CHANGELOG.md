@@ -76,3 +76,12 @@ Newest first. One entry per task.
 - Tests: ai-mode.test.tsx 17 pass; full Vitest 330/330.
 - 2026-10-30 F-UI-controls: Overview batch controls (Delete draft, Pause/Resume, Cancel batch with confirm), draft rows read "Not started". Files: CurrentBatchPanel, RowsTable, StatusChip, OverviewPage, api/queries (useDeleteDraft). Tests: overview-batch-controls 17/17.
 - 2026-10-31 F-PROG: preview progress list (Preparing, Speaking the name, Matching the lips, Finishing), local first-run note, mode-aware slow warning (30 s fake, 180 s local), fake-AI note in Preview panel. Files: config.ts, api/types.ts, pages/wizard/{PreviewPanel,PreviewProgress,PreviewNotes}.tsx. Tests: preview-progress.test.tsx 55/55; full Vitest 402/402.
+
+## 2026-10-31 - FE-GREEN2 (DD-38)
+- Confirm spelling sends the confirm, then a new preview (only after the confirm succeeds); hint "Confirm to hear the preview with this spelling." under the field.
+- Running page: "Not started" section (DRAFT batches from `view=drafts`, polled) with Continue setup and Delete draft; no request from the completed and failed views.
+- Overview: a DRAFT shows "Continue setup" instead of "Start batch" and its Queued tile reads "Not started".
+- Wizard resume (`?batch=`): DRAFT with sheet data opens step 3 (also when approved; Next goes to step 4, as before); 404 shows the API message as an alert with Back to Overview; a non-draft shows "This batch can't be continued."; no sheet data shows the message with Delete draft.
+- Files: api/queries.ts (useDraftBatches, useDeleteDraft onDone), components/{DeleteDraftDialog,DraftsSection,KpiCards,CurrentBatchPanel}.tsx, pages/{BatchListPage,OverviewPage,WizardPage}.tsx, pages/wizard/{PreviewPanel,NoSheetDraft,resume}.ts(x).
+- Tests: full Vitest 544/544; typecheck, lint, format:check, build green. No test edited.
+- Open: Overview rows table keeps its own draft labels (unchanged); docs/html not regenerated (outside this task's paths).

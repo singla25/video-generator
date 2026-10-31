@@ -14,6 +14,9 @@ const STATUS_CARDS: { key: keyof Counts; status: RowStatus }[] = [
   { key: 'skipped', status: 'SKIPPED' },
 ];
 
+/** Tile labels for a DRAFT batch: nothing has started, so its rows are not queued (DD-38). */
+const DRAFT_LABELS: Partial<Record<keyof Counts, string>> = { queued: 'Not started' };
+
 const CARD = 'rounded-card border bg-card p-4';
 
 function Big({ value, of }: { value: number; of?: number }) {
@@ -28,7 +31,7 @@ function Big({ value, of }: { value: number; of?: number }) {
 }
 
 /** Six KPI cards (total + one per status) and the dashed New batch card. */
-export function KpiCards({ counts }: { counts: Counts }) {
+export function KpiCards({ counts, draft = false }: { counts: Counts; draft?: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-7">
       <div data-testid="kpi-total" data-value={counts.total} className={CARD}>
@@ -37,7 +40,7 @@ export function KpiCards({ counts }: { counts: Counts }) {
       </div>
       {STATUS_CARDS.map(({ key, status }) => (
         <div key={key} data-testid={`kpi-${key}`} data-value={counts[key]} className={CARD}>
-          <StatusChip status={status} />
+          <StatusChip status={status} label={draft ? DRAFT_LABELS[key] : undefined} />
           <Big value={counts[key]} of={counts.total} />
         </div>
       ))}

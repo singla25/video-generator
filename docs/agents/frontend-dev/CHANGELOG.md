@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-10-31 - DD-37 extension fallback
+- `templates/videoRules.ts`: `isVideoFile` accepts video/* or an empty type with .mp4/.mov/.m4v/.mkv/.webm (case-insensitive); other non-empty types refused. `accept` left as `video/*` because TT-DD37-D-P1 asserts it exactly; adding the extensions needs that test changed (Admin/CEO decision). Tests: 488/488.
+
 ## 2026-10-31 - FE-GREEN (DD-37: batch lists, start limit, delete template, new template form)
 - Batch lists: `pages/BatchListPage.tsx` and `components/BatchListTable.tsx` on /batches/running|completed|failed (replaces the "coming soon" placeholders); `useBatchView` in `api/queries.ts` polls every 5 s for running only; `BATCH_LIST_POLL_INTERVAL_MS` in `config.ts`.
 - Shared: `components/Pager.tsx` (History uses it too); `formatDate`, `formatMegabytes`, `formatProgress` in `format.ts`; `useTemplateNames` hook.

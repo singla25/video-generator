@@ -1,6 +1,6 @@
 // DD-40 several name slots per template, dashboard slot editor. Cases: TT-DD40-*
 //
-// CONTRACT (frontend/src, implemented by the frontend developer; see docs/test-tree/multi-slot-dashboard.md):
+// CONTRACT (frontend/src, implemented by the frontend developer; see docs/test-tree/multi-name-slots.md):
 //   pages/wizard/SlotEditor.tsx (used by StepSlot in the wizard and by the Templates card)
 //     below "Slot start (s)" / "Slot end (s)": button "Add another name slot" appends a pair of
 //       spinbuttons "Slot 2 start (s)" / "Slot 2 end (s)" (then "Slot 3 ...", up to "Slot 5 ...");
@@ -451,5 +451,110 @@ describe('after a save the slot must be confirmed again (wizard step 3)', () => 
     await userEvent.click(await screen.findByRole('button', { name: 'Confirm slot' }));
     await waitFor(() => expect(api.confirms).toBe(1));
     expect(await screen.findByText('Slot confirmed')).toBeInTheDocument();
+  });
+});
+
+describe('primary messages stay; extra slots get the new messages (DD-40 decision 1)', () => {
+  it('TT-DD40-P19 a primary end past the video keeps "The slot must be inside the video (20 s)."', async () => {
+    editor();
+    setValue('Slot end (s)', '21');
+    await addExtras([['1', '2']]);
+    await userEvent.click(saveButton());
+    expect(
+      await screen.findByText('The slot must be inside the video (20 s).'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Slot 2 ends after the video.')).not.toBeInTheDocument();
+    expect(slotPuts).toHaveLength(0);
+  });
+
+  it('TT-DD40-P20 a primary end not after its start keeps "End must be after start." and sends nothing', async () => {
+    editor();
+    setValue('Slot end (s)', '4');
+    await addExtras([['10', '11']]);
+    await userEvent.click(saveButton());
+    expect(await screen.findByText('End must be after start.')).toBeInTheDocument();
+    expect(screen.queryByText(ORDER)).not.toBeInTheDocument();
+    expect(slotPuts).toHaveLength(0);
+  });
+});
+
+describe('extra slots are renumbered after a removal (DD-40 decision 2)', () => {
+  it('TT-DD40-P21 removing a middle slot renumbers the rest so the labels follow the position', async () => {
+    editor({
+      extra_slots: [
+        [2, 3],
+        [6, 7],
+        [10, 11],
+      ],
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Remove slot 2' }));
+    expect(field('Slot 2 start (s)')).toHaveValue(6);
+    expect(field('Slot 2 end (s)')).toHaveValue(7);
+    expect(field('Slot 3 start (s)')).toHaveValue(10);
+    expect(field('Slot 3 end (s)')).toHaveValue(11);
+    expect(screen.queryByRole('spinbutton', { name: 'Slot 4 start (s)' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove slot 4' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove slot 3' })).toBeInTheDocument();
+    expect(addButton()).toBeEnabled();
+  });
+
+  it('TT-DD40-P22 after a renumber the PUT body holds the remaining slots in position order', async () => {
+    editor({
+      extra_slots: [
+        [2, 3],
+        [6, 7],
+        [10, 11],
+      ],
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Remove slot 2' }));
+    await userEvent.click(saveButton());
+    await waitFor(() => expect(slotPuts).toHaveLength(1));
+    expect(slotPuts[0]).toEqual({
+      start_s: 4.2,
+      end_s: 5.1,
+      extra_slots: [
+        [6, 7],
+        [10, 11],
+      ],
+    });
+  });
+});
+
+describe('extra slots are sent sorted by start (DD-40 decision 3)', () => {
+  it('TT-DD40-P23 slots typed out of order are sent sorted ascending by start', async () => {
+    editor();
+    await addExtras([
+      ['15', '16'],
+      ['10', '11'],
+    ]);
+    await userEvent.click(saveButton());
+    await waitFor(() => expect(slotPuts).toHaveLength(1));
+    expect(slotPuts[0]).toEqual({
+      start_s: 4.2,
+      end_s: 5.1,
+      extra_slots: [
+        [10, 11],
+        [15, 16],
+      ],
+    });
+  });
+
+  it('TT-DD40-P24 prefilled extra slots in any order are sent sorted ascending by start', async () => {
+    editor({
+      extra_slots: [
+        [15, 16],
+        [10, 11],
+      ],
+    });
+    await userEvent.click(saveButton());
+    await waitFor(() => expect(slotPuts).toHaveLength(1));
+    expect(slotPuts[0]).toEqual({
+      start_s: 4.2,
+      end_s: 5.1,
+      extra_slots: [
+        [10, 11],
+        [15, 16],
+      ],
+    });
   });
 });

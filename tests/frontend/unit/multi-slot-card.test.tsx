@@ -1,6 +1,6 @@
 // DD-40 several name slots per template, Templates page card. Cases: TT-DD40-P15..P18, N12, E9
 //
-// CONTRACT (frontend/src, implemented by the frontend developer; see docs/test-tree/multi-slot-dashboard.md):
+// CONTRACT (frontend/src, implemented by the frontend developer; see docs/test-tree/multi-name-slots.md):
 //   pages/templates/TemplateCard.tsx
 //     one slot (template.slots has one entry):      "Slot 4.2 s - 5.1 s"  (exactly as today)
 //     several slots (template.slots, sorted):        "Slots 2 s - 3 s, 10 s - 11 s"
@@ -112,4 +112,40 @@ describe('template card lists the name slots', () => {
     expect(within(card).getByText('Slot 2 s - 3 s')).toBeInTheDocument();
     expect(card).not.toHaveTextContent('Slots');
   });
+});
+
+describe('several slots use the same number formatting as one slot', () => {
+  it.each([
+    [1.5, 2.25],
+    [0, 10],
+    [12.75, 13],
+  ])('TT-DD40-P25 single slot %s-%s s prints as "Slot a s - b s"', async (start, end) => {
+    const card = await onlyTemplate(
+      template({ slot: { start_s: start, end_s: end }, extra_slots: [], slots: [[start, end]] }),
+    );
+    expect(within(card).getByText(`Slot ${start} s - ${end} s`)).toBeInTheDocument();
+  });
+
+  it.each([
+    [1.5, 2.25],
+    [0, 10],
+    [12.75, 13],
+  ])(
+    'TT-DD40-P25 several slots starting with %s-%s s print the same numbers',
+    async (start, end) => {
+      const card = await onlyTemplate(
+        template({
+          slot: { start_s: start, end_s: end },
+          extra_slots: [[20, 21]],
+          slots: [
+            [start, end],
+            [20, 21],
+          ],
+        }),
+      );
+      expect(
+        within(card).getByText(`Slots ${start} s - ${end} s, 20 s - 21 s`),
+      ).toBeInTheDocument();
+    },
+  );
 });

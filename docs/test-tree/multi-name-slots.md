@@ -10,15 +10,13 @@ Files:
 - tests/frontend/unit/multi-slot-card.test.tsx (card text, card editor prefill)
 - tests/frontend/mocks/data.ts and handlers.ts (fixtures and default PUT handler that records bodies)
 
-Open questions (for the CEO, tests written without guessing):
-1. The primary slot end after the video: the existing text "The slot must be inside the video (20 s)."
-   (TT-UI-AC5-E3) and the new "Slot N ends after the video." may both apply. Only extra slots are
-   tested for the new text.
-2. The primary slot with end <= start: existing "End must be after start." vs the new "Each slot
-   must end after it starts.". Only extra slots are tested for the new text.
-3. Labels after removing a middle slot (does "Slot 3" become "Slot 2"?). Tests remove only the
-   last extra slot or the only one.
-4. Order of `extra_slots` in the PUT body: tests use already-sorted input.
+Decisions from the Admin (through the CEO), now encoded in the tests:
+1. The primary slot keeps its existing messages: end past the video -> "The slot must be inside the video (20 s)."
+   and end <= start -> "End must be after start." (P19, P20). The new messages are for extra slots only:
+   "Slot N ends after the video." and "Each slot must end after it starts.".
+2. After a removal the extra slots are renumbered, so the labels follow the position (P21, P22).
+3. extra_slots in the PUT body are sent sorted ascending by start, whatever the typing order (P23, P24).
+Overlap ("Slots must not overlap or touch.") and "Fill in every slot or remove it." check all slots.
 
 ```
 Feature: several name slots in the dashboard (DD-40)
@@ -66,14 +64,15 @@ Feature: several name slots in the dashboard (DD-40)
     ├── ✅ TT-DD40-P17 three slots with decimals: "Slots 1 s - 2.5 s, 3 s - 4 s, 10 s - 11.5 s"
     ├── ✅ TT-DD40-P18 an unconfirmed card shows the editor prefilled with the extra slots
     ├── ❌ TT-DD40-N12 no primary slot shows "No slot yet" (extra slots alone are not a slot)
-    └── ⚠️ TT-DD40-E9 a single slot never shows the plural "Slots"
+    ├── ⚠️ TT-DD40-E9 a single slot never shows the plural "Slots"
+    └── ✅ TT-DD40-P25 one slot and several slots print the numbers in the same format (table of values)
 ```
 
 Mapping of plan acceptance criteria to tests:
 - AC3 (PUT accepts extra_slots, empty list clears): TT-DD40-P8, P9, P10, N2.
 - AC4 (template JSON has extra_slots and slots): fixtures in data.ts; TT-DD40-P5, P15, P16, P17.
 - AC9 (Add button up to 5, Remove per extra slot, client checks, card lists all slots):
-  TT-DD40-P1 to P4, E2, E3, N3 to N11, P15 to P18.
+  TT-DD40-P1 to P4, E2, E3, N3 to N11, P15 to P18, P19 to P25.
 - AC10 (one-slot template unchanged): TT-DD40-P15, E1, E9, P6.
 - AC1 and AC2 (server rules) are covered by the backend tree, not here; the client mirrors them
   (5 slots, 0.2 s gap, no overlap).

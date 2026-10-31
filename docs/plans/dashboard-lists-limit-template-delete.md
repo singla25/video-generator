@@ -6,7 +6,7 @@ Status: Approved by the Admin on 2026-10-31 (DD-37).
 The Admin tried local mode and asked for four dashboard changes: (1) the Running, Completed and Failed pages show real batch lists instead of "coming soon"; (2) after the sheet upload, the wizard asks how many videos to generate (all, first 5, first 10, first 15, or a custom number); (3) templates can be deleted; (4) the "New template" form is easier to use.
 
 ## Acceptance criteria
-1. `GET /batches?view=all|running|completed|failed` returns only the batches that match the view: running = RUNNING or PAUSED; completed = COMPLETED with no failed rows; failed = RUNNING, PAUSED or COMPLETED with at least one failed row; `all` returns every batch except DRAFT and CANCELLED; DRAFT and CANCELLED batches are never listed in any view; an unknown `view` value is refused with a clear client error.
+1. `GET /batches?view=all|running|completed|failed` returns only the batches that match the view: running = RUNNING or PAUSED; completed = COMPLETED with no failed rows; failed = RUNNING, PAUSED or COMPLETED with at least one failed row; `view=all` (the default) lists every batch in every state exactly as today; DRAFT and CANCELLED batches never appear under `running`, `completed` or `failed`; an unknown `view` value is refused with a clear client error.
 2. The Running, Completed and Failed dashboard pages show the real batch list from that endpoint (with the same rules as AC1); the "coming soon" placeholders are gone from these three pages.
 3. `POST /batches/{id}/start` accepts an optional `limit`. With `limit = N`, the first N rows (in sheet order) are rendered; every other row becomes `SKIPPED` with failure code `NOT_SELECTED` and the message "Not selected: outside the number of videos requested.", and no video is rendered for it.
 4. Without `limit`, or with a `limit` at or above the row count, every row is rendered and no row is `SKIPPED`. A `limit` of 0 or below, or a value that is not a whole number, is refused with a clear client error and the batch does not start.
@@ -44,7 +44,7 @@ Dashboard: real lists, start limit, delete template, template form
 
 ## Test tree outline
 See docs/test-tree/dashboard-lists-limit-template-delete.md (tester expands this outline).
-- View filter (AC1): positive per view; negative unknown view; edge: DRAFT and CANCELLED excluded, failed view paginates correctly under the subquery.
+- View filter (AC1): positive per view; negative unknown view; edge: DRAFT and CANCELLED batches absent from running, completed and failed but present in all; failed view paginates correctly under the subquery.
 - Start limit (AC3, AC4): positive limit N; negative limit 0, negative, non-integer; edge limit above row count, no limit, single-row batch.
 - Delete template (AC6): positive unused template removed with consent records and files; negative in-use 409 nothing removed, unknown 404; edge template used only by a CANCELLED or DRAFT batch is still refused (any batch that uses it blocks deletion).
 - UI (AC2, AC5, AC7, AC8): list pages render rows and empty state; wizard limit choices and custom number bounds; delete dialog confirm and cancel and 409 message; template form states and unchanged upload.

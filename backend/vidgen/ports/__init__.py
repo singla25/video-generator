@@ -37,7 +37,9 @@ from vidgen.ports.models import (
     VideoInfo,
     VideoLimits,
 )
+from vidgen.ports.progress import StageReporter
 from vidgen.ports.rows import PreviewSink, RowStore
+from vidgen.ports.warmup import Warmable
 
 __all__ = [
     "AuditEntry",
@@ -60,6 +62,7 @@ __all__ = [
     "SheetReader",
     "SheetRow",
     "SpeechToText",
+    "StageReporter",
     "Storage",
     "TemplateRecord",
     "TemplateRepository",
@@ -72,5 +75,6 @@ __all__ = [
     "VideoLimits",
     "VideoProbe",
     "VoiceCloner",
+    "Warmable",
     "WorkerHeartbeat",
 ]

@@ -35,6 +35,10 @@ class FasterWhisperSpeechToText:
             for raw in (segment.words or [])
         ]
 
+    def warm_up(self) -> None:
+        """Load the model now (no inference), so missing weights show at start-up."""
+        self._model.get()
+
     def release(self) -> None:
         """Unload the model to free memory; it loads again on the next use."""
         self._model.release()

@@ -19,6 +19,7 @@ from vidgen.infrastructure.local_ai.stt import FasterWhisperSpeechToText
 from vidgen.infrastructure.local_ai.transliterate import QwenTransliterator
 from vidgen.infrastructure.local_ai.tts import ChatterboxVoiceCloner
 from vidgen.ports import LipSyncer, SpeechToText, Transliterator, VoiceCloner
+from vidgen.ports.warmup import Warmable
 from vidgen.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,12 @@ def build_ai_adapters(settings: Settings) -> AiAdapters:
         voice=ChatterboxVoiceCloner(root / CHATTERBOX_DIR),
         lipsync=MuseTalkLipSyncer(root / MUSETALK_DIR, guard=SingleRenderGuard()),
     )
+
+
+def warmable_adapters(adapters: AiAdapters) -> list[Warmable]:
+    """The adapters that load a model of their own (speech, voice, lip sync), in that order."""
+    candidates: tuple[object, ...] = (adapters.stt, adapters.voice, adapters.lipsync)
+    return [adapter for adapter in candidates if isinstance(adapter, Warmable)]
 
 
 def effective_worker_threads(settings: Settings) -> int:

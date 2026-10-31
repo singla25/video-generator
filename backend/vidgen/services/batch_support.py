@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, replace
 from typing import Any
 from uuid import UUID
 
 from vidgen.domain.codes import FailureCode
+from vidgen.domain.progress import pending_stage_label
 from vidgen.domain.stats import StatusCounts
 from vidgen.domain.status import (
     BatchAction,
@@ -17,7 +19,8 @@ from vidgen.domain.status import (
     can_start,
 )
 from vidgen.ports import Clock, SheetReader, Storage, TemplateRecord, Transliterator, UnitOfWork
-from vidgen.ports.batches import PREVIEW_READY, BatchRecord, JobQueue
+from vidgen.ports.batches import PREVIEW_PENDING, PREVIEW_READY, BatchRecord, JobQueue
+from vidgen.ports.progress import StageReporter
 from vidgen.services.audit import ACTOR_ADMIN, UowFactory
 from vidgen.services.batch_rules import counts_from, fingerprint_for
 from vidgen.services.batch_views import BatchReport, BatchView
@@ -29,6 +32,7 @@ from vidgen.services.errors import (
 )
 
 PREVIEW_STALE = "STALE"  # a preview exists but belongs to an earlier slot/template/mapping
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -46,6 +50,7 @@ class BatchContext:
     transliterator: Transliterator | None = None  # suggests the spoken name for the preview row
     require_spelling: bool = False  # local mode: a human confirms the spelling before approval
     spoken_script: str = "devanagari"
+    stage_reporter: StageReporter | None = None  # live preview stage; None = no progress shown
 
 
 def load_batch(uow: UnitOfWork, batch_id: UUID, *, lock: bool = False) -> BatchRecord:
@@ -134,15 +139,37 @@ def describe(
 
 
 def describe_preview(ctx: BatchContext, uow: UnitOfWork, batch: BatchRecord) -> BatchView:
-    """A batch view that also carries the spoken-name suggestion for the preview row."""
+    """A batch view with the spoken-name suggestion (local mode) and the live preview stage."""
     if not ctx.require_spelling:
-        return describe(uow, batch)  # fake mode: the preview keeps its original shape
-    return describe(
-        uow,
-        batch,
-        suggested_spoken_name=suggest_spoken_name(ctx, uow, batch),
-        spelling_required=True,
-    )
+        view = describe(uow, batch)  # fake mode: the preview keeps its original shape
+    else:
+        view = describe(
+            uow,
+            batch,
+            suggested_spoken_name=suggest_spoken_name(ctx, uow, batch),
+            spelling_required=True,
+        )
+    return replace(view, preview_stage=read_preview_stage(ctx, batch))
+
+
+def read_preview_stage(ctx: BatchContext, batch: BatchRecord) -> str | None:
+    """The label of a pending preview's stage, or None for any other preview state.
+
+    Progress is best-effort: if the stage store fails, the page still loads and shows "preparing".
+    The error text is not logged because it can carry the connection string.
+    """
+    if batch.preview.status != PREVIEW_PENDING:
+        return None
+    raw: str | None = None
+    if ctx.stage_reporter is not None:
+        try:
+            raw = ctx.stage_reporter.current(batch.id)
+        except Exception as exc:
+            logger.warning(
+                "preview stage unavailable",
+                extra={"error_type": type(exc).__name__, "batch_id": str(batch.id)},
+            )
+    return pending_stage_label(raw)
 
 
 def suggest_spoken_name(ctx: BatchContext, uow: UnitOfWork, batch: BatchRecord) -> str | None:

@@ -42,6 +42,7 @@ class BatchView:
     retried_rows: int | None = None
     suggested_spoken_name: str | None = None
     spelling_required: bool = False  # local mode: the spoken-name fields are part of the preview
+    preview_stage: str | None = None  # label of a pending preview's stage; None otherwise
 
 
 @dataclass(frozen=True)

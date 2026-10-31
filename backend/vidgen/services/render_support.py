@@ -12,12 +12,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
+from uuid import UUID
 
 from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.domain.outcomes import RowOutcomeKind
 from vidgen.domain.retry import FailureKind, RetryPolicy, classify_exception, failure_code_for
 from vidgen.domain.timing import TimingRules
 from vidgen.logging import log_event
+from vidgen.ports.progress import StageReporter
 from vidgen.ports.rows import RowJob
 
 logger = logging.getLogger(__name__)
@@ -69,17 +71,45 @@ class RowOutcome:
     delay_s: float = 0.0
 
 
-class Run:
-    """One job's context: ids for logging and the stage that is currently running."""
+def report_stage(reporter: StageReporter | None, batch_id: UUID, stage: str) -> None:
+    """Tell the progress store a preview entered ``stage``; errors never fail the render."""
+    if reporter is None:
+        return
+    try:
+        reporter.report(batch_id, stage)
+    except Exception as exc:
+        logger.warning(
+            "preview stage not reported",
+            extra={"stage": stage, "batch_id": str(batch_id), "error_type": type(exc).__name__},
+        )
 
-    def __init__(self, job: RowJob) -> None:
+
+def clear_stage(reporter: StageReporter | None, batch_id: UUID) -> None:
+    """Remove the progress entry of a finished preview; a failure is logged, not raised."""
+    if reporter is None:
+        return
+    try:
+        reporter.clear(batch_id)
+    except Exception as exc:
+        logger.warning(
+            "preview stage not cleared",
+            extra={"batch_id": str(batch_id), "error_type": type(exc).__name__},
+        )
+
+
+class Run:
+    """One job's context: ids for logging, the stage that is running, and optional progress."""
+
+    def __init__(self, job: RowJob, reporter: StageReporter | None = None) -> None:
         self.job = job
         self.stage_name = ""
+        self._reporter = reporter
 
     @contextmanager
     def stage(self, name: str) -> Iterator[None]:
         """Run a stage and log how long it took (also when it fails)."""
         self.stage_name = name
+        report_stage(self._reporter, self.job.batch_id, name)
         started = time.perf_counter()
         try:
             yield

@@ -141,3 +141,6 @@ Newest first. One entry per task.
 
 ## 2026-10-29 - T-L10b
 - FakeJobQueue implements has_live_job (live set from enqueue until mark_done); doubles.py ruff/mypy --strict clean; unit suite 1241 passed, 2 skipped.
+
+## 2026-10-31 - T-PROG-BE RED (preview stage progress and opt-in warm-up)
+- Tree docs/test-tree/preview-progress.md; red tests in tests/unit/infra/test_redis_stage_reporter.py, tests/unit/services/test_render_preview_stage.py, tests/unit/infra/test_warm_up_setting.py, tests/unit/worker/test_warm_up.py, tests/integration/api/test_preview_stage.py; FakeStageReporter added to tests/fixtures/doubles.py.

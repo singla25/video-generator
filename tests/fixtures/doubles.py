@@ -190,6 +190,43 @@ def word(text: str, start: float, confidence: float = 0.95) -> Word:
     return Word(text=text, start_s=start, end_s=round(start + 0.4, 6), confidence=confidence)
 
 
+class FakeStageReporter:
+    """StageReporter double: keeps the current stage per batch and records every call.
+
+    ``log`` (optional, shared with other doubles) gets ``stage:<name>`` and ``clear`` entries in
+    call order, so tests can check the sequence of the whole pipeline. ``fail_report`` and
+    ``fail_clear`` make the matching method raise, like a Redis outage would.
+    """
+
+    def __init__(self, log: list[str] | None = None) -> None:
+        self.stages: dict[UUID, str] = {}
+        self.reports: list[tuple[UUID, str]] = []
+        self.cleared: list[UUID] = []
+        self.log: list[str] = log if log is not None else []
+        self.fail_report: Exception | None = None
+        self.fail_clear: Exception | None = None
+
+    def report(self, batch_id: UUID, stage: str) -> None:
+        """Remember the stage of the batch (or raise when configured to)."""
+        self.log.append(f"stage:{stage}")
+        if self.fail_report is not None:
+            raise self.fail_report
+        self.reports.append((batch_id, stage))
+        self.stages[batch_id] = stage
+
+    def current(self, batch_id: UUID) -> str | None:
+        """The last reported stage of the batch, or None."""
+        return self.stages.get(batch_id)
+
+    def clear(self, batch_id: UUID) -> None:
+        """Forget the stage of the batch (or raise when configured to)."""
+        self.log.append("clear")
+        if self.fail_clear is not None:
+            raise self.fail_clear
+        self.cleared.append(batch_id)
+        self.stages.pop(batch_id, None)
+
+
 # ---- consent file bytes ---------------------------------------------------------------
 
 

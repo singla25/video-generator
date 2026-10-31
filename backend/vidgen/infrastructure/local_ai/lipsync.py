@@ -7,6 +7,7 @@ per template. Set up with ``backend/scripts/setup_musetalk.py``.
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,12 @@ from vidgen.infrastructure.local_ai._common import (
 )
 from vidgen.infrastructure.local_ai.guard import SingleRenderGuard
 from vidgen.infrastructure.local_ai.loaders import load_musetalk
+
+
+def _check_start(start_s: float) -> None:
+    """Reject a start that cannot be a position in a video, before any model or file work."""
+    if not math.isfinite(start_s) or start_s < 0:
+        raise ValueError(f"start_s must be a finite number of seconds >= 0, got {start_s!r}")
 
 
 class MuseTalkLipSyncer:
@@ -32,13 +39,14 @@ class MuseTalkLipSyncer:
         self._model = LazyModel("lip sync", weights_dir, loader)
         self._guard = guard or SingleRenderGuard()
 
-    def sync(self, video: Path, audio: Path, out: Path) -> None:
-        """Write the lip-synced ``video`` for ``audio`` to ``out``."""
+    def sync(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
+        """Write ``video`` lip-synced to ``audio`` from ``start_s`` on to ``out``."""
+        _check_start(start_s)
         require_audio(audio)
         with self._guard.acquire():
             model = self._model.get()
             with atomic_output(out) as tmp:
-                model.run(video, audio, tmp)
+                model.run(video, audio, tmp, start_s)
 
     def warm_up(self) -> None:
         """Load the model now (no inference), so missing weights show at start-up."""

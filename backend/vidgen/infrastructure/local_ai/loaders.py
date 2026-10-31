@@ -120,7 +120,7 @@ def _working_dir(folder: Path) -> Iterator[None]:
 
 
 class _MuseTalkModel:
-    """``run(video, audio, out)`` around the vendored MuseTalk v1.5, loaded once, in-process.
+    """``run(video, audio, out, start_s)`` around the vendored MuseTalk v1.5, loaded once.
 
     Peak memory is 16-18 GB (float32, MPS), so callers hold a ``SingleRenderGuard``.
     """
@@ -171,9 +171,10 @@ class _MuseTalkModel:
         )
         self._timesteps = self._torch.tensor([0], device=self._device)
 
-    def run(self, video: Path, audio: Path, out: Path) -> None:
-        """Lip-sync the start of ``video`` to ``audio``; the rest of the video is kept as is."""
+    def run(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
+        """Lip-sync the part of ``video`` from ``start_s`` to ``audio``; the rest is kept."""
         video, audio, out = video.resolve(), audio.resolve(), out.resolve()
+        cache_key = support.landmark_key(support.video_fingerprint(video), start_s)
         try:
             with TemporaryDirectory(prefix="musetalk-") as folder, _working_dir(self._repo):
                 work = Path(folder)
@@ -182,9 +183,9 @@ class _MuseTalkModel:
                 blended.mkdir()
                 with self._torch.no_grad():
                     chunks = self._whisper_chunks(audio)
-                    paths = support.extract_frames(video, frames_dir, len(chunks))
-                    self._blend(video, paths, chunks, blended)
-                support.assemble_video(blended, len(chunks), video, out)
+                    paths = support.extract_frames(video, frames_dir, len(chunks), start_s=start_s)
+                    self._blend(cache_key, paths, chunks, blended)
+                support.assemble_video(blended, len(chunks), video, out, start_s=start_s)
         finally:
             self._release_memory()
 
@@ -201,24 +202,23 @@ class _MuseTalkModel:
             audio_padding_length_right=MUSETALK_AUDIO_PAD,
         )
 
-    def _boxes_and_frames(self, video: Path, paths: list[Path]) -> tuple[list[Any], list[Any]]:
-        """Face boxes (cached per template, the slow part) and the decoded frames."""
-        key = support.video_fingerprint(video)
+    def _boxes_and_frames(self, cache_key: str, paths: list[Path]) -> tuple[list[Any], list[Any]]:
+        """Face boxes (cached per ``cache_key``, the slow part) and the decoded frames."""
         names = [str(p) for p in paths]
-        cached = self._cache.get(key, len(paths))
+        cached = self._cache.get(cache_key, len(paths))
         if cached is not None:
             return list(cached), self._pre.read_imgs(names)
         boxes, frames = self._pre.get_landmark_and_bbox(names, 0)
-        self._cache.put(key, [(int(b[0]), int(b[1]), int(b[2]), int(b[3])) for b in boxes])
+        self._cache.put(cache_key, [(int(b[0]), int(b[1]), int(b[2]), int(b[3])) for b in boxes])
         return boxes, frames
 
-    def _blend(self, video: Path, paths: list[Path], chunks: Any, blended: Path) -> None:
+    def _blend(self, cache_key: str, paths: list[Path], chunks: Any, blended: Path) -> None:
         """Generate the mouth for every audio chunk and paste it back into the frames."""
         import cv2  # type: ignore[import-not-found,unused-ignore]
         import numpy as np  # type: ignore[import-not-found,unused-ignore]
 
         placeholder = tuple(self._pre.coord_placeholder)
-        boxes, frames = self._boxes_and_frames(video, paths)
+        boxes, frames = self._boxes_and_frames(cache_key, paths)
         latents = []
         for box, frame in zip(boxes, frames, strict=False):
             if tuple(box) == placeholder:

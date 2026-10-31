@@ -190,3 +190,14 @@ Newest first. One entry per task.
 
 ## 2026-10-31 - DEMO-TEMPLATE fix (DD-39 slot from the real word span)
 - The slot is no longer the parts sum (4.7-5.9 s, wrong). The script now matches the misspelt first name by similarity (difflib >= 0.6), takes Whisper's span, cross-checks ffmpeg silencedetect (noise -32 dB, 0.06 s), and uses the silence-bounded speech run rounded to one decimal: slot 4.5-5.4 s. The literal rule (Whisper span widened 0.05 s = 4.4-5.3 s) is printed but not used: it ends before the speech does. `--slot-only` re-times the existing template. Parts method removed.
+
+## 2026-10-31 - MID-GREEN (DD-39 part B lip sync starts at the slot)
+- `ports/interfaces.py`: `LipSyncer.sync(video, audio, out, start_s=0.0)`. `infrastructure/fakes/adapters.py`: `FakeLipSyncer.sync` accepts `start_s` and still copies the video.
+- `services/render_row.py`: the lip sync gets `start_s=slot[0]` (the name's start, not the end or the length).
+- `infrastructure/local_ai/lipsync.py`: `MuseTalkLipSyncer.sync` rejects a negative or non-finite `start_s` with `ValueError` before the model loads or any output is written; forwards `start_s` as the 4th positional argument of `run`.
+- `infrastructure/local_ai/loaders.py`: `_MuseTalkModel.run(video, audio, out, start_s=0.0)` extracts frames from `start_s`, keys the face-box cache with `landmark_key`, and assembles with `start_s`. `_blend` and `_boxes_and_frames` take the cache key instead of the video.
+- `infrastructure/local_ai/musetalk_support.py`: `landmark_key(fingerprint, start_s)` (0.0 keeps the fingerprint; else `-s<ms>`); `extract_frames(..., *, start_s=0.0)` seeks with `-ss` before `-i`; `assemble_video(..., *, start_s=0.0)` keeps the old filter graph for 0.0, otherwise splices original 0..start_s, blended frames, original from start_s + frames/25, with `-t` set to the original duration (the tail is left out when the blended part reaches the end); new `video_duration(video)` via ffprobe.
+- Tests: 32 passed (test_mid_slot_support, test_mid_slot_adapter, test_render_row_mid_slot). Full unit and integration run (excluding test_worker.py): 2519 passed, 1 skipped.
+- Mypy strict: 8 errors, all in `infrastructure/local_ai/loaders.py` (same count as before). Layering grep (services, domain importing infrastructure): nothing.
+- Callers that pass three arguments (`backend/scripts/local_ai_smoke.py`) keep working through the default 0.0. `backend/spikes/` not touched.
+- No migration, no dependency.

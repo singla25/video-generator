@@ -44,8 +44,8 @@ class VoiceCloner(Protocol):
 class LipSyncer(Protocol):
     """Adjusts the mouth region of video frames to match new audio."""
 
-    def sync(self, video: Path, audio: Path, out: Path) -> None:
-        """Write the lip-synced video to ``out``."""
+    def sync(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
+        """Write the lip-synced video to ``out``; only the part from ``start_s`` changes."""
         ...
 
 

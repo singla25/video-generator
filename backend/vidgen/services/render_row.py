@@ -228,7 +228,7 @@ class RowRenderer:
         )
         synced = folder / "lipsync.mp4"
         with run.stage("lipsync"):
-            self._lipsync.sync(template, speech, synced)
+            self._lipsync.sync(template, speech, synced, start_s=slot[0])
         label = folder / "label.png"
         if self._config.label_style == "bubble":
             self._labels.render_label(job.template.width, job.template.height, label)

@@ -155,3 +155,4 @@ Newest first. One entry per task.
 - Open: the Admin still has to judge the look on the re-rendered sample row.
 - 2026-10-30 B-FIX-depth: JobQueue.depth() checks the Redis client first (llen), so the real RedisBroker no longer crashes the status endpoint.
 - 2026-10-31 B-PROG: preview stage progress (StageReporter port, Redis adapter, render reporting, batch JSON `preview.stage`) and opt-in warm-up (`VIDGEN_WARM_UP_ON_START`, `warm_up_if_enabled`, adapter `warm_up()`); the exact-shape preview tests conflict with the new `stage` key, pending Admin/tester decision.
+- 2026-10-31 B-PROG-FIX: warm-up holds one model at a time (warm_up then release per model); the preview POST returns the same stage as the GET (describe_preview, preparing); httpx2 logger silenced alongside httpx (HTTP_CLIENT_LOGGERS). Tests: 2312 passed, 1 skipped, 21 deselected.

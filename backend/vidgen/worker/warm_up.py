@@ -18,15 +18,14 @@ logger = logging.getLogger(__name__)
 def warm_up_if_enabled(settings: Settings, warmables: Iterable[Warmable]) -> bool:
     """Warm up then release every model when enabled in local mode; returns whether it ran.
 
-    All models are loaded before any is released, so a failure of one never blocks the others.
-    A model that fails to load or to release is logged and skipped; start-up goes on.
+    One model at a time: each is released before the next is loaded, so the peak memory stays at
+    one model (24 GB Macs). A model that fails to load is still released best-effort; a failure
+    is logged and skipped, and start-up goes on.
     """
     if not settings.warm_up_on_start or settings.ai_mode != "local":
         return False
-    models = list(warmables)
-    for model in models:
+    for model in warmables:
         _attempt(model, "warm_up", model.warm_up)
-    for model in models:
         _attempt(model, "release", model.release)
     return True
 

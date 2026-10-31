@@ -18,11 +18,15 @@ from vidgen.api.container import AppDeps, build_container
 from vidgen.api.errors import install_error_handlers
 from vidgen.settings import Settings
 
+# Loggers of HTTP client libraries; they log full request URLs at INFO (see create_app).
+HTTP_CLIENT_LOGGERS: tuple[str, ...] = ("httpx", "httpx2")
+
 
 def create_app(settings: Settings, *, deps: AppDeps | None = None) -> FastAPI:
     """Build the app from explicit settings; ``deps`` replaces adapters (tests)."""
     # HTTP client libraries log full URLs, and URLs can carry search text (personal data, C5).
-    logging.getLogger("httpx").setLevel(logging.WARNING)
+    for name in HTTP_CLIENT_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
     app = FastAPI(title="Dynamic Video Generator", docs_url=None, redoc_url=None)
     app.state.container = build_container(settings, deps or AppDeps())
     install_error_handlers(app)

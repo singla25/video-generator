@@ -1,12 +1,14 @@
 // DD-38 D: resuming a batch from /batches/new?batch=<id>. Cases: TT-DD38-D-*
 //
 // CONTRACT (frontend/src/pages/WizardPage.tsx; GET /batches/<id>):
-//   Missing (404) or not DRAFT   "This batch can't be continued." and a link "Back to Overview" (-> /)
+//   Missing (404)                The existing error alert (role=alert, the API message), plus a link
+//                                "Back to Overview" (-> /)
+//   Exists, not DRAFT            "This batch can't be continued." and a link "Back to Overview" (-> /)
 //   DRAFT, report null or missing "This draft has no sheet data yet. Delete it and upload the sheet
 //                                 again." and a "Delete draft" button (dialog "Delete this draft?",
 //                                 then DELETE /batches/<id>, then navigate to /)
-//   DRAFT with report, preview.approved not true   step 3 "Slot & preview" (stepper aria-current)
-//   DRAFT with report, preview.approved true       step 4 "Output & start" with validRows = report.valid_rows
+//   DRAFT with report (valid_rows >= 1)            step 3 "Slot & preview" (stepper aria-current), with
+//                                                  or without an approved preview; Next goes to step 4
 //   No batch parameter                             unchanged: step 1 "Upload", no batch request
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -75,11 +77,18 @@ describe("positive", () => {
     },
   );
 
-  it("TT-DD38-D-P4 an approved preview opens step 4 Output & start", async () => {
+  it("TT-DD38-D-P4 an approved preview still opens step 3 with it shown, and Next goes to step 4", async () => {
     serveBatch(
       draftWith(report({ valid_rows: 8 }), { status: "READY", approved: true }),
     );
     renderApp(RESUME);
+    expect(
+      await screen.findByRole("spinbutton", { name: "Slot start (s)" }),
+    ).toBeInTheDocument();
+    expect(currentStep()).toHaveTextContent("Slot & preview");
+    expect(screen.getByText("Preview approved")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(
       await screen.findByRole("textbox", { name: "Output folder" }),
     ).toBeInTheDocument();
@@ -94,6 +103,7 @@ describe("positive", () => {
       }),
     );
     renderApp(RESUME);
+    await userEvent.click(await screen.findByRole("button", { name: "Next" }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Review and start" }),
     );
@@ -145,10 +155,12 @@ describe("positive", () => {
 });
 
 describe("negative", () => {
-  it("TT-DD38-D-N1 a missing batch (404) says it cannot be continued, with Back to Overview", async () => {
+  it("TT-DD38-D-N1 a missing batch (404) shows the API error alert, with Back to Overview", async () => {
     serveBatch(null);
     renderApp(RESUME);
-    expect(await screen.findByText(CANNOT)).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Batch not found.",
+    );
     expect(
       screen.getByRole("link", { name: "Back to Overview" }),
     ).toHaveAttribute("href", "/");

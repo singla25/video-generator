@@ -55,6 +55,10 @@ function serveBatches(batches: BatchRow[] | ((page: number) => BatchRow[]), tota
     http.get('*/batches', ({ request }) => {
       const query = new URL(request.url).searchParams;
       if (!query.has('view')) return HttpResponse.json(batchesPage([batch()]));
+      // DD-38: the Not started section is not under test here; it stays hidden.
+      if (query.get('view') === 'drafts') {
+        return HttpResponse.json({ batches: [], page: 1, page_size: 50, total: 0, total_pages: 1 });
+      }
       hits.push({
         page: query.get('page'),
         page_size: query.get('page_size'),

@@ -9,6 +9,7 @@ import { PreviewProgress } from './PreviewProgress';
 import { FakeAiNote, FirstRunNote } from './PreviewNotes';
 
 const FIELD_ID = 'spoken-name';
+const HINT_ID = 'spoken-name-hint';
 const BUTTON =
   'rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint disabled:opacity-50';
 
@@ -41,10 +42,12 @@ interface SpokenNameProps {
   batch: Batch;
   text: string;
   onText: (value: string) => void;
+  /** Runs once the spelling is saved: a new preview is asked for with it (DD-38). */
+  onConfirmed: () => void;
 }
 
 /** Editable spoken name; Approve stays locked until this exact text is confirmed. */
-function SpokenName({ batch, text, onText }: SpokenNameProps) {
+function SpokenName({ batch, text, onText, onConfirmed }: SpokenNameProps) {
   const confirm = useConfirmSpelling(batch.id);
   const trimmed = text.trim();
   return (
@@ -58,6 +61,7 @@ function SpokenName({ batch, text, onText }: SpokenNameProps) {
           type="text"
           lang="hi"
           value={text}
+          aria-describedby={HINT_ID}
           onChange={(e) => onText(e.target.value)}
           className="flex-1 rounded-tile border px-3 py-1.5 text-sm"
         />
@@ -65,11 +69,14 @@ function SpokenName({ batch, text, onText }: SpokenNameProps) {
           type="button"
           className={BUTTON}
           disabled={!trimmed || confirm.isPending}
-          onClick={() => confirm.mutate(trimmed)}
+          onClick={() => confirm.mutate(trimmed, { onSuccess: onConfirmed })}
         >
           Confirm spelling
         </button>
       </div>
+      <p id={HINT_ID} className="text-sm text-muted">
+        Confirm to hear the preview with this spelling.
+      </p>
       {confirm.error && (
         <p role="alert" className="text-sm text-status-failed">
           {message(confirm.error)}
@@ -150,7 +157,12 @@ export function PreviewPanel({ batch }: { batch: Batch }) {
         />
       )}
       {state === 'READY' && localAi && !approved && (
-        <SpokenName batch={batch} text={spoken} onText={setSpoken} />
+        <SpokenName
+          batch={batch}
+          text={spoken}
+          onText={setSpoken}
+          onConfirmed={() => generate.mutate()}
+        />
       )}
       {state === 'READY' && approved && (
         <p className="text-sm font-semibold text-emerald">Preview approved</p>

@@ -135,6 +135,13 @@ test('TT-UI-E2E-P2c wizard: sheet, mapping with invalid rows, preview, approval,
     /^\d{4}-\d{2}-\d{2}-\d+$/,
   );
   await shot(page, 'dd37-wizard-count');
+  const second = await page.context().newPage();
+  await second.setViewportSize({ width: 1440, height: 900 });
+  await second.goto('/batches/running');
+  await shot(second, 'dd38-running-not-started');
+  await second.goto('/');
+  await shot(second, 'dd38-overview-draft');
+  await second.close();
   await page.getByRole('button', { name: 'Review and start' }).click();
   await expect(page.getByRole('dialog', { name: 'Start 3 videos?' })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm and start' }).click();

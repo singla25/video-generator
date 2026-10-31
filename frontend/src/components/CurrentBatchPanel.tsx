@@ -6,6 +6,7 @@ import type { Batch, BatchStatus } from '../api/types';
 import { ApiError } from '../api/client';
 import { etaLabel, formatNumber } from '../format';
 import { ConfirmDialog } from './ConfirmDialog';
+import { DeleteDraftDialog } from './DeleteDraftDialog';
 import { ProgressRing } from './ProgressRing';
 
 const BUTTON =
@@ -108,7 +109,7 @@ export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: Bat
       )}
       {isDraft ? (
         <Link to={`/batches/new?batch=${batch.id}`} className={MAIN_ACTION}>
-          Start batch
+          Continue setup
         </Link>
       ) : (
         <Link to={`/batches/${batch.id}`} className={MAIN_ACTION}>
@@ -126,14 +127,7 @@ export function CurrentBatchPanel({ batch, status }: { batch: Batch; status: Bat
         />
       )}
       {asking === 'delete' && (
-        <ConfirmDialog
-          title="Delete this draft?"
-          body="The uploaded rows will be removed. This cannot be undone."
-          confirmLabel="Delete"
-          cancelLabel="Keep"
-          onConfirm={confirm}
-          onCancel={() => setAsking(null)}
-        />
+        <DeleteDraftDialog onConfirm={confirm} onCancel={() => setAsking(null)} />
       )}
     </section>
   );

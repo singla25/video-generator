@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { useBatch } from '../api/queries';
 import type { Batch, SheetInspection, SheetReport } from '../api/types';
-import { ErrorState, Skeleton } from '../components/states';
+import { EmptyState, ErrorState, Skeleton } from '../components/states';
 import { ApiError } from '../api/client';
+import { NoSheetDraft } from './wizard/NoSheetDraft';
 import { StepMap } from './wizard/StepMap';
 import { StepOutput } from './wizard/StepOutput';
 import { StepSlot } from './wizard/StepSlot';
 import { StepUpload } from './wizard/StepUpload';
 import { Stepper } from './wizard/Stepper';
+import { isClientError, resumeOf, type Resume } from './wizard/resume';
+
+const CANNOT_CONTINUE = "This batch can't be continued.";
 
 interface Initial {
   step: number;
@@ -83,25 +87,60 @@ function Wizard({ initial }: { initial: Initial }) {
   );
 }
 
+/** Shown for a batch that exists but is not a draft, so it cannot be continued (DD-38). */
+function CannotContinue() {
+  return (
+    <EmptyState title={CANNOT_CONTINUE}>
+      <Link to="/" className="font-semibold text-emerald underline">
+        Back to Overview
+      </Link>
+    </EmptyState>
+  );
+}
+
+/** Shown for a missing batch: the API's own message, as an alert, with a way back (DD-38). */
+function MissingBatch({ message }: { message: string }) {
+  return (
+    <div role="alert" className="space-y-3 rounded-card border bg-card p-8 text-center">
+      <p className="font-semibold text-status-failed">{message}</p>
+      <Link to="/" className="font-semibold text-emerald underline">
+        Back to Overview
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * Decides once, from the batch as it first loaded, what to show. Later refetches (for example
+ * after the batch is started, when it is no longer a draft) never swap the open wizard out.
+ */
+function ResumeChoice({ batchId, batch }: { batchId: string; batch: Batch }) {
+  const [resume] = useState<Resume>(() => resumeOf(batch));
+  if (resume.kind === 'cannot') return <CannotContinue />;
+  if (resume.kind === 'no-sheet') return <NoSheetDraft batchId={batchId} />;
+  return (
+    <Wizard
+      initial={{
+        step: 3,
+        batchId,
+        templateId: batch.template_id,
+        report: resume.report,
+      }}
+    />
+  );
+}
+
 function ResumedWizard({ batchId }: { batchId: string }) {
   const batch = useBatch(batchId);
-  if (batch.isError) {
+  // Only a failed first load replaces the page; a failed refetch keeps the batch on screen.
+  if (batch.isError && !batch.data) {
+    if (isClientError(batch.error)) return <MissingBatch message={batch.error.message} />;
     const detail =
       batch.error instanceof ApiError ? batch.error.message : 'Could not load this batch';
     return <ErrorState title={detail} onRetry={() => void batch.refetch()} />;
   }
   if (!batch.data) return <Skeleton className="h-72" />;
-  const report = batch.data.report ?? null;
-  return (
-    <Wizard
-      initial={{
-        step: report && report.valid_rows > 0 ? 3 : 2,
-        batchId,
-        templateId: batch.data.template_id,
-        report,
-      }}
-    />
-  );
+  return <ResumeChoice batchId={batchId} batch={batch.data} />;
 }
 
 /** New batch wizard: upload, map columns, slot and preview, output and start. */

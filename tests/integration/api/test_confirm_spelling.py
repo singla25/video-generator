@@ -194,15 +194,17 @@ def test_confirming_again_withdraws_an_earlier_approval(local: Env) -> None:
     assert preview["spoken_name"] == "नया नाम"
 
 
-def test_a_new_preview_resets_the_confirmation(local: Env) -> None:
+def test_a_new_preview_keeps_the_confirmed_spelling(local: Env) -> None:
+    """DD-38: regenerating keeps the confirmed spelling; the new request still clears approval."""
     batch_id = ready_preview(local)
     confirm(local, batch_id, HINDI)
     assert post_action(local, batch_id, "preview").status_code == 202
     preview = preview_of(local, batch_id)
-    assert preview["spoken_name_confirmed"] is False
-    assert preview["spoken_name"] is None
+    assert preview["spoken_name_confirmed"] is True
+    assert preview["spoken_name"] == HINDI
     render_preview(local, batch_id)
-    assert post_action(local, batch_id, "preview/approve").status_code == 409
+    assert not preview_of(local, batch_id)["approved"]
+    assert post_action(local, batch_id, "preview/approve").status_code == 200
 
 
 def test_spoken_name_never_reaches_logs_or_audit(

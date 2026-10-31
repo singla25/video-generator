@@ -1,8 +1,9 @@
 // T-UI-controls: batch controls on the Overview current-batch panel. Cases: TT-UI-CTL-*
 //
 // CONTRACT (frontend/src/components/CurrentBatchPanel.tsx, RowsTable):
-//   DRAFT batch   row chips read "Not started" (never "Queued"); panel keeps the "Start batch" link
-//                 and adds a "Delete draft" button -> dialog "Delete this draft?" [Delete | Keep];
+//   DRAFT batch   row chips read "Not started" (never "Queued"); panel offers the "Continue setup" link
+//                 (DD-38, replaces "Start batch") and a "Delete draft" button -> dialog
+//                 "Delete this draft?" [Delete | Keep];
 //                 Delete sends DELETE /batches/{id} (204), then the lists refetch.
 //   RUNNING       "Pause" and "Cancel batch"; Cancel asks first: dialog "Cancel this batch?"
 //                 [Yes, cancel batch | Keep running], then POST /batches/{id}/cancel.
@@ -78,10 +79,10 @@ describe('draft batch', () => {
     }
   });
 
-  it('TT-UI-CTL-P2 panel offers Start batch and Delete draft', async () => {
+  it('TT-UI-CTL-P2 panel offers Continue setup and Delete draft', async () => {
     serve('DRAFT', QUEUED_ROWS);
     const p = await panel();
-    expect(p.getByRole('link', { name: 'Start batch' })).toBeInTheDocument();
+    expect(p.getByRole('link', { name: 'Continue setup' })).toBeInTheDocument();
     expect(p.getByRole('button', { name: 'Delete draft' })).toBeInTheDocument();
     expect(p.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
   });

@@ -213,7 +213,7 @@ describe('current batch panel', () => {
     expect(csrf).toBe(CSRF);
   });
 
-  it('TT-UI-AC3-P10 a draft batch shows the lime Start batch action to the wizard', async () => {
+  it('TT-UI-AC3-P10 a draft batch shows the lime Continue setup action to the wizard (DD-38)', async () => {
     server.use(
       http.get('*/batches', () =>
         HttpResponse.json({
@@ -227,7 +227,7 @@ describe('current batch panel', () => {
     );
     renderApp('/');
     const panel = await screen.findByTestId('current-batch');
-    expect(within(panel).getByRole('link', { name: 'Start batch' })).toHaveAttribute(
+    expect(within(panel).getByRole('link', { name: 'Continue setup' })).toHaveAttribute(
       'href',
       `/batches/new?batch=${IDS.batch}`,
     );

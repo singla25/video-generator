@@ -58,12 +58,14 @@ class BatchFlow:
                 raise StateConflictError(StateConflictError.INVALID_STATE)
             template = load_template(uow, batch.template_id)
             old_key = batch.preview.key
+            # DD-38: the confirmed spelling outlives a regenerate; nothing else is carried over.
             batch = replace(
                 batch,
                 preview=PreviewRecord(
                     status=PREVIEW_PENDING,
                     row_id=row_id,
                     requested_for=fingerprint_for(template, batch.mapping),
+                    spoken_name=batch.preview.spoken_name,
                 ),
             )
             uow.batches.save(batch)

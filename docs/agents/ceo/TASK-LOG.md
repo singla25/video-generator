@@ -72,3 +72,5 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | CI-1 | GitHub Actions workflow (ADR-011, scope B) | backend-dev | haiku | In progress | Plan approved (DD-28) | — |
 | DD37-BE | Backend: batch views filter, start limit (NOT_SELECTED), template delete | tester → backend-dev | haiku | ✅ red f13e042 · green 43f0351 · 2 old tests updated 59af3f7 — CEO-verified: 2381 passed, 1 skipped | Yes (Admin, DD-37) | PR pending |
 | DD37-FE | Dashboard: batch list pages, start limit step, delete template, new template form, .mkv fallback | tester → frontend-dev | haiku | ✅ red 0728071, 69f315a · green d2f8ea5, 99e9d1a — CEO-verified: Vitest 488/488, typecheck, lint, format, build clean; E2E 21 passed (a766ff0) with screenshots in media/review/ui/dd37-*.png | Yes (Admin, DD-37) | PR pending |
+| DD38-BE | Backend: keep the confirmed spoken name on a new preview; GET /batches?view=drafts | tester → backend-dev | haiku | In progress | Yes (Admin, DD-38) | — |
+| DD38-FE | Dashboard: drafts on Running, resume the wizard, Overview draft button, Confirm spelling regenerates | tester → frontend-dev | haiku | In progress | Yes (Admin, DD-38) | — |

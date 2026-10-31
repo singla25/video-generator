@@ -2,6 +2,11 @@
 
 Newest first. One entry per task.
 
+## 2026-10-31 - DD-38 green (confirmed spelling kept, drafts view)
+- `BatchFlow.request_preview` keeps the confirmed `spoken_name` on the new PENDING preview record (nothing else is carried over); the approval gate passes after a regenerate. `GET /batches?view=drafts` lists only DRAFT batches, newest first (`BatchListView.DRAFTS`, `batch_list_filter.view_condition`); other views unchanged.
+- Files: `services/batch_flow.py`, `domain/status.py`, `infrastructure/db/batch_list_filter.py`, `api/routes_batches.py` (docstring). No migration, no new dependency.
+- Tests: target 66 pass; `tests/unit` + `tests/integration` 2419 pass, 1 skipped. mypy strict errors only in `infrastructure/local_ai/loaders.py`. Open: none.
+
 ## 2026-10-20 - dev_up.sh asks before migrating
 - `scripts/dev_setup.py pending` lists unapplied migrations (read-only); `dev_up.sh` shows them and asks y/N, and never applies without an answer (no terminal = refuse). Tests: `tests/unit/meta/test_dev_setup.py` (3). Open: none.
 

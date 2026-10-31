@@ -102,7 +102,7 @@ def list_batches(
     page_size: PageSize = DEFAULT_PAGE_SIZE,
     view: BatchListView = BatchListView.ALL,
 ) -> dict[str, Any]:
-    """Batch history, newest first; ``view`` picks running, completed or failed batches."""
+    """Batch history, newest first; ``view`` picks running, completed, failed or draft batches."""
     views, total = container(request).batches.history(page, page_size, view)
     return {
         "batches": [batch_json(v) for v in views],

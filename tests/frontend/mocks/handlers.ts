@@ -5,6 +5,7 @@ import {
   ROWS_BY_STATUS,
   TEMPLATE_NO_CONSENT,
   batch,
+  batchesPage,
   daily,
   report,
   rowsPage,
@@ -45,14 +46,27 @@ export const handlers = [
   ),
   http.get("*/templates/:id", () => HttpResponse.json(template())),
   http.delete("*/templates/:id", () => new HttpResponse(null, { status: 204 })),
-  http.get("*/batches", () =>
-    HttpResponse.json({
+  http.get("*/batches", ({ request }) => {
+    // DD-38: the Not started list is empty unless a test serves drafts.
+    if (new URL(request.url).searchParams.get("view") === "drafts") {
+      return HttpResponse.json(batchesPage([]));
+    }
+    return HttpResponse.json({
       batches: [batch()],
       page: 1,
       page_size: 50,
       total: 1,
       total_pages: 1,
-    }),
+    });
+  }),
+  http.delete("*/batches/:id", () => new HttpResponse(null, { status: 204 })),
+  http.post("*/batches/:id/preview", () =>
+    HttpResponse.json(
+      batch({ preview: { status: "PENDING", approved: false } }),
+      {
+        status: 202,
+      },
+    ),
   ),
   http.get("*/batches/:id/status", () => HttpResponse.json(status())),
   http.get("*/batches/:id/rows", () =>

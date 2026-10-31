@@ -42,6 +42,7 @@ class BatchListView(StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    DRAFTS = "drafts"
 
 
 class BatchAction(StrEnum):

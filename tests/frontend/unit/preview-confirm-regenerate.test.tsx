@@ -12,7 +12,7 @@ import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { renderApp } from "../helpers";
-import { DEVANAGARI_NAME, IDS, batch, report } from "../mocks/data";
+import { DEVANAGARI_NAME, IDS, batch } from "../mocks/data";
 import { apiError } from "../mocks/handlers";
 import { server } from "../mocks/server";
 
@@ -62,7 +62,6 @@ function serveScene(
       HttpResponse.json(
         batch({
           status: "DRAFT",
-          report: report({ valid_rows: 8 }),
           preview: previewOf(scene),
         }),
       ),

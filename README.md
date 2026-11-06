@@ -1,90 +1,272 @@
-# Dynamic Video Generator — AI Team Setup
+<div align="center">
 
-A CEO agent (highest model) that talks to you, plus three sub-agents — backend, frontend, tester — with shared rules, a safety guard, skills and auto-generated docs. Built for **Claude Code**.
+<img src="docs/design/brand/logo.svg" alt="VidGen Studio" height="72">
 
-## What's inside
+# VidGen Studio
 
+**One template video. Thousands of personalised videos.**
+
+Upload a video and a sheet of names. VidGen Studio replaces the spoken name, re-syncs the lips, labels every clip as AI-generated and hands you a folder of ready-to-send MP4s.
+
+[![CI](https://github.com/singla25/video-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/singla25/video-generator/actions/workflows/ci.yml)
+![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/dashboard-React_19-61DAFB?logo=react&logoColor=black)
+![PostgreSQL 16](https://img.shields.io/badge/database-PostgreSQL_16-4169E1?logo=postgresql&logoColor=white)
+![macOS](https://img.shields.io/badge/macOS-Apple_silicon_%7C_Intel-000000?logo=apple&logoColor=white)
+
+[Features](#features) · [Screenshots](#screenshots) · [How it works](#how-it-works) · [Performance](#performance) · [Install on macOS](#install-on-macos) · [Troubleshooting](#troubleshooting)
+
+</div>
+
+---
+
+## Features
+
+| | |
+|---|---|
+| **Batch personalisation** | Upload a template (MP4/MOV) and a `.xlsx`/`.csv` sheet. Only the name slot changes; the rest of the audio and video is untouched. |
+| **Hindi and Latin names** | Devanagari support with transliteration and a per-row *spoken name* override. |
+| **Safe by design** | Consent file required before a template can be used. Every frame carries an "AI-Generated / एआई-जनित" label and the file metadata records the creator and date. |
+| **Preview gate** | Row 1 is rendered first; the batch starts only after you approve it. |
+| **Reliable queue** | Each row is an independent job with one automatic retry. Pause, resume, cancel and retry-failed at any time. |
+| **Clear results** | Live progress and ETA, failure breakdown by reason, batch history, per-video download, ZIP of all outputs and a failures CSV. |
+| **Privacy** | Names and IDs are encrypted at rest, logs contain no personal data, batches can be deleted, and old data is removed automatically (default 30 days). |
+| **Built to scale** | Large sheets (100,000 rows) and downloads are streamed, never loaded fully into memory. |
+
+## Screenshots
+
+> **Not included yet.** Screenshots must come from a running instance, and the environment this README was prepared in could not start the PostgreSQL and Redis services the app needs. Rather than show mock-ups, none are shown.
+> To add them on your Mac, follow [docs/assets/screenshots/README.md](docs/assets/screenshots/README.md).
+
+## How it works
+
+```mermaid
+flowchart LR
+    U[Browser<br/>React dashboard] -->|HTTP / session cookie| A[FastAPI API]
+    A --> S[Services]
+    S --> D[(PostgreSQL)]
+    S -->|enqueue row jobs| Q[(Redis queue)]
+    Q --> W[Dramatiq worker]
+    W --> F[FFmpeg<br/>splice · label · encode]
+    W --> M[AI adapters<br/>speech · voice · lip sync]
+    W --> ST[(File storage)]
+    A --> ST
 ```
-CLAUDE.md                     ← rules for ALL agents (approval gates, security, TDD, architecture, docs, tokens)
-.claude/
-├── agents/
-│   ├── ceo.md                ← model: opus — your point of contact
-│   ├── backend-dev.md        ← model: sonnet — writes only backend/
-│   ├── frontend-dev.md       ← model: sonnet — writes only frontend/
-│   └── tester.md             ← model: sonnet — writes only tests/
-├── hooks/guard.py            ← blocks code deletion, secrets, personal data, data leaks
-├── settings.json             ← permissions (deny / ask / allow) + guard hook
-└── skills/
-    ├── tdd-feature/          ← Red → Green → Refactor → Verify cycle
-    └── test-tree/            ← positive / negative / edge case template
-scripts/build_docs.py         ← turns every docs/*.md into docs/html/
-docs/                         ← plans, ADRs, per-agent README + CHANGELOG, test trees, html/
-```
 
-## Setup (5 minutes)
+1. **Upload** the template, consent file and sheet. Rows are validated; bad rows are skipped with a reason.
+2. **Analyse** the template: the name is located with word timestamps, or you mark the slot by hand. The profile is reused by later batches.
+3. **Preview** row 1 and approve it.
+4. **Render**: the API only creates jobs; workers render in the background, so the web app stays responsive.
+5. **Deliver**: `<ID>.mp4` files plus `manifest.csv` in the output folder.
 
-1. Copy this folder's contents into your project root, then:
-   ```bash
-   git init && git add . && git commit -m "chore: agent team setup"
-   ```
-2. Install the tools the agents use:
-   ```bash
-   pip install pytest pytest-cov ruff mypy
-   ```
-3. Start Claude Code **as the CEO** so the main session uses the highest model:
-   ```bash
-   claude --agent ceo
-   ```
-   (or start `claude`, run `/model` → Opus, and say "Act as the ceo agent".)
-4. Tell it what you want to build. It will cross-question you with MCQs, propose approaches, write a plan, and **wait for your "yes"** before anything starts.
+AI models sit behind swappable interfaces. In the default **fake** mode no models run (fast, for development and tests). The **local** mode runs real models on Apple silicon (see [AI mode](#ai-mode)).
 
-## Run locally (Mac)
+## Technology
 
-The API, the worker and the dashboard all start with one script. It uses the Docker postgres and redis from `docker-compose.yml`, which must already be running, and the fake AI backend (no models, no paid services).
+| Layer | Technology |
+|---|---|
+| API | Python 3.11, FastAPI, Uvicorn, Pydantic Settings |
+| Data | PostgreSQL 16, SQLAlchemy 2, Alembic |
+| Queue | Redis 7, Dramatiq |
+| Video / audio | FFmpeg and ffprobe, Pillow (label rendering) |
+| Dashboard | React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, Recharts |
+| Security | Argon2 password hashing, encrypted personal data (`cryptography`), CSRF protection |
+| Local AI (optional) | faster-whisper, Chatterbox TTS, MuseTalk, PyTorch |
+
+## Performance
+
+The numbers below must come from your own data. Run the read-only report on the machine that holds your PostgreSQL database; it prints **counts and timings only** (no names, IDs, file paths or credentials). Load your `.env` into the shell first, then:
 
 ```bash
-scripts/dev_up.sh                                       # first run creates .env with random secrets
-.venv/bin/python scripts/dev_setup.py create-admin      # once: type your admin password (hidden, only its hash is saved)
-scripts/dev_up.sh                                       # starts API, worker and dashboard
+.venv/bin/python scripts/bench_stats.py          # add --json for JSON
 ```
 
-Open **http://localhost:5173** and log in with the admin password. Stop everything with `scripts/dev_down.sh` (postgres and redis keep running).
+It reports: total videos and batches, success rate, average / median / P95 / min / max render time per video, and throughput (videos per hour, from completed batches' wall-clock time).
 
-- `.env` is git-ignored and holds only local secrets. Never commit it, and never share it.
-- `dev_up.sh` never applies a migration silently: if new ones are pending it lists them and asks `y/N` first (no answer, or no terminal, means nothing is applied and nothing starts).
-- Logs and PIDs live in `.dev/` (git-ignored). If something fails, read `.dev/logs/*.log`.
-- First time on a new machine: `uv sync` and `cd frontend && npm ci`.
-- Local AI mode (pilot, Apple silicon): set `VIDGEN_AI_MODE=local` in `.env` (or the shell) and run `dev_up.sh`. It installs the `local-ai` extra, adds `chatterbox-tts` without its stale pins, uses `backend/spikes/m2_mac/work/local_ai_weights` for weights (`VIDGEN_LOCAL_AI_WEIGHTS_DIR`) and runs the worker with one thread. Fake mode is unchanged. See `docs/plans/m2-local-real-ai.md`.
+| Metric | Result |
+|---|---|
+| Videos rendered, batches | *not measured yet* |
+| Success rate | *not measured yet* |
+| Render time: average / median / P95 | *not measured yet* |
+| Throughput (videos/hour) | *not measured yet* |
 
-## How a feature flows
+Documented design figures (from the project's plans, **not measurements of a production run**):
 
-| Step | Who | You approve? |
-|------|-----|:---:|
-| Listen, restate, MCQ cross-questions, requirement tree | CEO | ✅ tree |
-| 2–3 approaches with pros/cons → ADR | CEO | ✅ choice |
-| Plan + tasks + **why each agent** + model per task | CEO | ✅ plan |
-| Assign tasks (worktrees if parallel) | CEO | ✅ assignment |
-| Failing tests: positive / negative / edge | tester | — |
-| Code to pass tests, then refactor | backend-dev / frontend-dev | — |
-| Verify + coverage report | tester | — |
-| Review diff, run checks, report | CEO | ✅ merge |
-| Merge `--no-ff` into main, rebuild docs | CEO | — |
+| Item | Figure | Source |
+|---|---|---|
+| Local AI mode peak memory | 16–18 GB RAM, one render at a time | `docs/plans/m2-local-real-ai.md` |
+| GPU throughput target | ≥ 100 videos/hour for a 30 s template | `docs/plans/m2-real-ai.md` (target) |
+| Sheet validation target | 1,000 rows in < 3 s | `docs/plans/m1-batch-pipeline.md` (acceptance criterion) |
 
-See everything at **`docs/html/index.html`**.
+## System requirements
 
-## Safety — what the guard blocks (tested: 25/25 cases)
+| | Fake mode (demo / development) | Local AI mode (pilot) |
+|---|---|---|
+| Mac | Apple silicon or Intel | Apple silicon only |
+| Memory | Not benchmarked | 16–18 GB peak per render (documented); 32 GB recommended *(estimate)* |
+| Disk | Space for videos and Docker volumes | Plus model weights (several GB, downloaded on first use) |
+| Network | Needed for installs | Also for the first model download |
 
-- `rm -rf`, `git reset --hard`, `git clean`, force push, `branch -D`, `find -delete`, `DROP TABLE`
-- Reading or writing outside the project, `~`, `/Users`, `.ssh`, `.aws`, Documents/Downloads…
-- `.env`, keys, credentials (`.env.example` is allowed)
-- Uploading data out (`curl -d/-F/POST`, `scp`, `nc`, `curl | sh`)
-- Editing `CLAUDE.md`, `.claude/`, `.git/`
-- Running migrations (`alembic upgrade` etc.) — the CEO asks you, and **you run the migration yourself**
-- Sub-agents writing outside their folder — enforced when your Claude Code version passes the agent name to hooks; otherwise enforced by the agent rules and the CEO's diff review
+Intel Macs: PostgreSQL, Redis and the app use multi-architecture images and packages, so fake mode is expected to work, but it has not been tested on Intel here.
 
-Merges, pushes, dependency installs and file deletions always show you a permission prompt.
+### Dependencies
 
-> The guard is a strong safety net, not a guarantee. Keep `main` protected on GitHub (require PR + passing checks), and keep regular backups/pushes so code can always be recovered.
+| Dependency | Purpose | Version | Install manually? |
+|---|---|---|---|
+| Docker Desktop (Compose v2) | Runs PostgreSQL and Redis | recent | **Yes** |
+| PostgreSQL | Database | 16 (container) | No, via Docker |
+| Redis | Job queue | 7 (container) | No, via Docker |
+| [uv](https://docs.astral.sh/uv/) | Python and package manager | recent | **Yes** |
+| Python | Backend | 3.11 (`>=3.11,<3.12`) | No, uv installs it |
+| Node.js + npm | Dashboard | 22 | **Yes** |
+| FFmpeg (includes ffprobe) | Video and audio processing | recent | **Yes** |
+| Python packages | From `pyproject.toml` / `uv.lock` | locked | No, `uv sync` |
+| npm packages | From `frontend/package-lock.json` | locked | No, `npm ci` |
+| `local-ai` extra | Real AI models | pinned in `pyproject.toml` | No, installed by `dev_up.sh` in local mode |
 
-## Changing the rules
-Only you edit `CLAUDE.md` and `.claude/` (agents can't). Ask the CEO to *propose* new skills or agents; you approve and add them.
+No paid or external online service is required.
+
+## Install on macOS
+
+Works on Apple silicon and Intel. Commands assume [Homebrew](https://brew.sh).
+
+**1. Install the tools**
+
+```bash
+xcode-select --install                 # command line tools (skip if already installed)
+brew install uv node@22 ffmpeg
+brew install --cask docker             # then open Docker Desktop once and wait until it is running
+```
+
+If `node` is not found after installing, run `brew link --overwrite node@22`.
+
+**2. Get the code and dependencies**
+
+```bash
+git clone https://github.com/singla25/video-generator.git
+cd video-generator
+uv sync                                # installs Python 3.11 and backend packages
+(cd frontend && npm ci)                # dashboard packages
+```
+
+**3. Start the database and queue**
+
+```bash
+docker compose up -d
+docker compose ps                      # postgres and redis should be "healthy"
+```
+
+**4. Configure and create your admin login**
+
+```bash
+scripts/dev_up.sh                      # first run creates .env with random secrets, then asks for the admin step
+.venv/bin/python scripts/dev_setup.py create-admin   # type a password (hidden; only its hash is saved)
+```
+
+`.env` is git-ignored and holds local secrets. Never commit or share it. `.env.example` lists the variables.
+
+**5. Start the app**
+
+```bash
+scripts/dev_up.sh
+```
+
+The first start lists any database migrations that are not applied yet and asks `y/N`. Answer `y` to create the tables. With no answer, nothing is applied and nothing starts.
+
+**6. Verify**
+
+```bash
+curl http://127.0.0.1:8000/api/health  # API
+```
+
+Open **http://localhost:5173** and log in with your admin password.
+
+**7. Stop**
+
+```bash
+scripts/dev_down.sh                    # stops API, worker and dashboard
+docker compose down                    # optional: stops PostgreSQL and Redis (data is kept in Docker volumes)
+```
+
+### AI mode
+
+By default the app runs with **fake** AI adapters (no models, no cost). To try the real models on an Apple-silicon Mac, set `VIDGEN_AI_MODE=local` in `.env` (or the shell) and run `scripts/dev_up.sh`. This installs the `local-ai` extra, downloads weights on first use into `backend/spikes/m2_mac/work/local_ai_weights` (override with `VIDGEN_LOCAL_AI_WEIGHTS_DIR`) and renders one video at a time. This is a pilot; details in [docs/plans/m2-local-real-ai.md](docs/plans/m2-local-real-ai.md).
+
+## Usage
+
+1. **Log in** at http://localhost:5173.
+2. **Templates:** upload your template video and the consent file, tick the confirmation, and confirm the name slot.
+3. **New batch:** upload the sheet, map the Name, ID and optional Spoken-name columns, and review skipped rows.
+4. **Preview:** check the rendered preview of row 1 and approve it to start.
+5. **Monitor:** the Overview and batch pages show progress, ETA and failures. Pause, resume, cancel or retry failed rows.
+6. **Download:** single videos, a ZIP of all outputs, or the failures CSV. **History** lists past batches.
+
+## Troubleshooting
+
+<details>
+<summary><b>"Postgres or redis is not reachable"</b></summary>
+
+Docker Desktop is not running or the containers are down. Open Docker Desktop, then `docker compose up -d` and check `docker compose ps`.
+</details>
+
+<details>
+<summary><b>Port already in use (8000, 5173, 5432, 6379)</b></summary>
+
+Find the process with `lsof -i :5432`. The API (8000) and dashboard (5173) ports are fixed. For PostgreSQL and Redis set `VIDGEN_DB_PORT` / `VIDGEN_REDIS_PORT` before `docker compose up -d` and update the URLs in `.env`.
+</details>
+
+<details>
+<summary><b>"Run 'uv sync' first" or "Run 'cd frontend && npm ci' first"</b></summary>
+
+Install the packages as in step 2, then run `scripts/dev_up.sh` again.
+</details>
+
+<details>
+<summary><b>Nothing starts after the migration question</b></summary>
+
+Run the script from an interactive terminal and answer `y`. Without a terminal it never applies migrations.
+</details>
+
+<details>
+<summary><b>Something fails after start</b></summary>
+
+Read the logs in `.dev/logs/` (`api.log`, `worker.log`, `web.log`, `migrate.log`).
+</details>
+
+<details>
+<summary><b>Devanagari text in the AI label looks wrong</b></summary>
+
+The font ships with the app, but text shaping may need the FRIBIDI library. Try `brew install fribidi` and restart. *(Not verified on macOS in this repository; CI installs `libraqm0` and `libfribidi0` on Linux.)*
+</details>
+
+## Development
+
+```bash
+uv run pytest -q                              # backend tests
+uv run ruff check backend tests               # lint
+uv run mypy --strict backend/vidgen           # types
+(cd frontend && npm test)                     # dashboard tests
+```
+
+CI runs the same checks on every pull request.
+
+## Project structure
+
+```
+backend/vidgen/   api/ · services/ · domain/ · ports/ · infrastructure/ · worker/
+backend/migrations/   Alembic migrations (PostgreSQL)
+frontend/         React dashboard (Vite, TypeScript, Tailwind)
+scripts/          dev_up.sh · dev_down.sh · dev_setup.py · bench_stats.py
+tests/            unit · integration · e2e
+docs/             plans · decisions (ADRs) · requirements · development-workflow.md
+docker-compose.yml   PostgreSQL 16 + Redis 7 for local use
+```
+
+More detail: [architecture decisions](docs/decisions/), [requirements](docs/requirements/REQ-001-personalized-video-batch.md), [contributor workflow](docs/development-workflow.md).
+
+## License and support
+
+No license file is included in this repository yet, so all rights are reserved by default. Contact the owner before reuse.
+
+Questions and bug reports: [GitHub Issues](https://github.com/singla25/video-generator/issues).

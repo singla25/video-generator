@@ -1,42 +1,38 @@
-# Dynamic Video Generator — AI Team Setup
+# Dynamic Video Generator
 
-A CEO agent (highest model) that talks to you, plus three sub-agents — backend, frontend, tester — with shared rules, a safety guard, skills and auto-generated docs. Built for **Claude Code**.
+Turn **one template video into thousands of personalised videos**. Upload a template and a sheet of names; the system replaces the spoken name in the audio, re-syncs the lips, labels every output as AI-generated, and delivers a folder of ready-to-send MP4s with a manifest.
 
-## What's inside
+## What it does
+
+1. **Upload** a template video (MP4/MOV) and a sheet (`.xlsx` / `.csv`) with Name, ID and an optional spoken-name column.
+2. **Validate** every row (empty or duplicate IDs, over-long names, unsupported characters). Bad rows are skipped with a clear reason and never rendered.
+3. **Analyse the template**: find the name in the speech with word timestamps, or mark the slot by hand. The profile is reused by later batches.
+4. **Consent gate**: a template can be used only after a consent file is uploaded and confirmed.
+5. **Preview and approve** the first row before the batch starts.
+6. **Render in the background**: each row is an independent, retry-safe job. Only the name slot changes; the rest of the audio and video is untouched.
+7. **Deliver**: `<ID>.mp4` files plus `manifest.csv`, with a ZIP download, a failures CSV, live progress and analytics in the dashboard.
+
+## Key features
+
+- Hindi (Devanagari) and Latin names, with transliteration and per-row spoken-name overrides.
+- Voice cloning, lip sync and music-preserving vocal replacement, behind swappable ports (fake models for dev and CI, real models for the local pilot).
+- Visible "AI-Generated / एआई-जनित" label on every frame and creator metadata in each file.
+- Privacy first: names and IDs encrypted at rest, PII-free logs, batch deletion, automatic retention cleanup and an audit log.
+- Pause, resume, cancel and retry-failed controls; session login with CSRF protection and rate limiting.
+- Streams large sheets (100k rows) and large downloads instead of loading them into memory.
+
+## Architecture
 
 ```
-CLAUDE.md                     ← rules for ALL agents (approval gates, security, TDD, architecture, docs, tokens)
-.claude/
-├── agents/
-│   ├── ceo.md                ← model: opus — your point of contact
-│   ├── backend-dev.md        ← model: sonnet — writes only backend/
-│   ├── frontend-dev.md       ← model: sonnet — writes only frontend/
-│   └── tester.md             ← model: sonnet — writes only tests/
-├── hooks/guard.py            ← blocks code deletion, secrets, personal data, data leaks
-├── settings.json             ← permissions (deny / ask / allow) + guard hook
-└── skills/
-    ├── tdd-feature/          ← Red → Green → Refactor → Verify cycle
-    └── test-tree/            ← positive / negative / edge case template
-scripts/build_docs.py         ← turns every docs/*.md into docs/html/
-docs/                         ← plans, ADRs, per-agent README + CHANGELOG, test trees, html/
+React dashboard → FastAPI API → services → domain (pure rules)
+                       │
+                       └─ Postgres · Redis queue (Dramatiq workers) · file storage · FFmpeg · AI adapters
 ```
 
-## Setup (5 minutes)
-
-1. Copy this folder's contents into your project root, then:
-   ```bash
-   git init && git add . && git commit -m "chore: agent team setup"
-   ```
-2. Install the tools the agents use:
-   ```bash
-   pip install pytest pytest-cov ruff mypy
-   ```
-3. Start Claude Code **as the CEO** so the main session uses the highest model:
-   ```bash
-   claude --agent ceo
-   ```
-   (or start `claude`, run `/model` → Opus, and say "Act as the ceo agent".)
-4. Tell it what you want to build. It will cross-question you with MCQs, propose approaches, write a plan, and **wait for your "yes"** before anything starts.
+- Rendering never runs inside a web request: the API creates a job, workers render, the client polls.
+- Stack: Python 3.11, FastAPI, SQLAlchemy + Alembic, Postgres 16, Redis 7, Dramatiq, FFmpeg; React + Vite frontend.
+- Code lives in `backend/vidgen` (`api`, `services`, `domain`, `ports`, `infrastructure`, `worker`) and `frontend/`.
+- Plans and decisions: `docs/plans/` and `docs/decisions/`.
 
 ## Run locally (Mac)
 
@@ -56,7 +52,23 @@ Open **http://localhost:5173** and log in with the admin password. Stop everythi
 - First time on a new machine: `uv sync` and `cd frontend && npm ci`.
 - Local AI mode (pilot, Apple silicon): set `VIDGEN_AI_MODE=local` in `.env` (or the shell) and run `dev_up.sh`. It installs the `local-ai` extra, adds `chatterbox-tts` without its stale pins, uses `backend/spikes/m2_mac/work/local_ai_weights` for weights (`VIDGEN_LOCAL_AI_WEIGHTS_DIR`) and runs the worker with one thread. Fake mode is unchanged. See `docs/plans/m2-local-real-ai.md`.
 
-## How a feature flows
+## Testing and quality
+
+```bash
+uv run pytest -q                              # all tests
+uv run ruff check backend tests               # lint
+uv run ruff format --check backend tests      # format
+uv run mypy --strict backend/vidgen           # types
+cd frontend && npm test                       # dashboard unit tests
+```
+
+CI runs the same checks on every pull request (`.github/workflows/ci.yml`).
+
+## Development workflow (AI-assisted)
+
+This project is built with a small team of Claude Code agents (CEO, backend, frontend, tester) working under strict rules: tests first, nothing merged without your approval, and a safety guard against destructive actions. The rules live in `CLAUDE.md` and `.claude/`; only you change them. Start with `claude --agent ceo`.
+
+### How a feature flows
 
 | Step | Who | You approve? |
 |------|-----|:---:|
@@ -72,7 +84,7 @@ Open **http://localhost:5173** and log in with the admin password. Stop everythi
 
 See everything at **`docs/html/index.html`**.
 
-## Safety — what the guard blocks (tested: 25/25 cases)
+### Safety — what the guard blocks
 
 - `rm -rf`, `git reset --hard`, `git clean`, force push, `branch -D`, `find -delete`, `DROP TABLE`
 - Reading or writing outside the project, `~`, `/Users`, `.ssh`, `.aws`, Documents/Downloads…
@@ -86,5 +98,5 @@ Merges, pushes, dependency installs and file deletions always show you a permiss
 
 > The guard is a strong safety net, not a guarantee. Keep `main` protected on GitHub (require PR + passing checks), and keep regular backups/pushes so code can always be recovered.
 
-## Changing the rules
+### Changing the rules
 Only you edit `CLAUDE.md` and `.claude/` (agents can't). Ask the CEO to *propose* new skills or agents; you approve and add them.

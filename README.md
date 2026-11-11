@@ -36,8 +36,27 @@ Upload a video and a sheet of names. VidGen Studio replaces the spoken name, re-
 
 ## Screenshots
 
-> **Not included yet.** Screenshots must come from a running instance, and the environment this README was prepared in could not start the PostgreSQL and Redis services the app needs. Rather than show mock-ups, none are shown.
-> To add them on your Mac, follow [docs/assets/screenshots/README.md](docs/assets/screenshots/README.md).
+Captured on 2026-11-11 from a running instance in local AI mode on a MacBook Pro (M4 Pro, 24 GB), using a separate demo database, a synthetic demo template and a sheet of made-up names. No real personal data is shown. The build shown includes the several-name-slots work (DD-40), which is not on `main` yet, so the template card shows an extra "Add another name slot" button.
+
+**Overview**: KPI cards, videos per week, the current batch and its rows.
+
+![Overview](docs/assets/screenshots/overview.png)
+
+**Templates**: a template card with consent confirmed and the name slot found automatically, waiting for confirmation.
+
+![Templates](docs/assets/screenshots/templates.png)
+
+**New batch wizard**: step 2, mapping the sheet's Name and ID columns.
+
+![New batch wizard](docs/assets/screenshots/wizard.png)
+
+**A batch in progress**: progress, ETA, controls and per-row render times.
+
+![Batch in progress](docs/assets/screenshots/batch-detail.png)
+
+**History**: past batches with their success rate.
+
+![History](docs/assets/screenshots/history.png)
 
 ## How it works
 

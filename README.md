@@ -110,6 +110,8 @@ Documented design figures (from the project's plans, **not measurements of a pro
 
 Intel Macs: PostgreSQL, Redis and the app use multi-architecture images and packages, so fake mode is expected to work, but it has not been tested on Intel here.
 
+**Verified on (2026-11-11):** MacBook Pro (Mac16,8), Apple M4 Pro (12 cores: 8 performance + 4 efficiency), 24 GB RAM, macOS 27.0.1, with uv 0.13.1, Node.js 26.12.0, FFmpeg 9.0.2 and Docker Compose v5.6.0. The install steps below were run on this machine. The 16–18 GB peak-memory figure above comes from the project's plans: peak RAM during a render has **not** been measured on this machine yet.
+
 ### Dependencies
 
 | Dependency | Purpose | Version | Install manually? |
@@ -119,7 +121,7 @@ Intel Macs: PostgreSQL, Redis and the app use multi-architecture images and pack
 | Redis | Job queue | 7 (container) | No, via Docker |
 | [uv](https://docs.astral.sh/uv/) | Python and package manager | recent | **Yes** |
 | Python | Backend | 3.11 (`>=3.11,<3.12`) | No, uv installs it |
-| Node.js + npm | Dashboard | 22 | **Yes** |
+| Node.js + npm | Dashboard | 22 in CI; 26 verified on macOS | **Yes** |
 | FFmpeg (includes ffprobe) | Video and audio processing | recent | **Yes** |
 | Python packages | From `pyproject.toml` / `uv.lock` | locked | No, `uv sync` |
 | npm packages | From `frontend/package-lock.json` | locked | No, `npm ci` |
@@ -135,11 +137,11 @@ Works on Apple silicon and Intel. Commands assume [Homebrew](https://brew.sh).
 
 ```bash
 xcode-select --install                 # command line tools (skip if already installed)
-brew install uv node@22 ffmpeg
+brew install uv node ffmpeg
 brew install --cask docker             # then open Docker Desktop once and wait until it is running
 ```
 
-If `node` is not found after installing, run `brew link --overwrite node@22`.
+CI uses Node.js 22, but Homebrew deprecated the `node@22` formula on 2026-10-30, and it is keg-only (not on your `PATH` by default). The guide was verified with the current `node` formula (26.12.0). If you need exactly Node 22, run `brew install node@22` and add `$(brew --prefix node@22)/bin` to your `PATH`.
 
 **2. Get the code and dependencies**
 
@@ -172,7 +174,7 @@ scripts/dev_up.sh                      # first run creates .env with random secr
 scripts/dev_up.sh
 ```
 
-The first start lists any database migrations that are not applied yet and asks `y/N`. Answer `y` to create the tables. With no answer, nothing is applied and nothing starts.
+The first start lists any database migrations that are not applied yet and asks `y/N`. Answer `y` to create the tables. With no answer, nothing is applied and nothing starts. Run it from an interactive terminal: if the input is piped or redirected, the script refuses to apply migrations.
 
 **6. Verify**
 
@@ -237,7 +239,11 @@ Read the logs in `.dev/logs/` (`api.log`, `worker.log`, `web.log`, `migrate.log`
 <details>
 <summary><b>Devanagari text in the AI label looks wrong</b></summary>
 
-The font ships with the app, but text shaping may need the FRIBIDI library. Try `brew install fribidi` and restart. *(Not verified on macOS in this repository; CI installs `libraqm0` and `libfribidi0` on Linux.)*
+The fonts ship with the app. Correct Devanagari needs complex text shaping (Pillow's RAQM layout, which uses FriBiDi). Without it, vowel signs land in the wrong place (for example जनति instead of जनित).
+
+Check: `.venv/bin/python -c "from PIL import features; print(features.check('raqm'), features.check('fribidi'))"` should print `True True`. If it doesn't, run `brew install fribidi` and restart the app.
+
+*Verified on 2026-11-11 (Apple M4 Pro, macOS 27.0.1): with Homebrew `fribidi` 1.0.17 installed, both checks are `True` and the label renders correctly. The case without `fribidi` was not tested, because it was already installed on that Mac. On Linux, CI installs `libraqm0` and `libfribidi0`.*
 </details>
 
 ## Development

@@ -110,11 +110,13 @@ It reports: total videos and batches, success rate, average / median / P95 / min
 | Render time: average / median / P95 | *not measured yet* |
 | Throughput (videos/hour) | *not measured yet* |
 
+*Not filled in yet: `bench_stats.py` has to be run by the database owner, because the project's guard hook blocks automated tools from loading `.env`. Single row render times from the local AI demo batch are visible in the batch screenshot above, but four rows are not a benchmark.*
+
 Documented design figures (from the project's plans, **not measurements of a production run**):
 
 | Item | Figure | Source |
 |---|---|---|
-| Local AI mode peak memory | 16–18 GB RAM, one render at a time | `docs/plans/m2-local-real-ai.md` |
+| Local AI mode peak memory | 16–18 GB RAM, one render at a time (the measured worker peak is higher, 20–21 GB: see [System requirements](#system-requirements)) | `docs/plans/m2-local-real-ai.md` |
 | GPU throughput target | ≥ 100 videos/hour for a 30 s template | `docs/plans/m2-real-ai.md` (target) |
 | Sheet validation target | 1,000 rows in < 3 s | `docs/plans/m1-batch-pipeline.md` (acceptance criterion) |
 
@@ -123,13 +125,25 @@ Documented design figures (from the project's plans, **not measurements of a pro
 | | Fake mode (demo / development) | Local AI mode (pilot) |
 |---|---|---|
 | Mac | Apple silicon or Intel | Apple silicon only |
-| Memory | Not benchmarked | 16–18 GB peak per render (documented); 32 GB recommended *(estimate)* |
+| Memory | Not benchmarked | **20–21 GB peak for the worker** (measured, see below); 32 GB recommended *(estimate)* |
 | Disk | Space for videos and Docker volumes | Plus model weights (several GB, downloaded on first use) |
 | Network | Needed for installs | Also for the first model download |
 
 Intel Macs: PostgreSQL, Redis and the app use multi-architecture images and packages, so fake mode is expected to work, but it has not been tested on Intel here.
 
-**Verified on (2026-11-11):** MacBook Pro (Mac16,8), Apple M4 Pro (12 cores: 8 performance + 4 efficiency), 24 GB RAM, macOS 27.0.1, with uv 0.13.1, Node.js 26.12.0, FFmpeg 9.0.2 and Docker Compose v5.6.0. The install steps below were run on this machine. The 16–18 GB peak-memory figure above comes from the project's plans: peak RAM during a render has **not** been measured on this machine yet.
+**Verified on (2026-11-11):** MacBook Pro (Mac16,8), Apple M4 Pro (12 cores: 8 performance + 4 efficiency), 24 GB RAM, macOS 27.0.1, with uv 0.13.1, Node.js 26.12.0, FFmpeg 9.0.2 and Docker Compose v5.6.0. The install steps below were run on this machine.
+
+**Measured peak memory, local AI mode (same Mac, 2026-11-11).** These are the "Memory" column in Activity Monitor (`top -stats mem`), sampled every 2 s while the app rendered a 10.5 s, 1080x1300 demo template, one video at a time:
+
+| Process / phase | Peak |
+|---|---|
+| Worker, first preview (models loading) | 21.0 GB |
+| Worker, second preview | 20.0 GB |
+| Worker, batch of 4 videos | 20.0 GB |
+| API process, at the same time | 8.7 GB |
+| Building the demo template (one MuseTalk lip sync, outside the app; `/usr/bin/time -l` peak footprint) | 13.9 GB |
+
+**Does it fit in 24 GB?** It runs, and the 4-video demo batch completed, but only with heavy swapping: the system used about 17.8 GB of swap during the batch. The worker alone peaks above the 16–18 GB in the project's plans, and the worker and API together exceed 24 GB. That is why 32 GB is recommended, though that figure is an *estimate* and was not tested.
 
 ### Dependencies
 

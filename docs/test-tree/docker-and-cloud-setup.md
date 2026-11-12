@@ -77,10 +77,31 @@ Files: `tests/unit/meta/conftest.py` (fakes), `test_setup_installer.py`, `test_s
 | I6-E5 | Edge | re-run, overwrite declined | byte-identical | AC2 | test_modal_rerun_with_overwrite_declined_keeps_tokens_file_byte_identical |
 | I6-X1 | Edge (not testable here) | first template upload in modal mode needs explicit consent | belongs to T4 / API tests (AC5), not the installer | AC5 | N/A in T1 |
 
-## Outline: Docker stack (tests with T3, AC1)
-- Positive: `docker compose --profile app config` valid; health endpoint answers; restart keeps data (named volumes for PostgreSQL/Redis, bind mount for media); Devanagari label renders correctly in the Linux image (P7); dashboard served as a production build with `/api` forwarded (P9); no container runs migrations on start; `dev_up.sh` unchanged.
-- Negative: port already in use gives a clear message; missing media folder; local mode starts the `app` profile without the worker container.
-- Edge: arm64 and amd64 build; API container plus native worker share the media folder; ffmpeg and libfribidi present.
+## Scenario 7: Docker stack, static checks (AC1, P2, P4, P7, P9)
+Files: `tests/unit/meta/test_docker_stack.py` (text checks; pyyaml is not a direct dependency), `test_setup_workers.py`.
+| ID | Type | Given / When | Then | Test |
+|----|------|--------------|------|------|
+| D1-P1 | Positive | compose file | postgres/redis have no profile; api, worker, dashboard in `app` | test_postgres_and_redis_keep_no_profile..., test_api_worker_and_dashboard_are_in_profile_app |
+| D1-P2 | Positive | ports | `127.0.0.1:${VIDGEN_API_PORT:-n}` and `VIDGEN_DASHBOARD_PORT`; worker has none | test_host_port_is_parameterised_and_bound_to_loopback, test_worker_publishes_no_port |
+| D1-N1 | Negative | any app port | never published on all interfaces | test_no_app_service_publishes_a_port_on_all_interfaces |
+| D1-P3 | Positive | media | bind mount `${VIDGEN_MEDIA_DIR:-./media}`, storage root = mount path, only pg/redis named volumes | test_media_is_a_parameterised_bind_mount..., test_storage_root_inside_the_container_is_the_mount_path, test_only_postgres_and_redis_use_named_volumes |
+| D1-P4 | Positive | wiring | database host `postgres`, redis host `redis`, no 127.0.0.1 | test_containers_reach_database_and_redis_by_service_name |
+| D1-P5 | Positive | settings | `env_file` from `VIDGEN_ENV_FILE`; worker gets Modal pair; api/dashboard never (blank only) | test_settings_file_comes_from_a_parameter..., test_worker_receives_the_modal_token_pair, test_api_and_dashboard_never_get_the_modal_tokens |
+| D1-P6 | Positive | workers | `scale: ${VIDGEN_DOCKER_WORKERS:-1}`; installer writes 1 / 0 (local) / 1 | test_worker_count_is_a_parameter_defaulting_to_one, test_docker_worker_count_follows_the_mode |
+| D1-N2 | Negative | any compose/Dockerfile | no alembic / migration on start | test_nothing_runs_migrations_on_container_start |
+| D1-N3 | Negative | ignore file | excludes settings files, .dev, media, .venv, node_modules, .worktrees, .git | test_dockerignore_keeps_secrets_state_and_heavy_folders_out_of_the_build |
+| D1-P7 | Positive | backend image | ffmpeg + libfribidi, non-root, no COPY of settings | test_backend_image_* |
+| D1-P8 | Positive | dashboard image | production build, api requests forwarded to service `api`, no vite dev server | test_dashboard_image_* |
+
+## Scenario 8: Docker stack, real containers (e2e, skipped without Docker)
+`tests/e2e/test_docker_stack_e2e.py`, project `vidgen-t3test`, own ports and temp media, demo settings; teardown `down -v` of that project only.
+| ID | Type | Then | Test |
+|----|------|------|------|
+| D2-P1 | Positive | the health endpoint answers through the dashboard's api forward | test_health_endpoint_answers_through_the_dashboard_api_forward |
+| D2-P2 | Positive | `PIL.features.check('raqm')` is True in the worker image (Devanagari) | test_pillow_raqm_layout_is_available_inside_the_worker_image |
+
+## Outline: still to cover later
+- Port already in use gives a clear message; arm64 and amd64 build; restart keeps data; local mode (no worker container) plus native worker share the media folder.
 
 ## Outline: Modal adapters (T4 held until spike P2-S; no tests written now)
 - Positive: mocked remote speech-to-text / voice cloning / lip sync return expected results; `VIDGEN_AI_MODE=modal` selects them.

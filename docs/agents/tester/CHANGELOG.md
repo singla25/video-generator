@@ -154,3 +154,6 @@ Newest first. One entry per task.
 ## 2026-11-12 - T1 RED (installer scripts/setup.py)
 - Tree docs/test-tree/docker-and-cloud-setup.md (installer complete, Docker and Modal outlines only; no Modal adapter tests).
 - Red tests: tests/unit/meta/test_setup_installer.py, test_setup_modal.py, conftest.py (fakes), __init__.py; fail because scripts/setup.py does not exist. Open: dev_setup.py needs a `hash-password` subcommand (backend-dev).
+
+## 2026-11-12 - T3 RED (Docker stack)
+- Tree scenarios 7-8 added. Red: tests/unit/meta/test_docker_stack.py (static, text-based), test_setup_workers.py (VIDGEN_DOCKER_WORKERS), tests/e2e/test_docker_stack_e2e.py (not run). Env names assumed: VIDGEN_MEDIA_DIR, VIDGEN_API_PORT, VIDGEN_DASHBOARD_PORT, VIDGEN_ENV_FILE, VIDGEN_DOCKER_WORKERS.

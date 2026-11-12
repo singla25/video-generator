@@ -35,6 +35,9 @@ class EncoderCall:
     slot: tuple[float, float]
     plan: TimingPlan
     metadata: dict[str, str]
+    out: Path | None = None  # DD-40: where this pass writes (intermediate or final)
+    label_path: Path | None = None  # DD-40: the label file this pass received
+    label_bytes: bytes = b""  # DD-40: its content at call time
 
 
 class FakeEncoder:
@@ -70,6 +73,9 @@ class FakeEncoder:
                     slot,
                     plan,
                     dict(metadata),
+                    out=out,
+                    label_path=label_png,
+                    label_bytes=label_png.read_bytes() if label_png.exists() else b"",
                 )
             )
             error = _next_error(self.errors)
@@ -123,13 +129,31 @@ class FakeLipSync:
         self.video_bytes: list[bytes] = []
         self.audio_existed: list[bool] = []
         self.start_s: list[float] = []  # the start_s each call received (DD-39 part B)
+        self.key_from: list[Path | None] = []  # DD-40: the key_from each call received
+        self.key_from_bytes: list[bytes | None] = []  # DD-40: its content at call time
+        self.video_paths: list[Path] = []  # DD-40: the input path of each call
+        self.out_paths: list[Path] = []  # DD-40: the output path of each call
+        self.outputs: list[bytes] = []  # DD-40: the content each successful call wrote
         self.order = calls if calls is not None else []
 
-    def sync(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
-        """Pass the video through; record the start."""
+    def sync(
+        self,
+        video: Path,
+        audio: Path,
+        out: Path,
+        start_s: float = 0.0,
+        key_from: Path | None = None,
+    ) -> None:
+        """Pass the video through; record the start and the key source."""
         self.order.append("lipsync")
         self.count += 1
         self.start_s.append(start_s)
+        self.key_from.append(key_from)
+        self.key_from_bytes.append(
+            key_from.read_bytes() if key_from is not None and key_from.exists() else None
+        )
+        self.video_paths.append(video)
+        self.out_paths.append(out)
         self.video_bytes.append(video.read_bytes())
         self.audio_existed.append(audio.exists())
         error = _next_error(self.errors)
@@ -139,6 +163,7 @@ class FakeLipSync:
         if self.marker:
             with out.open("ab") as handle:
                 handle.write(self.marker)
+        self.outputs.append(out.read_bytes())
 
 
 class FakeQuality:
@@ -161,6 +186,7 @@ class FakeLabels:
 
     def __init__(self) -> None:
         self.sizes: list[tuple[int, int]] = []
+        self.written: list[bytes] = []  # DD-40: the PNG bytes of each label, in call order
 
     def render_label(self, width: int, height: int, out: Path) -> None:
         """Write a dark PNG of the requested size."""
@@ -168,6 +194,7 @@ class FakeLabels:
         buffer = io.BytesIO()
         Image.new("RGB", (width, height), (20, 20, 40)).save(buffer, "PNG")
         out.write_bytes(buffer.getvalue())
+        self.written.append(buffer.getvalue())
 
 
 @dataclass

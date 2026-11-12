@@ -2,6 +2,15 @@
 
 Newest first. One entry per task.
 
+## 2026-11-12 - DEMO-2NAMES (spike: marketing template with the name spoken twice, DD-40)
+- `backend/spikes/m2_mac/make_marketing_template.py --two-names`: the script adds `SECOND_NAME_SENTENCE` at the end (the name again, same voice); default run and outputs unchanged (`ONE_NAME` = old constants and paths). Writes `marketing_template_2names.mp4` and `README_2names.txt`; `marketing_template.mp4` untouched; `names_marketing.csv` reused. Frames `frame_name1.png` and `frame_name2.png`.
+- Slot finder: `name_candidates`, `best_name_spans` (two best matches of the misspelt name), `slot_for_span` (silencedetect run holding the Whisper span, floor start and ceil end to one decimal, end capped at the video length), `check_two_slots` (slot 1 in the first half, slot 2 in the last third, gap >= 1.0 s).
+- `--slot-only --two-names` works (same code path as the single slot).
+- Result (18.07 s video): slot 1 4.5-5.5 s (Whisper 4.48-5.24), slot 2 14.5-15.4 s (Whisper 14.50-15.34), gap 9.0 s. Whisper heard the misspelt name twice (सल्मान खान). Video ffprobe: 1080x1300, h264, yuv420p, 60/1 fps, AAC 16 kHz mono, 18.066667 s. Peak RSS printed 4.1 GB (lipsync stage 390.7 s).
+- Frames: frame_name1 (5.0 s) and frame_name2 (14.95 s) both show the mouth open mid-word.
+- Files: `backend/spikes/m2_mac/make_marketing_template.py`; outputs in the git-ignored `backend/spikes/m2_mac/work/marketing_demo/`. No product code, no tests, no dependency.
+- Open: the Whisper transcript is weak on Hindi (`तीविएस`, `बाएक`); slot times come from silencedetect, not the transcript text. Not pushed.
+
 ## 2026-10-31 - DD-38 green (confirmed spelling kept, drafts view)
 - `BatchFlow.request_preview` keeps the confirmed `spoken_name` on the new PENDING preview record (nothing else is carried over); the approval gate passes after a regenerate. `GET /batches?view=drafts` lists only DRAFT batches, newest first (`BatchListView.DRAFTS`, `batch_list_filter.view_condition`); other views unchanged.
 - Files: `services/batch_flow.py`, `domain/status.py`, `infrastructure/db/batch_list_filter.py`, `api/routes_batches.py` (docstring). No migration, no new dependency.
@@ -209,3 +218,39 @@ Newest first. One entry per task.
 - Transcript (app STT, output row 1): the name, then `जी` at 5.24-5.42 s; `आप से कहता हूँ` follows at 5.42 s, template 5.26 s. Words after the slot sit about 0.24 s later than in the template (`सब` 6.40 vs 6.64, `सिंगला` 11.24 vs 11.48, last `पर` 12.20 vs 12.44). Words before the slot are unchanged within STT noise.
 - Frame mean abs diff (0-255), whole / face (x 200-880, y 300-900): before 1.84 / 1.95; inside 3.03 / 3.04; after 3.47 / 4.34. The after pair is the 0.25 s shift: output at 8.0 s against the template at 7.75 s gives face 1.78.
 - Open: the before pair is not ~0 (about 1.9), most likely from the full re-encode; not measured separately. Whisper's Hindi is weak on both transcripts, so word text is only a rough check. Outputs in `backend/spikes/m2_mac/work/local_out/mid_slot/` (git-ignored, not committed).
+
+## 2026-10-31 - BE-A-GREEN (DD-40 several name slots: model, db column, migration 0002, api)
+- `domain/codes.py`: `FailureCode.SLOTS_INVALID` with the message "The name slots overlap or are too close."
+- `domain/slot_match.py`: `MAX_SLOTS = 5`, `MIN_SLOT_GAP_S = 0.2`, `validate_slots(slots, duration_s)` (each slot through `validate_slot` first, then the count, then the gap between neighbours in start order; set errors are `SLOTS_INVALID`), and `all_slots(primary, extra)` (sorted by start, () without a primary).
+- `ports/models.py`: `TemplateRecord.extra_slots` (default ()) and property `slots`. `ports/rows.py`: `TemplateInfo.extra_slots` (default ()) and property `slots`.
+- `domain/status.py`: `ApprovalFingerprint.extra_slots` (default ()). `services/batch_rules.py`: `fingerprint_for` fills it from the template.
+- `infrastructure/db/models.py`: nullable JSON `templates.extra_slots`. New `infrastructure/db/slot_json.py` (list of [start, end] <-> tuple of float pairs; None and [] read as ()).
+- `migrations/versions/0002_template_extra_slots.py`: revision 0002, down_revision 0001; upgrade adds the nullable JSONB column, downgrade drops it. Not run anywhere.
+- `infrastructure/db/repositories.py`, `infrastructure/db/row_store.py`: map the column (template record, row-job `TemplateInfo`). `infrastructure/db/batch_documents.py`: the stored fingerprint gets `extra_slots`; documents without the key load as ().
+- `services/templates.py`: `set_slot(..., extra_slots=())` validates the primary and the whole set, stores the extras sorted; `analyse` clears them.
+- `api/schemas.py`: `SlotRequest.extra_slots` (list of two finite numbers, max 4, default []); `template_json` gives `extra_slots` and `slots`. `api/routes_templates.py`: PUT passes the extras.
+- Tests: 128 of 128 target tests pass. Unit and integration (excluding test_worker.py): 2618 passed, 1 skipped; 25 failed, all in the pipeline tests of the other agent (test_render_row_multi_slot.py, test_render_row_multi_slot_engine.py, test_lipsync_key_from.py).
+- The row-store test defect (shared cipher) was fixed by commit 724234e (test only). The row-store tests now pass.
+- Mypy strict: errors only in `infrastructure/local_ai/loaders.py` (pre-existing 8). Layering grep (services, domain importing infrastructure): nothing.
+
+## 2026-10-31 - BE-B-GREEN (DD-40 lip sync and encode once per name slot)
+- `ports/interfaces.py`: `LipSyncer.sync(video, audio, out, start_s=0.0, key_from=None)`; `key_from` names the video whose face boxes are the cache key (None = the input video).
+- `infrastructure/fakes/adapters.py`: `FakeLipSyncer.sync` accepts `key_from` and ignores it (still copies the video).
+- `infrastructure/local_ai/lipsync.py`: `MuseTalkLipSyncer.sync` forwards `key_from` as the 5th positional argument of `model.run`; the start validation is unchanged.
+- `infrastructure/local_ai/loaders.py`: `_MuseTalkModel.run(video, audio, out, start_s=0.0, key_from=None)` keys the face-box cache with the fingerprint of `key_from or video`. The lip sync still uses `video`. Mypy strict: still 8 errors, all pre-existing, all in this file.
+- `services/render_support.py`: `TRANSPARENT_PNG` (valid 1x1 RGBA PNG, alpha 0) built at import with `struct` and `zlib`.
+- `services/slot_passes.py` (new, 74 lines): `lip_sync_slots` (ascending; pass i starts at slot i's start; first pass without key source, later passes take the template as key source; one slot writes `lipsync.mp4`, otherwise `lipsync{i}.mp4`) and `encode_slots` (descending; pass i takes the previous output; only slot 0 gets the real label and writes `output.mp4`; other passes get `no-label.png` written from `TRANSPARENT_PNG` and write `encode{i}.mp4`).
+- `services/render_row.py`: `_produce_video` uses `job.template.slots`; the voice is made once; one `plan_timing` per slot (`_slot_plan`); the lip sync and encode loops run inside the existing `lipsync` and `encode` stages. Stage order, error handling and the quality check are unchanged.
+- Tests: `test_render_row_multi_slot.py` 25 of 25 pass; `test_lipsync_key_from.py` 6 of 6 pass. `test_render_row_multi_slot_engine.py` 0 of 2 pass: the test helper `multi_slot_renderer` falls back to `world.encoder` (the recording FakeEncoder) because the test does not pass `encoder=`, so the stored output is the fake's bytes and ffprobe rejects them. With the real FFmpeg engine injected (checked with a scratch plugin outside the repo), both engine tests pass. Open for the tester: pass `encoder=engine` in `test_render_row_multi_slot_engine.py`.
+- Unit and integration (excluding test_worker.py): 2645 passed, 2 failed (the two engine tests above), 1 skipped.
+- Layering grep (services, domain importing infrastructure): nothing.
+- No migration, no dependency, no test edited.
+
+## 2026-11-12 - TWO-SLOT-REAL-RUN (DD-40 smoke script, several name slots)
+- `backend/scripts/local_ai_smoke.py`: `--slot START END` is repeatable (sorted by start, each checked as before). Several slots run through `services/slot_passes.py` (`lip_sync_slots`, `encode_slots`); one `plan_timing` per slot via `_row_plans`. Each slot's pause is the silence after that slot in the transcript. `validate_slots` refuses overlapping slots. Single slot or no slot: the same product passes, same output.
+- Real run (row 0 and 1, template `marketing_template_2names.mp4`, two slots 4.5-5.5 and 14.5-15.4, bubble label): both outputs 1080x1300, 60 fps, 18.57 s (template 18.07 s), delta 0.50 s = two gaps of 0.25 s, extension 0.00 s each; stretch 0.909 and 0.850 (row 0). Peak RSS 8.4 GB, MPS 7.6 GB.
+- Measured with the app's STT: word offsets are +0.25 s after slot 1 and +0.50 s after slot 2; words before slot 1 match in time (-0.02 s). The text of the output words differs from the template in many places (STT noise on re-encoded audio); the honorific comes out attached to the name, not as a separate word.
+- Frame differences (mean abs, whole / face): before 3.02 / 3.04, between 2.93 / 2.91, inside slot 1 4.45 / 4.50, inside slot 2 4.13 / 4.17. Corner crops show one AI badge.
+- Outputs in the git-ignored `backend/spikes/m2_mac/work/local_out/two_slots/` (not committed). Measurement helper `two_slots/measure.py` is scratch, also not committed.
+- Open: the log line "An error occurred while trying to fetch models/sd-vae" appeared during the label step (offline fetch failure, the run still finished). The fidelity report uses the first slot's key only, as the brief said.
+- No dependency, no migration, no test edited.

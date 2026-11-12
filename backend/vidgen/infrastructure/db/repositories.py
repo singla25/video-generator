@@ -20,6 +20,7 @@ from vidgen.infrastructure.db.models import (
     ConsentRecord,
     Template,
 )
+from vidgen.infrastructure.db.slot_json import slots_from_json, slots_to_json
 from vidgen.ports.models import AuditEntry, TemplateRecord
 
 if TYPE_CHECKING:
@@ -49,7 +50,10 @@ def ensure_default_campaign(session: Session) -> UUID:
 def _to_record(row: Template) -> TemplateRecord:
     """Map a Template ORM row to the plain record the services use."""
     return TemplateRecord(
-        id=row.id, created_at=row.created_at, **{f: getattr(row, f) for f in _TEMPLATE_FIELDS}
+        id=row.id,
+        created_at=row.created_at,
+        extra_slots=slots_from_json(row.extra_slots),
+        **{f: getattr(row, f) for f in _TEMPLATE_FIELDS},
     )
 
 
@@ -76,7 +80,10 @@ class SqlTemplateRepository:
     def add(self, campaign_id: UUID, template: TemplateRecord) -> None:
         """Persist a new template."""
         values = {f: getattr(template, f) for f in _TEMPLATE_FIELDS}
-        self._session.add(Template(id=template.id, campaign_id=campaign_id, **values))
+        extras = slots_to_json(template.extra_slots)
+        self._session.add(
+            Template(id=template.id, campaign_id=campaign_id, extra_slots=extras, **values)
+        )
         self._session.flush()
 
     def save(self, template: TemplateRecord) -> None:
@@ -86,6 +93,7 @@ class SqlTemplateRepository:
             raise LookupError("template does not exist")
         for field in _TEMPLATE_FIELDS:
             setattr(row, field, getattr(template, field))
+        row.extra_slots = slots_to_json(template.extra_slots)
         self._session.flush()
 
     def add_consent(

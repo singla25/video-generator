@@ -14,6 +14,7 @@ from uuid import UUID
 
 from vidgen.domain.codes import FailureCode
 from vidgen.domain.outcomes import RowOutcomeKind
+from vidgen.domain.slot_match import Slot, all_slots
 from vidgen.ports.batches import RowView
 
 
@@ -60,6 +61,12 @@ class TemplateInfo:
     slot: tuple[float, float] | None
     slot_confirmed: bool
     consent_confirmed: bool
+    extra_slots: tuple[Slot, ...] = ()
+
+    @property
+    def slots(self) -> tuple[Slot, ...]:
+        """Every slot sorted by start: the primary plus the extras; () without a primary."""
+        return all_slots(self.slot, self.extra_slots)
 
 
 @dataclass(frozen=True)

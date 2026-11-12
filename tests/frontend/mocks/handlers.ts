@@ -23,6 +23,11 @@ export function apiError(
   return HttpResponse.json({ code, message }, { status: httpStatus, headers });
 }
 
+type Json = Record<string, unknown>;
+
+/** Bodies of every PUT /templates/<id>/slot the default handler received (cleared by the tests that use it). */
+export const slotPuts: Json[] = [];
+
 export const handlers = [
   http.post("*/auth/login", () =>
     HttpResponse.json({ csrf_token: "csrf-test-token" }),
@@ -45,6 +50,17 @@ export const handlers = [
     HttpResponse.json({ templates: [template(), TEMPLATE_NO_CONSENT] }),
   ),
   http.get("*/templates/:id", () => HttpResponse.json(template())),
+  http.put("*/templates/:id/slot", async ({ request }) => {
+    const body = (await request.json()) as Json;
+    slotPuts.push(body);
+    return HttpResponse.json(
+      template({
+        slot: { start_s: body.start_s, end_s: body.end_s },
+        extra_slots: body.extra_slots,
+        slot_confirmed: false,
+      }),
+    );
+  }),
   http.delete("*/templates/:id", () => new HttpResponse(null, { status: 204 })),
   http.get("*/batches", ({ request }) => {
     // DD-38: the Not started list is empty unless a test serves drafts.

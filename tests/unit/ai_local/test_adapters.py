@@ -275,8 +275,15 @@ class StubMuseTalk:
         self.fail = fail
         self.runs: list[tuple[Path, Path, Path]] = []
 
-    def run(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
-        """Write a partial file, then fail if asked to."""
+    def run(
+        self,
+        video: Path,
+        audio: Path,
+        out: Path,
+        start_s: float = 0.0,
+        key_from: Path | None = None,
+    ) -> None:
+        """Write a partial file, then fail if asked to; the key source is accepted, not recorded."""
         self.runs.append((video, audio, out))
         out.write_bytes(b"partial")
         if self.fail:

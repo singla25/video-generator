@@ -5,8 +5,10 @@ from __future__ import annotations
 import array
 import logging
 import math
+import struct
 import time
 import wave
+import zlib
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -37,6 +39,28 @@ KIND_BY_DOMAIN_CODE = {
 
 
 LABEL_STYLES = ("bubble", "band")
+
+
+def _png_chunk(kind: bytes, data: bytes) -> bytes:
+    """One PNG chunk: length, type, data and the CRC of type and data."""
+    crc = zlib.crc32(kind + data) & 0xFFFFFFFF
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", crc)
+
+
+def _transparent_png(width: int, height: int) -> bytes:
+    """A PNG of ``width`` x ``height`` pixels, all RGBA (0, 0, 0, 0): fully transparent."""
+    header = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)  # 8-bit RGBA, no filters
+    row = b"\x00" + b"\x00\x00\x00\x00" * width  # filter type 0, then transparent pixels
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", header)
+        + _png_chunk(b"IDAT", zlib.compress(row * height))
+        + _png_chunk(b"IEND", b"")
+    )
+
+
+# The label of every encode pass except the first: invisible, so only the first pass shows a label
+TRANSPARENT_PNG: bytes = _transparent_png(1, 1)
 
 
 @dataclass(frozen=True)

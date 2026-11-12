@@ -2,6 +2,7 @@ import { useBatch, useTemplate } from '../../api/queries';
 import { ErrorState, Skeleton } from '../../components/states';
 import { PreviewPanel } from './PreviewPanel';
 import { SlotEditor } from './SlotEditor';
+import { slotStateKey } from './slotChecks';
 
 const BUTTON = 'rounded-full bg-lime px-5 py-2 font-semibold disabled:opacity-50';
 const GHOST = 'rounded-full border px-5 py-2 font-semibold hover:bg-mint';
@@ -27,7 +28,7 @@ export function StepSlot({ batchId, onBack, onNext }: Props) {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
-        <SlotEditor key={`${t.id}-${t.slot?.start_s}-${t.slot?.end_s}`} template={t} />
+        <SlotEditor key={`${t.id}-${slotStateKey(t)}`} template={t} />
         <PreviewPanel batch={batch.data} />
       </div>
       <div className="flex justify-between">

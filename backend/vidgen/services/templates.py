@@ -8,14 +8,14 @@ from __future__ import annotations
 import logging
 import shutil
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
 from vidgen.domain.codes import DomainError, FailureCode
-from vidgen.domain.slot_match import select_target_word, validate_slot
+from vidgen.domain.slot_match import Slot, select_target_word, validate_slot, validate_slots
 from vidgen.ports import Clock, SpeechToText, Storage, TemplateRecord, UnitOfWork, VideoProbe
 from vidgen.services.audit import ACTOR_ADMIN, UowFactory
 from vidgen.services.errors import (
@@ -161,6 +161,7 @@ class TemplateService:
             found = select_target_word(words, template.original_name, self._threshold)
             template.analysed_at = self._clock.now()
             template.slot_confirmed = False
+            template.extra_slots = ()  # automatic detection replaces the whole slot set
             if found is None:
                 template.slot_start_s = template.slot_end_s = None
                 template.slot_source = template.slot_confidence = None
@@ -177,12 +178,24 @@ class TemplateService:
             uow.commit()
             return template
 
-    def set_slot(self, template_id: UUID, start_s: float, end_s: float) -> TemplateRecord:
-        """Set a manual slot; it must be confirmed again (A5, AC18)."""
+    def set_slot(
+        self,
+        template_id: UUID,
+        start_s: float,
+        end_s: float,
+        extra_slots: Sequence[Slot] = (),
+    ) -> TemplateRecord:
+        """Set the manual slot and any extra name slots; they must be confirmed again (A5, AC18).
+
+        The primary and the extras are checked together, so an invalid set changes nothing.
+        """
         with self._uow() as uow:
             template = self._load(uow, template_id)
             validate_slot(start_s, end_s, template.duration_s)
+            extras = tuple(sorted(extra_slots))
+            validate_slots([(start_s, end_s), *extras], template.duration_s)
             template.slot_start_s, template.slot_end_s = start_s, end_s
+            template.extra_slots = extras
             template.slot_source = SLOT_MANUAL
             template.slot_confidence = None
             template.slot_error = None

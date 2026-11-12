@@ -216,3 +216,8 @@ Newest first. One entry per task.
 - Tests: 71 installer + 9 hash-password tests now green (`tests/unit/meta`: 566 passed).
 - Note: no `from __future__ import annotations` in setup.py because the tests load it without registering it in `sys.modules` (needed by `@dataclass`).
 - Open: pre-existing ruff E501/format issues in `scripts/dev_setup.py`, `build_docs.py`, `bench_stats.py` were left untouched (outside the grant).
+
+## 2026-11-12 - T2 fix round (installer review gaps)
+- `scripts/setup.py`: a confirmed overwrite keeps the existing `VIDGEN_ENCRYPTION_KEY` and `VIDGEN_INDEX_KEY` (generated only if absent, never printed); EOFError (Ctrl-D) at any prompt gives a clean message, exit 1, nothing written; a token with inner space/quote/backtick is refused with a message naming that problem.
+- Not done: shared `scripts/_envfile.py` refactor. It conflicts with `test_installer_imports_only_the_standard_library` and with the tests loading setup.py by path (a sibling import would fail). Needs a CEO decision.
+- Tests: `tests/unit/meta` 585 passed.

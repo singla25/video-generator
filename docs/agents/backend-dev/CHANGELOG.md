@@ -245,3 +245,12 @@ Newest first. One entry per task.
 - Unit and integration (excluding test_worker.py): 2645 passed, 2 failed (the two engine tests above), 1 skipped.
 - Layering grep (services, domain importing infrastructure): nothing.
 - No migration, no dependency, no test edited.
+
+## 2026-11-12 - TWO-SLOT-REAL-RUN (DD-40 smoke script, several name slots)
+- `backend/scripts/local_ai_smoke.py`: `--slot START END` is repeatable (sorted by start, each checked as before). Several slots run through `services/slot_passes.py` (`lip_sync_slots`, `encode_slots`); one `plan_timing` per slot via `_row_plans`. Each slot's pause is the silence after that slot in the transcript. `validate_slots` refuses overlapping slots. Single slot or no slot: the same product passes, same output.
+- Real run (row 0 and 1, template `marketing_template_2names.mp4`, two slots 4.5-5.5 and 14.5-15.4, bubble label): both outputs 1080x1300, 60 fps, 18.57 s (template 18.07 s), delta 0.50 s = two gaps of 0.25 s, extension 0.00 s each; stretch 0.909 and 0.850 (row 0). Peak RSS 8.4 GB, MPS 7.6 GB.
+- Measured with the app's STT: word offsets are +0.25 s after slot 1 and +0.50 s after slot 2; words before slot 1 match in time (-0.02 s). The text of the output words differs from the template in many places (STT noise on re-encoded audio); the honorific comes out attached to the name, not as a separate word.
+- Frame differences (mean abs, whole / face): before 3.02 / 3.04, between 2.93 / 2.91, inside slot 1 4.45 / 4.50, inside slot 2 4.13 / 4.17. Corner crops show one AI badge.
+- Outputs in the git-ignored `backend/spikes/m2_mac/work/local_out/two_slots/` (not committed). Measurement helper `two_slots/measure.py` is scratch, also not committed.
+- Open: the log line "An error occurred while trying to fetch models/sd-vae" appeared during the label step (offline fetch failure, the run still finished). The fidelity report uses the first slot's key only, as the brief said.
+- No dependency, no migration, no test edited.

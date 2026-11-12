@@ -34,7 +34,7 @@ DATABASE_URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen"
 REDIS_URL = "redis://127.0.0.1:6379/0"
 COMPOSE_COMMAND = "docker compose --profile app up -d"
 HASH_KEY = "VIDGEN_ADMIN_PASSWORD_HASH"
-BAD_TOKEN_CHARS = "'\"`\r\n \t"
+UNSAFE_VALUE_CHARS = "'\"`\r\n \t"
 # Keys that protect stored data: losing them makes existing encrypted rows unreadable.
 KEPT_KEYS = ("VIDGEN_ENCRYPTION_KEY", "VIDGEN_INDEX_KEY")
 
@@ -124,7 +124,7 @@ def collect_modal_tokens(seams: Seams) -> tuple[str, str]:
     token_secret = seams.getpass("Modal token secret (hidden): ").strip()
     if not token_id or not token_secret:
         raise InstallerError("The Modal token ID and token secret must both be filled in.")
-    if any(ch in value for value in (token_id, token_secret) for ch in BAD_TOKEN_CHARS):
+    if any(ch in value for value in (token_id, token_secret) for ch in UNSAFE_VALUE_CHARS):
         raise InstallerError("A Modal token must not contain spaces or quotes. Paste it again.")
     check = seams.run(
         ["uv", "run", "--with", "modal", "modal", "token", "info"],

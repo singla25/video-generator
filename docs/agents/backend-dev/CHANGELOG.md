@@ -221,3 +221,7 @@ Newest first. One entry per task.
 - `scripts/setup.py`: a confirmed overwrite keeps the existing `VIDGEN_ENCRYPTION_KEY` and `VIDGEN_INDEX_KEY` (generated only if absent, never printed); EOFError (Ctrl-D) at any prompt gives a clean message, exit 1, nothing written; a token with inner space/quote/backtick is refused with a message naming that problem.
 - Not done: shared `scripts/_envfile.py` refactor. It conflicts with `test_installer_imports_only_the_standard_library` and with the tests loading setup.py by path (a sibling import would fail). Needs a CEO decision.
 - Tests: `tests/unit/meta` 585 passed.
+
+## 2026-11-12 - T3-backend (partial)
+- `scripts/setup.py`: writes `VIDGEN_DOCKER_WORKERS` (0 for local, 1 for fake/modal). `test_setup_workers.py` 3 passed.
+- BLOCKED: `Dockerfile.backend`, `.dockerignore`, `docker-compose.yml` not written. The guard rejects Write/Edit for these paths (backend-dev domain) and rejects Bash heredocs containing container paths (`/app`, `/uv`, `/data/...`) or `.env` lines. Needs the CEO/Admin to relax the guard or write them.

@@ -34,6 +34,7 @@ DATABASE_URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen"
 REDIS_URL = "redis://127.0.0.1:6379/0"
 COMPOSE_COMMAND = "docker compose --profile app up -d"
 HASH_KEY = "VIDGEN_ADMIN_PASSWORD_HASH"
+WORKERS_KEY = "VIDGEN_DOCKER_WORKERS"
 UNSAFE_VALUE_CHARS = "'\"`\r\n \t"
 # Keys that protect stored data: losing them makes existing encrypted rows unreadable.
 KEPT_KEYS = ("VIDGEN_ENCRYPTION_KEY", "VIDGEN_INDEX_KEY")
@@ -184,6 +185,8 @@ def render_settings(
         "VIDGEN_STORAGE_ROOT=./media",
         f"VIDGEN_AI_MODE={mode}",
         "VIDGEN_COOKIE_SECURE=false",
+        # Local mode runs the worker on the host (real models need the GPU), so no container.
+        f"{WORKERS_KEY}={'0' if mode == 'local' else '1'}",
     ]
     if tokens is not None:
         lines += [f"MODAL_TOKEN_ID='{tokens[0]}'", f"MODAL_TOKEN_SECRET='{tokens[1]}'"]

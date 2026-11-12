@@ -59,6 +59,7 @@ def test_two_slots_give_the_template_length_plus_both_extensions_and_gaps(
         world,
         EXTRA,
         config=config,
+        encoder=engine,
         labels=PillowBubbleRenderer(latin_font=latin_font()),
     )
     outcome = renderer.render(world.batch_id, world.rows[2])

@@ -139,6 +139,19 @@ def cmd_create_admin(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_hash_password(args: argparse.Namespace) -> int:
+    """Read one password line from stdin and print only its argon2 hash (used by setup.py)."""
+    password = sys.stdin.readline().rstrip("\r\n")
+    if not password.strip():
+        print("No password was given on stdin.", file=sys.stderr)
+        return 1
+    if len(password) < MIN_PASSWORD_CHARS:
+        print(f"Use at least {MIN_PASSWORD_CHARS} characters.", file=sys.stderr)
+        return 1
+    print(PasswordHasher().hash(password))
+    return 0
+
+
 def main() -> int:
     """Entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -150,6 +163,7 @@ def main() -> int:
     sub.add_parser("pending").set_defaults(func=cmd_pending)
     admin = sub.add_parser("create-admin")
     admin.set_defaults(func=cmd_create_admin)
+    sub.add_parser("hash-password").set_defaults(func=cmd_hash_password)
     args = parser.parse_args()
     return int(args.func(args))
 

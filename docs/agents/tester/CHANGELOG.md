@@ -150,3 +150,7 @@ Newest first. One entry per task.
 
 ## 2026-10-31 - T-PROG-FIX (stage key in shape asserts, one-model-at-a-time warm-up, cookie tests robust to httpx2)
 - Shape asserts take `"stage"` (None for READY/NONE, "preparing" for the PENDING POST response); warm-up tests rewritten for one-model-at-a-time (6 red); cookie tampering via new tests/fixtures/cookies.py `send_only_cookie`; logs test checks app records only (httpx2 client log excluded). Tree and commit: see git log.
+
+## 2026-11-12 - T1 RED (installer scripts/setup.py)
+- Tree docs/test-tree/docker-and-cloud-setup.md (installer complete, Docker and Modal outlines only; no Modal adapter tests).
+- Red tests: tests/unit/meta/test_setup_installer.py, test_setup_modal.py, conftest.py (fakes), __init__.py; fail because scripts/setup.py does not exist. Open: dev_setup.py needs a `hash-password` subcommand (backend-dev).

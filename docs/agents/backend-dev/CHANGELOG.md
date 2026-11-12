@@ -209,3 +209,10 @@ Newest first. One entry per task.
 - Transcript (app STT, output row 1): the name, then `जी` at 5.24-5.42 s; `आप से कहता हूँ` follows at 5.42 s, template 5.26 s. Words after the slot sit about 0.24 s later than in the template (`सब` 6.40 vs 6.64, `सिंगला` 11.24 vs 11.48, last `पर` 12.20 vs 12.44). Words before the slot are unchanged within STT noise.
 - Frame mean abs diff (0-255), whole / face (x 200-880, y 300-900): before 1.84 / 1.95; inside 3.03 / 3.04; after 3.47 / 4.34. The after pair is the 0.25 s shift: output at 8.0 s against the template at 7.75 s gives face 1.78.
 - Open: the before pair is not ~0 (about 1.9), most likely from the full re-encode; not measured separately. Whisper's Hindi is weak on both transcripts, so word text is only a rough check. Outputs in `backend/spikes/m2_mac/work/local_out/mid_slot/` (git-ignored, not committed).
+
+## 2026-11-12 - T2 installer (docker-and-cloud-setup, AC2/AC3, P3/P4)
+- Added `scripts/setup.py` (stdlib only, injectable `Seams`, `main(argv, seams)`): prerequisite checks, mode choice (fake/local/modal), Modal token pair via hidden input and `uv run --with modal`, atomic 0600 settings file with a single-quoted admin hash, migrations only after an explicit "y".
+- Added `hash-password` subcommand to `scripts/dev_setup.py` (password on stdin, hash on stdout).
+- Tests: 71 installer + 9 hash-password tests now green (`tests/unit/meta`: 566 passed).
+- Note: no `from __future__ import annotations` in setup.py because the tests load it without registering it in `sys.modules` (needed by `@dataclass`).
+- Open: pre-existing ruff E501/format issues in `scripts/dev_setup.py`, `build_docs.py`, `bench_stats.py` were left untouched (outside the grant).

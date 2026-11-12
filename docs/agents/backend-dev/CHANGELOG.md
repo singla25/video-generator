@@ -2,6 +2,15 @@
 
 Newest first. One entry per task.
 
+## 2026-11-12 - DEMO-2NAMES (spike: marketing template with the name spoken twice, DD-40)
+- `backend/spikes/m2_mac/make_marketing_template.py --two-names`: the script adds `SECOND_NAME_SENTENCE` at the end (the name again, same voice); default run and outputs unchanged (`ONE_NAME` = old constants and paths). Writes `marketing_template_2names.mp4` and `README_2names.txt`; `marketing_template.mp4` untouched; `names_marketing.csv` reused. Frames `frame_name1.png` and `frame_name2.png`.
+- Slot finder: `name_candidates`, `best_name_spans` (two best matches of the misspelt name), `slot_for_span` (silencedetect run holding the Whisper span, floor start and ceil end to one decimal, end capped at the video length), `check_two_slots` (slot 1 in the first half, slot 2 in the last third, gap >= 1.0 s).
+- `--slot-only --two-names` works (same code path as the single slot).
+- Result (18.07 s video): slot 1 4.5-5.5 s (Whisper 4.48-5.24), slot 2 14.5-15.4 s (Whisper 14.50-15.34), gap 9.0 s. Whisper heard the misspelt name twice (सल्मान खान). Video ffprobe: 1080x1300, h264, yuv420p, 60/1 fps, AAC 16 kHz mono, 18.066667 s. Peak RSS printed 4.1 GB (lipsync stage 390.7 s).
+- Frames: frame_name1 (5.0 s) and frame_name2 (14.95 s) both show the mouth open mid-word.
+- Files: `backend/spikes/m2_mac/make_marketing_template.py`; outputs in the git-ignored `backend/spikes/m2_mac/work/marketing_demo/`. No product code, no tests, no dependency.
+- Open: the Whisper transcript is weak on Hindi (`तीविएस`, `बाएक`); slot times come from silencedetect, not the transcript text. Not pushed.
+
 ## 2026-10-31 - DD-38 green (confirmed spelling kept, drafts view)
 - `BatchFlow.request_preview` keeps the confirmed `spoken_name` on the new PENDING preview record (nothing else is carried over); the approval gate passes after a regenerate. `GET /batches?view=drafts` lists only DRAFT batches, newest first (`BatchListView.DRAFTS`, `batch_list_filter.view_condition`); other views unchanged.
 - Files: `services/batch_flow.py`, `domain/status.py`, `infrastructure/db/batch_list_filter.py`, `api/routes_batches.py` (docstring). No migration, no new dependency.

@@ -228,3 +228,43 @@ test('TT-UI-E2E-N4 a corrupt .mp4 is refused by the server and no template card 
   await expect(page.getByRole('alert')).toBeVisible();
   expect(await page.getByTestId('template-card').count()).toBe(before);
 });
+
+test('TT-DD40-E2E-P1 a second name slot is saved and shown on the template card', async ({
+  page,
+}) => {
+  await login(page);
+  await go(page, '/templates');
+  // After TT-UI-E2E-P2b the slot is confirmed, and the card shows the editor only while it is not.
+  // Saving the same primary slot again (what Save slot does) makes it unconfirmed, as in the UI.
+  const list = await page.request.get('/api/templates');
+  const { templates } = (await list.json()) as { templates: { id: string; original_name: string }[] };
+  const id = templates.find((t) => t.original_name === 'Rahul')?.id;
+  if (!id) throw new Error('the Rahul template is missing');
+  const csrf = (await page.context().cookies()).find((c) => c.name === 'vidgen_csrf')?.value ?? '';
+  const reset = await page.request.put(`/api/templates/${id}/slot`, {
+    headers: { 'X-CSRF-Token': csrf },
+    data: { start_s: 1, end_s: 2, extra_slots: [] },
+  });
+  expect(reset.status()).toBe(200);
+  await page.reload();
+  const card = page.getByTestId('template-card').filter({ hasText: 'Rahul' });
+  await card.getByRole('button', { name: 'Add another name slot' }).click();
+  await card.getByRole('spinbutton', { name: 'Slot 2 start (s)' }).fill('3');
+  await card.getByRole('spinbutton', { name: 'Slot 2 end (s)' }).fill('3.8');
+  await shot(page, 'dd40-slot-editor');
+  const saved = page.waitForResponse(
+    (r) => r.url().endsWith(`/api/templates/${id}/slot`) && r.request().method() === 'PUT',
+  );
+  await card.getByRole('button', { name: 'Save slot' }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(card.getByRole('alert')).toHaveCount(0);
+  await expect(card).toContainText('Slots 1 s - 2 s, 3 s - 3.8 s');
+  await page.reload();
+  const again = page.getByTestId('template-card').filter({ hasText: 'Rahul' });
+  await expect(again).toContainText('Slots 1 s - 2 s, 3 s - 3.8 s');
+  await expect(again.getByRole('spinbutton', { name: 'Slot 2 start (s)' })).toHaveValue('3');
+  await expect(again.getByRole('spinbutton', { name: 'Slot 2 end (s)' })).toHaveValue('3.8');
+  await shot(page, 'dd40-card-two-slots');
+  await again.getByRole('button', { name: 'Confirm slot' }).click();
+  await expect(again).toContainText('Ready to use');
+});

@@ -100,6 +100,20 @@ Files: `tests/unit/meta/test_docker_stack.py` (text checks; pyyaml is not a dire
 | D2-P1 | Positive | the health endpoint answers through the dashboard's api forward | test_health_endpoint_answers_through_the_dashboard_api_forward |
 | D2-P2 | Positive | `PIL.features.check('raqm')` is True in the worker image (Devanagari) | test_pillow_raqm_layout_is_available_inside_the_worker_image |
 
+## Scenario 9: Installer offers only modes the backend accepts (gap 1, ADR-013)
+Accepted modes = `ai_mode: Literal[...]` in `<root>/backend/vidgen/settings.py`, parsed with `ast` (never imported). Offered = MODES intersected with accepted; missing or unusable file means fake and local only. File: `tests/unit/meta/test_setup_mode_gate.py`; the Modal fixtures now write an accepting settings.py (conftest `settings_source`).
+| ID | Type | Given / When | Then | Test |
+|----|------|--------------|------|------|
+| G1-N1 | Negative | modal typed, not accepted | "not available yet" + ADR-013, asked again; no token prompt, browser, `--with` call; no modal keys in file | test_modal_is_refused_..., test_repeated_modal_answers_never_reach_the_token_step |
+| G1-N2 | Negative | prompt text | lists only available modes | test_the_prompt_lists_only_the_available_modes |
+| G1-P1 | Positive | backend accepts modal | existing Modal flow unchanged | test_modal_works_as_before_when_the_backend_accepts_it |
+| G1-N3 | Negative | REAL repo settings.py | modal refused today (T4 flips this on purpose) | test_real_backend_settings_refuse_modal_today |
+| G1-E1 | Edge | Literal over several lines / single quotes | parsed correctly | test_literal_written_across_several_lines_is_understood, test_single_quoted_literal_* |
+| G1-E2 | Edge | `ai_backend` Literal has modal, `ai_mode` not (and reverse, either order) | only `ai_mode` counts | test_modal_in_ai_backend_does_not_make_ai_mode_accept_it, test_modal_in_ai_mode_is_accepted_... |
+| G1-E3 | Edge | file with a top-level raise | parsed, not imported | test_settings_file_is_parsed_not_imported |
+| G1-E4 | Edge | missing, syntax error, no ai_mode, not a Literal | fallback fake/local | test_missing_or_unusable_settings_fall_back_to_fake_and_local_only |
+| G1-E5 | Edge | unknown mode "cuda" accepted by backend; backend lacks fake | not offered (intersection) | test_a_mode_the_installer_does_not_know_is_never_offered, test_a_mode_the_backend_does_not_accept_is_not_offered_even_if_fake |
+
 ## Outline: still to cover later
 - Port already in use gives a clear message; arm64 and amd64 build; restart keeps data; local mode (no worker container) plus native worker share the media folder.
 

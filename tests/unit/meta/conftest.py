@@ -25,6 +25,20 @@ DEMO_TOKEN_ID = "demo-id"  # noqa: S105
 DEMO_TOKEN_SECRET = "demo-secret"  # noqa: S105
 DEMO_HASH = "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$ZGVtby1oYXNo"
 SECRETS = (DEMO_PASSWORD, DEMO_TOKEN_ID, DEMO_TOKEN_SECRET)
+BACKEND_SETTINGS = Path("backend") / "vidgen" / "settings.py"
+
+
+def settings_source(
+    modes: tuple[str, ...], *, backend_modes: tuple[str, ...] = ("fake", "real")
+) -> str:
+    """A minimal backend settings.py whose ``ai_mode`` Literal accepts ``modes``."""
+    quoted = ", ".join(f'"{m}"' for m in modes)
+    legacy = ", ".join(f'"{m}"' for m in backend_modes)
+    return (
+        "from typing import Literal\n\n\nclass Settings:\n"
+        f'    ai_backend: Literal[{legacy}] = "fake"\n'
+        f'    ai_mode: Literal[{quoted}] = "fake"\n'
+    )
 
 
 def load_setup() -> ModuleType:
@@ -77,6 +91,23 @@ class Harness:
     secret_prompts: list[str] = field(default_factory=list)
     opened: list[str] = field(default_factory=list)
     lines: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """By default the fixture backend accepts modal, so the Modal flow is reachable."""
+        self.write_backend_settings(settings_source(("fake", "local", "modal")))
+
+    def write_backend_settings(self, text: str | None) -> None:
+        """Write (or, with None, remove) the fixture backend/vidgen/settings.py under the root."""
+        path = self.root / BACKEND_SETTINGS
+        if text is None:
+            path.unlink(missing_ok=True)
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def top_level(self) -> list[str]:
+        """Names directly in the project root, without the fixture ``backend`` folder."""
+        return sorted(p.name for p in self.root.iterdir() if p.name != "backend")
 
     @property
     def dotenv(self) -> Path:
@@ -166,7 +197,7 @@ class Harness:
     def assert_nothing_written(self) -> None:
         """No settings file and no temp leftovers in the project folder."""
         assert not self.dotenv.exists()
-        assert [p.name for p in self.root.iterdir()] == []
+        assert self.top_level() == []
 
 
 @pytest.fixture

@@ -160,3 +160,6 @@ Newest first. One entry per task.
 
 ## 2026-11-13 - T6 verify (Stage 1)
 - Added tests/unit/meta/test_setup_real_seams.py (real runner, real seams, script run without a terminal); setup.py coverage 97 -> 99 %. COVERAGE.md updated.
+
+## 2026-11-13 - Gap-1 RED (installer mode gate)
+- tests/unit/meta/test_setup_mode_gate.py (18 cases, 11 red); conftest Harness writes a fixture backend settings.py (`settings_source`, `top_level()`); tree scenario 9.

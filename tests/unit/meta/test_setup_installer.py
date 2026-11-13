@@ -167,7 +167,7 @@ def test_settings_file_is_written_atomically_with_a_same_folder_temp_file(
     assert len(final) == 1
     assert final[0][0].parent == harness.dotenv.parent
     assert final[0][0] != harness.dotenv
-    assert [p.name for p in harness.root.iterdir()] == [harness.dotenv.name]
+    assert harness.top_level() == [harness.dotenv.name]
 
 
 def test_ctrl_c_during_the_final_swap_leaves_no_settings_file_and_no_temp_file(
@@ -202,7 +202,7 @@ def test_existing_settings_file_is_not_overwritten_when_the_user_declines(harnes
     assert stat.S_IMODE(harness.dotenv.stat().st_mode) == 0o640
     assert harness.secret_prompts == []
     assert harness.calls_with("hash-password") == []
-    assert [p.name for p in harness.root.iterdir()] == [harness.dotenv.name]
+    assert harness.top_level() == [harness.dotenv.name]
 
 
 @pytest.mark.parametrize("answer", ["", "no", "maybe", "  "])

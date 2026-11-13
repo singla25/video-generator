@@ -112,7 +112,7 @@ def test_rejected_token_pair_leaves_a_confirmed_existing_file_unchanged(modal: H
     modal.modal_rc = 1
     assert modal.run_main() != 0
     assert modal.dotenv.read_bytes() == b"KEEP=me\n"
-    assert [p.name for p in modal.root.iterdir()] == [modal.dotenv.name]
+    assert modal.top_level() == [modal.dotenv.name]
 
 
 def test_missing_modal_package_or_network_is_reported_not_crashed(modal: Harness) -> None:

@@ -120,7 +120,7 @@ def test_ctrl_d_at_the_overwrite_prompt_leaves_the_existing_file_unchanged(
     monkeypatch.setattr(harness, "_ask", raise_eof)
     assert_clean_exit(harness, capsys)
     assert harness.dotenv.read_bytes() == before
-    assert [p.name for p in harness.root.iterdir()] == [harness.dotenv.name]
+    assert harness.top_level() == [harness.dotenv.name]
 
 
 def test_ctrl_d_at_the_migration_prompt_applies_no_migration(

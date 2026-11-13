@@ -162,6 +162,36 @@ Intel Macs: PostgreSQL, Redis and the app use multi-architecture images and pack
 
 No paid or external online service is required.
 
+## Choose your mode
+
+| Mode | Where the AI runs | You need | Status |
+|------|-------------------|----------|--------|
+| `fake` | Nowhere: test stand-ins, no models, no cost | Docker | Ready |
+| `local` | Natively on your Mac (Apple GPU) | Apple silicon; worker peak 20–21 GB measured, 32 GB recommended | Ready with `scripts/dev_up.sh` (pilot) |
+| `modal` | On Modal cloud GPUs | Free Modal account + token | **Not available yet**: planned in [ADR-013](docs/decisions/ADR-013-cloud-gpu-modal.md) |
+
+Docker cannot use the Apple GPU, so `local` AI never runs inside a container.
+
+**Kaggle** is not a render worker. You can use a Kaggle notebook by hand to try the models on a free GPU, but the app never connects to it.
+
+## Quick start with Docker and the installer
+
+The guided installer needs only `python3`. It checks Docker, uv, Node and FFmpeg, asks for the mode, writes `.env` with owner-only permissions (0600) and sets your admin password (hidden input, at least 12 characters; only its hash is saved).
+
+```bash
+docker compose up -d                   # PostgreSQL and Redis first (the installer can then apply migrations)
+python3 scripts/setup.py               # answer the questions; migrations only run if you type y
+docker compose --profile app up -d     # API, worker and dashboard in containers
+```
+
+Open **http://localhost:5173**. The API answers at `http://127.0.0.1:8000/api/health`.
+
+- **Run it again** at any time. It asks before overwriting `.env`, and it keeps your encryption keys, so data that is already stored stays readable.
+- **Ports:** set `VIDGEN_API_PORT`, `VIDGEN_DASHBOARD_PORT`, `VIDGEN_DB_PORT` or `VIDGEN_REDIS_PORT` before `docker compose` to use other ones.
+- **Media** (templates and outputs) is kept in the host folder `./media` (change it with `VIDGEN_MEDIA_DIR`), not inside a container.
+- **Local mode:** the installer sets `VIDGEN_DOCKER_WORKERS=0`, so no worker container starts and the worker runs on your Mac. Running that native worker next to the Docker app has not been tested end to end yet. Until it has, use `scripts/dev_up.sh` for local mode (steps below).
+- **Stop:** `docker compose --profile app down`. Your data stays in Docker volumes and `./media`.
+
 ## Install on macOS
 
 Works on Apple silicon and Intel. Commands assume [Homebrew](https://brew.sh).
@@ -248,7 +278,7 @@ Docker Desktop is not running or the containers are down. Open Docker Desktop, t
 <details>
 <summary><b>Port already in use (8000, 5173, 5432, 6379)</b></summary>
 
-Find the process with `lsof -i :5432`. The API (8000) and dashboard (5173) ports are fixed. For PostgreSQL and Redis set `VIDGEN_DB_PORT` / `VIDGEN_REDIS_PORT` before `docker compose up -d` and update the URLs in `.env`.
+Find the process with `lsof -i :5432`. With `scripts/dev_up.sh` the API (8000) and dashboard (5173) ports are fixed. With the Docker app, set `VIDGEN_API_PORT` / `VIDGEN_DASHBOARD_PORT`. For PostgreSQL and Redis set `VIDGEN_DB_PORT` / `VIDGEN_REDIS_PORT` before `docker compose up -d` and update the URLs in `.env`. Do not run `scripts/dev_up.sh` and the Docker app at the same time: both use ports 8000 and 5173.
 </details>
 
 <details>
@@ -296,7 +326,7 @@ CI runs the same checks on every pull request.
 backend/vidgen/   api/ · services/ · domain/ · ports/ · infrastructure/ · worker/
 backend/migrations/   Alembic migrations (PostgreSQL)
 frontend/         React dashboard (Vite, TypeScript, Tailwind)
-scripts/          dev_up.sh · dev_down.sh · dev_setup.py · bench_stats.py
+scripts/          setup.py (installer) · dev_up.sh · dev_down.sh · dev_setup.py · bench_stats.py
 tests/            unit · integration · e2e
 docs/             plans · decisions (ADRs) · requirements · development-workflow.md
 docker-compose.yml   PostgreSQL 16 + Redis 7 for local use

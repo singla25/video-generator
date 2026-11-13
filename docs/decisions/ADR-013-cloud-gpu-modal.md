@@ -30,6 +30,9 @@ ADR-012 limits two lip-sync weights (S3FD; face-parse-bisent, trained on non-com
 on Modal, the Admin must decide one of: (a) amend ADR-012 to allow dev-only use on the Admin's own Modal account with
 demo data, (b) replace the two weights first, or (c) run P2-S for speech-to-text and voice cloning only.
 
+**Admin decision (2026-11-13): (c).** P2-S runs speech-to-text and voice cloning on Modal only. Lip sync stays on the
+Mac until (a) or (b) is decided, so Q1 (GPU type) is answered for those two models only.
+
 ## Consequences
 - Machines without Apple silicon (or with < 32 GB) can render real AI.
 - Personal data leaves the machine in `modal` mode; mitigated by the confirmation step and demo data while learning.

@@ -56,6 +56,7 @@ Docker + cloud setup
 - Throwaway code in `backend/spikes/p2_modal/`; `modal` via `uv run --with modal` — **no `cloud` extra in pyproject.toml yet**.
 - Measures, for L4 and T4: peak GPU memory, cold start, time per row, bytes up/down per call, credit used.
 - Credit cap: set by the Admin before the spike starts; the spike stops when it is reached.
+- Scope (Admin, 2026-11-13, licence option (c)): speech-to-text and voice cloning only; no lip sync on Modal (R5).
 
 ## Test tree outline
 See `docs/test-tree/docker-and-cloud-setup.md` (tester writes it first).

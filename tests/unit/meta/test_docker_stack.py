@@ -224,3 +224,7 @@ def test_dashboard_image_does_not_start_the_vite_dev_server() -> None:
         if re.match(r"\s*(CMD|ENTRYPOINT)\b", ln)
     ]
     assert starts and not any(re.search(r"vite|npm run dev|npm start", ln) for ln in starts)
+
+
+def test_backend_image_pins_uv_to_an_exact_version() -> None:
+    assert re.search(r"uv==\d+\.\d+\.\d+", code_lines(read("Dockerfile.backend")))

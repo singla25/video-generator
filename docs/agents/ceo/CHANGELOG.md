@@ -2,6 +2,11 @@
 
 Newest first. One entry per task.
 
+## 2026-11-13 — Status report written
+- Report `docs/reports/PROJECT-STATUS-2026-11-13.md` (branch `docs/ceo/status-report-2026-11-13`, from origin/main): summary, 18 PRs, DD-1 to DD-40, 35 branches classified, plans and ADRs, architecture snapshot, milestones, last quality numbers (as reported, not re-run), and next-phase backlog B1 to B20 with the Admin decisions waiting.
+- Documentation only; no code, tests or migrations touched. Two example id values from the requirement docs were withheld from the report (the grep check forbids them in docs/reports); the rest of the brief was copied as given.
+- Open for the Admin: merge PR #18, the branch deletions in B17, and the approvals listed in section 11 of the report.
+
 ## 2026-10-31 — PR #9 merged; DD-37 started
 - PR #9 (e4b0cee): preview progress, batch controls, queue-depth fix, local autostart files. Database emptied at the Admin's request (backup in .dev/backups, old media moved to .dev/media-*).
 - DD-37 built and verified (not merged yet): Running, Completed and Failed pages show real batch lists (`GET /batches?view=`); a "Videos to generate" choice on the last wizard step (All, First 5/10/15, custom; rows beyond the limit become SKIPPED with code NOT_SELECTED); Delete template (refused with 409 TEMPLATE_IN_USE while any batch uses it; removes the template, consent records and stored files); a redesigned New template form with a drop zone and an extension fallback for empty file types. No migration. Checks: backend 2381 passed, Vitest 488, E2E 21 passed. Known: `mypy --strict` reports 8 errors only in local_ai/loaders.py when the optional local-ai packages are installed (CI installs without them).

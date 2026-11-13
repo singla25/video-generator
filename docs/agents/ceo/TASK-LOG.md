@@ -81,3 +81,4 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | DD40-BE-B | Pipeline: lip sync and encoder once per slot, key_from, transparent intermediate label | tester → backend-dev | haiku | In progress | Yes (Admin, DD-40) | — |
 | DD40-FE | Dashboard: slot editor with several slots, template card | tester → frontend-dev | haiku | In progress | Yes (Admin, DD-40) | — |
 | DD40-MIG | Rehearse migration 0002 on a throwaway database; Admin runs it | backend-dev + Admin | haiku | Planned | Yes (Admin, DD-40); running it needs the Admin | — |
+| STATUS-REPORT | Project status report and next-phase backlog (docs/reports/PROJECT-STATUS-2026-11-13.md) | ceo (Haiku 5.5 writing) | haiku | ✅ Written on docs/ceo/status-report-2026-11-13; backlog B1–B20; nothing merged or deleted | Admin asked for it | — |

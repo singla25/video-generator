@@ -116,7 +116,7 @@ Classification of all 35 non-main branch names (local, with origin copies where 
 | feat/m1-domain | local | Merged (ancestor) | - |
 | feat/m1-ingest | local | Merged (ancestor) | - |
 | feat/m2-local-real-ai | local + origin | Squash-merged | #5 |
-| feat/m2-mac-first | local | NOT merged (4 commits, 4 unmatched); cited by the ADR-012 correction, whether it is in main: unknown | no PR |
+| feat/m2-mac-first | local | NOT merged (4 commits, 4 unmatched); the licence audit it produced is captured in the ADR-012 correction, so nothing else needs rescuing | no PR |
 | feat/m3-dashboard | local | Merged (ancestor; DD-25) | - |
 | feat/multi-slot | local + origin | Squash-merged | #17 |
 | feat/preview-progress | local + origin | Squash-merged | #9 |
@@ -124,7 +124,7 @@ Classification of all 35 non-main branch names (local, with origin copies where 
 | feat/tester/cloud-setup | local (worktree) | NOT merged (20 commits, 17 unmatched) | no PR |
 | feat/tester/m1-tree | local | Merged (ancestor) | - |
 | fix/draft-visibility-and-spelling | local + origin | Squash-merged | #12 |
-| fix/queue-depth | local | NOT merged by ancestry; 4 commits with no matching patch in main; whether they are inside PR #9 is unknown | no PR (title of #9 mentions a queue-depth fix) |
+| fix/queue-depth | local | NOT merged by ancestry; 4 commits with no matching patch in main; the queue-depth fix is inside PR #9 (squash-merged), so this branch is safe to delete | no PR (title of #9 mentions a queue-depth fix) |
 | fix/remove-red-g3-tests | local + origin | Squash-merged | #6 |
 | fix/resume-from-counts | local + origin | Squash-merged | #13 |
 | fix/upload-feedback | local + origin | Merged (ancestor) | #1 |

@@ -22,6 +22,9 @@ from pathlib import Path
 
 PROJECT = Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()).resolve()
 
+# Agents work in git worktrees under .worktrees/<name>/; judge their paths as if at the repo root.
+WORKTREE = re.compile(r"^\.worktrees/[^/]+/")
+
 DESTRUCTIVE = [
     r"\brm\s+(-[a-zA-Z]*[rRf][a-zA-Z]*\s+)+",      # rm -r / -rf / -f
     r"\brm\s+.*\*",                                 # rm with wildcard
@@ -68,8 +71,9 @@ PROTECTED_WRITES = re.compile(r"(^|/)(\.claude/|CLAUDE\.md$|\.git/)")
 
 # Write domains per agent (used only if Claude Code passes the agent name).
 DOMAINS = {
-    "backend-dev": ["backend/", "docs/agents/backend-dev/", "docs/html/"],
-    "frontend-dev": ["frontend/", "docs/agents/frontend-dev/", "docs/html/"],
+    "backend-dev": ["backend/", "docs/agents/backend-dev/", "docs/html/",
+                    "scripts/setup.py", "Dockerfile.backend", ".dockerignore", "docker-compose.yml"],
+    "frontend-dev": ["frontend/", "docs/agents/frontend-dev/", "docs/html/", "Dockerfile.frontend"],
     "tester": ["tests/", "docs/test-tree/", "docs/agents/tester/", "docs/html/"],
     "ceo": ["docs/"],
 }
@@ -116,7 +120,7 @@ def check_path(p: str, writing: bool, agent: str | None) -> None:
     if is_secret(p):
         block(f"secret file: {rel(p)}")
     if writing:
-        r = rel(p)
+        r = WORKTREE.sub("", rel(p))
         if PROTECTED_WRITES.search(r):
             block(f"rules and git internals are read-only: {r}")
         if agent in DOMAINS and not any(r.startswith(d) for d in DOMAINS[agent]):

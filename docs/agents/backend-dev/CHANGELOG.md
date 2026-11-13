@@ -229,3 +229,6 @@ Newest first. One entry per task.
 ## 2026-11-13 - T3-backend (completed)
 - Added `Dockerfile.backend`, `.dockerignore`; `docker-compose.yml` gets `api`, `worker`, `dashboard` in profile `app` (loopback ports, media bind mount, service-name hosts, worker scale, blank Modal tokens on api). The earlier guard block is resolved.
 - Tests: `tests/unit/meta` 619 passed, 4 failed (all need frontend-dev's Dockerfile.frontend).
+
+## 2026-11-13 - T3 fix round
+- `docker-compose.yml`: worker no longer lists names-only Modal token entries (they rendered as null and overrode env_file); tokens come from env_file, names kept as `x-modal-token-vars`. `Dockerfile.backend`: `uv==0.13.1`.

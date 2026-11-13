@@ -71,9 +71,10 @@ services:
       - VIDGEN_DATABASE_URL=postgresql+psycopg://${VIDGEN_DB_USER:-vidgen}:${VIDGEN_DB_PASSWORD:-devpassword}@postgres:5432/${VIDGEN_DB_NAME:-vidgen}
       - VIDGEN_REDIS_URL=redis://redis:6379/0
       - VIDGEN_STORAGE_ROOT=/data/media
-      # Names only: the values come from the settings file (only the worker may use them).
-      - MODAL_TOKEN_ID
-      - MODAL_TOKEN_SECRET
+    # Only the worker gets the Modal tokens, and they come from the settings file (env_file above).
+    # Listing them under `environment` would override that file with null when no --env-file is
+    # given, so they are documented here as a compose extension field (ignored by compose).
+    x-modal-token-vars: ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"]
     volumes:
       - ${VIDGEN_MEDIA_DIR:-./media}:/data/media
     depends_on:

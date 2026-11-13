@@ -9,7 +9,7 @@ RUN apt-get update \
     && apt-get clean
 
 # uv installs exactly what uv.lock says (build tool only, not an app dependency).
-RUN pip install --no-cache-dir "uv>=0.5"
+RUN pip install --no-cache-dir "uv==0.13.1"
 
 # The folders are empty here, so a plain (non-recursive) chown is enough.
 RUN useradd --create-home --uid 1000 vidgen \

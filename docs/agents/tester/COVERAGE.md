@@ -226,3 +226,12 @@ Run: `pytest --ignore=tests/unit/infra/ai --ignore=tests/e2e` = 2002 passed, 1 s
 local_ai coverage per file: errors, guard, lipsync, name_slot, stt 100 %; musetalk_support 94 %; tts 94 %; _common 93 %; factory 92 %; transliterate 90 %; loaders 86 %; offline 84 %. Package about 92 %. Uncovered: real Whisper/Qwen/Chatterbox loader bodies (loaders.py 38-102, covered only by `@local_ai` smoke tests), offline.py 39-50 (IPv6/edge socket paths), musetalk_support.py 62-65, 78 (bad frame-rate text, no-frames branch).
 
 Defects: none open. Notes: tests/unit/infra/ai (G3 set, other module layout) is excluded and not part of this run. `running_batch`/`approve_preview` helpers do not confirm spelling, so they cannot be used in local mode.
+
+## 2026-11-13 - Docker and cloud setup, Stage 1 (T1-T3) verified
+- Full suite (not slow, not e2e): 2653 passed, 2 skipped, 12 deselected. tests/unit/meta: 634 passed.
+- Docker e2e (project vidgen-t3test): 2 passed; no containers, volumes or networks of that project remain.
+- Coverage: scripts/setup.py 99 % (uncovered: line 267, the `__main__` guard), scripts/dev_setup.py hash-password part 100 % (file total 53 %: older commands out of scope).
+- Counts (new tests): installer positive ~33, negative ~40, edge ~30; static Docker checks ~35; rendered compose 6; e2e 2.
+- Lint: ruff check and format clean; mypy --strict backend/vidgen + scripts/setup.py clean.
+- Defects found in verify: none. Earlier (T1c/T3 reviews): key loss on overwrite, Ctrl-D traceback, token message, null Modal vars in compose, unpinned uv; all fixed.
+- Not covered yet: Modal adapters (T4, held), port-in-use, multi-arch build, restart-keeps-data.

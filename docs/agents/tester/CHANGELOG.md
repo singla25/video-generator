@@ -157,3 +157,6 @@ Newest first. One entry per task.
 
 ## 2026-11-12 - T3 RED (Docker stack)
 - Tree scenarios 7-8 added. Red: tests/unit/meta/test_docker_stack.py (static, text-based), test_setup_workers.py (VIDGEN_DOCKER_WORKERS), tests/e2e/test_docker_stack_e2e.py (not run). Env names assumed: VIDGEN_MEDIA_DIR, VIDGEN_API_PORT, VIDGEN_DASHBOARD_PORT, VIDGEN_ENV_FILE, VIDGEN_DOCKER_WORKERS.
+
+## 2026-11-13 - T6 verify (Stage 1)
+- Added tests/unit/meta/test_setup_real_seams.py (real runner, real seams, script run without a terminal); setup.py coverage 97 -> 99 %. COVERAGE.md updated.

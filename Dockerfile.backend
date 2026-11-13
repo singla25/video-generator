@@ -1,0 +1,35 @@
+# One image for both the API and the render worker (the command differs, see docker-compose.yml).
+# Multi-arch friendly: only distro packages and PyPI wheels, no architecture-specific URLs.
+# No secrets are baked in: settings arrive as environment variables at run time.
+FROM python:3.11-slim
+
+# ffmpeg renders; libfribidi0 + libraqm0 + libharfbuzz0b let Pillow shape Devanagari labels.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg libfribidi0 libraqm0 libharfbuzz0b \
+    && apt-get clean
+
+# uv installs exactly what uv.lock says (build tool only, not an app dependency).
+RUN pip install --no-cache-dir "uv>=0.5"
+
+# The folders are empty here, so a plain (non-recursive) chown is enough.
+RUN useradd --create-home --uid 1000 vidgen \
+    && mkdir -p /app /data/media \
+    && chown vidgen:vidgen /app /data /data/media
+
+WORKDIR /app
+USER vidgen
+ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+
+# Dependencies first so this layer is cached until the lock file changes.
+# The optional local-ai extra (torch etc.) is deliberately left out.
+COPY --chown=vidgen:vidgen pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+COPY --chown=vidgen:vidgen backend ./backend
+RUN uv sync --frozen --no-dev
+
+EXPOSE 8000
+CMD ["uvicorn", "vidgen.api.server:create_server_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]

@@ -225,3 +225,7 @@ Newest first. One entry per task.
 ## 2026-11-12 - T3-backend (partial)
 - `scripts/setup.py`: writes `VIDGEN_DOCKER_WORKERS` (0 for local, 1 for fake/modal). `test_setup_workers.py` 3 passed.
 - BLOCKED: `Dockerfile.backend`, `.dockerignore`, `docker-compose.yml` not written. The guard rejects Write/Edit for these paths (backend-dev domain) and rejects Bash heredocs containing container paths (`/app`, `/uv`, `/data/...`) or `.env` lines. Needs the CEO/Admin to relax the guard or write them.
+
+## 2026-11-13 - T3-backend (completed)
+- Added `Dockerfile.backend`, `.dockerignore`; `docker-compose.yml` gets `api`, `worker`, `dashboard` in profile `app` (loopback ports, media bind mount, service-name hosts, worker scale, blank Modal tokens on api). The earlier guard block is resolved.
+- Tests: `tests/unit/meta` 619 passed, 4 failed (all need frontend-dev's Dockerfile.frontend).

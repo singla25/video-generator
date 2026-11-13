@@ -1,4 +1,6 @@
-# Dev/test services only. Credentials are placeholders; override via environment.
+# postgres + redis start with plain `docker compose up -d` (used by scripts/dev_up.sh).
+# The app (api, worker, dashboard) is opt-in: `docker compose --profile app up -d`.
+# Credentials are placeholders; override via environment.
 services:
   postgres:
     image: postgres:16
@@ -29,6 +31,68 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  api:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    env_file:
+      - ${VIDGEN_ENV_FILE:-.env}
+    environment:
+      VIDGEN_DATABASE_URL: postgresql+psycopg://${VIDGEN_DB_USER:-vidgen}:${VIDGEN_DB_PASSWORD:-devpassword}@postgres:5432/${VIDGEN_DB_NAME:-vidgen}
+      VIDGEN_REDIS_URL: redis://redis:6379/0
+      VIDGEN_STORAGE_ROOT: /data/media
+      # The API never talks to Modal; blank the tokens even if the shared settings file has them.
+      MODAL_TOKEN_ID: ""
+      MODAL_TOKEN_SECRET: ""
+    ports:
+      - "127.0.0.1:${VIDGEN_API_PORT:-8000}:8000"
+    volumes:
+      - ${VIDGEN_MEDIA_DIR:-./media}:/data/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: ["python", "-m", "vidgen.worker"]
+    # 0 in local mode (the host runs the worker), 1 otherwise; see scripts/setup.py.
+    scale: ${VIDGEN_DOCKER_WORKERS:-1}
+    env_file:
+      - ${VIDGEN_ENV_FILE:-.env}
+    environment:
+      - VIDGEN_DATABASE_URL=postgresql+psycopg://${VIDGEN_DB_USER:-vidgen}:${VIDGEN_DB_PASSWORD:-devpassword}@postgres:5432/${VIDGEN_DB_NAME:-vidgen}
+      - VIDGEN_REDIS_URL=redis://redis:6379/0
+      - VIDGEN_STORAGE_ROOT=/data/media
+      # Names only: the values come from the settings file (only the worker may use them).
+      - MODAL_TOKEN_ID
+      - MODAL_TOKEN_SECRET
+    volumes:
+      - ${VIDGEN_MEDIA_DIR:-./media}:/data/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "127.0.0.1:${VIDGEN_DASHBOARD_PORT:-5173}:8080"
+    depends_on:
+      - api
+    restart: unless-stopped
 
 volumes:
   vidgen_pgdata:

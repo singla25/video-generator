@@ -232,3 +232,6 @@ Newest first. One entry per task.
 
 ## 2026-11-13 - T3 fix round
 - `docker-compose.yml`: worker no longer lists names-only Modal token entries (they rendered as null and overrode env_file); tokens come from env_file, names kept as `x-modal-token-vars`. `Dockerfile.backend`: `uv==0.13.1`.
+
+## 2026-11-13 - Gap-1 mode gate
+- `scripts/setup.py`: `accepted_modes(root)` reads `ai_mode: Literal[...]` from `backend/vidgen/settings.py` with `ast` (fallback fake+local); `choose_mode` offers only accepted modes and says "not available yet (see ADR-013)" for a refused known mode. Tests: `tests/unit/meta` 652 passed.

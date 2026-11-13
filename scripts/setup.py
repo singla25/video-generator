@@ -10,6 +10,7 @@ after an explicit "y".
 """
 
 import argparse
+import ast
 import getpass
 import os
 import secrets
@@ -100,13 +101,49 @@ def check_prerequisites(seams: Seams) -> None:
         raise InstallerError("Docker is installed but is not running. Start Docker and try again.")
 
 
-def choose_mode(seams: Seams) -> str:
-    """Ask for the AI mode until the answer is valid (case and spaces ignored)."""
+FALLBACK_MODES = ("fake", "local")
+BACKEND_SETTINGS = Path("backend") / "vidgen" / "settings.py"
+
+
+def accepted_modes(root: Path) -> tuple[str, ...]:
+    """Modes the backend accepts: the ``ai_mode: Literal[...]`` values, read with ``ast``.
+
+    The backend is parsed, never imported, so its dependencies are not needed. Anything missing
+    or unexpected falls back to the modes that always work.
+    """
+    try:
+        tree = ast.parse((root / BACKEND_SETTINGS).read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError):
+        return FALLBACK_MODES
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "ai_mode"
+            and isinstance(node.annotation, ast.Subscript)
+            and isinstance(node.annotation.value, ast.Name)
+            and node.annotation.value.id == "Literal"
+        ):
+            arg = node.annotation.slice
+            items = arg.elts if isinstance(arg, ast.Tuple) else [arg]
+            values = tuple(
+                i.value for i in items if isinstance(i, ast.Constant) and isinstance(i.value, str)
+            )
+            return values or FALLBACK_MODES
+    return FALLBACK_MODES
+
+
+def choose_mode(seams: Seams, root: Path) -> str:
+    """Ask for the AI mode until the answer is one the backend accepts (case/spaces ignored)."""
+    offered = tuple(m for m in MODES if m in accepted_modes(root))
     while True:
-        answer = seams.ask(f"Which AI mode do you want? Type {', '.join(MODES)}: ").strip().lower()
-        if answer in MODES:
+        prompt = f"Which AI mode do you want? Type {', '.join(offered)}: "
+        answer = seams.ask(prompt).strip().lower()
+        if answer in offered:
             return answer
-        seams.echo(f"Please type one of: {', '.join(MODES)}.")
+        if answer in MODES:
+            seams.echo(f"The {answer} mode is not available yet (see ADR-013).")
+        seams.echo(f"Please type one of: {', '.join(offered)}.")
 
 
 def collect_modal_tokens(seams: Seams) -> tuple[str, str]:
@@ -234,7 +271,7 @@ def install(root: Path, seams: Seams) -> int:
             seams.echo("Kept your existing settings file. Nothing was changed.")
             return 0
         kept = read_kept_keys(target)
-    mode = choose_mode(seams)
+    mode = choose_mode(seams, root)
     tokens = collect_modal_tokens(seams) if mode == "modal" else None
     admin_hash = hash_admin_password(seams, root)
     write_private(target, render_settings(mode, admin_hash, tokens, kept))

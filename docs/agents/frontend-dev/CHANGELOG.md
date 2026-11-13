@@ -86,3 +86,8 @@ Newest first. One entry per task.
 - Tests: full Vitest 544/544; typecheck, lint, format:check, build green. No test edited.
 - 2026-10-31 FE-GREEN2 follow-up: the real GET has no `report`, only `counts`. Resume now counts valid rows as report.valid_rows when a report exists, else counts.total - counts.skipped; no sheet data only below 1; otherwise step 3 with a report built from the counts. Files: pages/wizard/resume.ts. Tests: full Vitest 547/547; typecheck, lint, format:check, build green.
 - Open: Overview rows table keeps its own draft labels (unchanged); docs/html not regenerated (outside this task's paths).
+
+## 2026-11-13 T3-frontend (dashboard image)
+- Dockerfile.frontend: node:22-alpine build (npm ci, npm run build); final stage nginx-unprivileged on 8080, USER 101.
+- frontend/docker/nginx.conf: API prefix proxied to the api service on port 8000 (prefix kept); SPA fallback to index.html.
+- Tests: frontend tests in tests/unit/meta/test_docker_stack.py green. No image built, no dependency added.

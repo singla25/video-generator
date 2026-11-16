@@ -31,7 +31,7 @@ def assert_declined(h: Harness) -> None:
     """Nothing happened after the refused confirmation."""
     assert h.opened == []
     assert h.secret_prompts == []
-    assert h.calls == []
+    assert [c.argv[:2] for c in h.calls] == [["docker", "info"]], "only the prerequisite check ran"
     h.assert_nothing_written()
 
 

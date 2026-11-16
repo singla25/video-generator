@@ -1,0 +1,57 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Plan — Spoken suffix after the name and mid-video name slot</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Plan — Spoken suffix after the name and mid-video name slot</h1>
+<p><strong>Status:</strong> Approved by the Admin on 2026-10-31 (DD-39) <strong>Decision record:</strong> docs/agents/ceo/DELEGATED-DECISIONS.md (DD-39) <strong>Branch:</strong> feat/spoken-suffix-marketing-demo</p>
+<h2>Goal</h2>
+<p>Two requests from the Admin after trying local mode:</p>
+<ul><li><strong>(A) Spoken suffix.</strong> The template text reads "&lt;name&gt; जी" and the name slot replaces both words, but the voice says only the name. Add a spoken suffix after the name. It is set by <code>VIDGEN_SPOKEN_SUFFIX</code> (default <code>जी</code>; an empty value switches it off). A pure function <code>spoken_text(name, suffix)</code> builds the text to speak and never duplicates the suffix. It applies to batch rows and to the preview. The timing already adapts to the longer speech.</li><li><strong>(B) Name in the middle of the video.</strong> The audio splice already works for any slot. The lip sync, however, always starts at 0:00 of the video because the <code>LipSyncer</code> port has no slot argument, so a name in the middle gets mouth movement at the wrong time. Pass the slot start to the lip sync, and lip-sync only the segment that starts there.</li></ul>
+<p>Before (B) is built, a synthetic marketing template (two-wheeler dealer, name in the middle of the sentence) is produced so the Admin can test it.</p>
+<h2>Requirement tree</h2>
+<pre><code>Spoken suffix and mid-video slot
+├── Functional
+│   ├── R1  spoken_text(name, suffix) returns the name followed by the suffix, once
+│   ├── R2  VIDGEN_SPOKEN_SUFFIX sets the suffix; default &quot;जी&quot;; empty = off
+│   ├── R3  Batch rows and the preview speak spoken_text(name, suffix)
+│   ├── R4  LipSyncer.sync(video, audio, out, start_s=0.0) — additive optional argument
+│   ├── R5  The lip sync touches only the segment from start_s and splices it back
+│   ├── R6  Face boxes cached per (template, start_s)
+│   └── R7  Synthetic two-wheeler dealer template, name in the middle, built by a script
+├── Non-functional
+│   ├── Output keeps fps, width, height, duration and audio sync of the input video
+│   ├── Coverage &gt;= 85 % on new code; 100 % on core video-pipeline logic
+│   └── No secrets read; outputs go to the git-ignored work folder
+├── Constraints
+│   ├── No migration
+│   ├── No new dependency
+│   ├── Tests first (TDD: tester red, backend-dev green, tester verify)
+│   ├── Haiku agents with exact briefs, verified by the CEO
+│   └── LipSyncer change is additive only (new optional argument)
+├── Out of scope
+│   ├── Per-template suffix (would need a migration)
+│   ├── Changing the suffix text per language or per row
+│   └── Lip sync quality changes (MuseTalk model, weights)
+└── Open questions (must be empty)  — none</code></pre>
+<h2>Acceptance criteria</h2>
+<ol><li><code>spoken_text("Ravi", "जी")</code> returns <code>Ravi जी</code>. With <code>VIDGEN_SPOKEN_SUFFIX</code> unset the default suffix is <code>जी</code>. With <code>VIDGEN_SPOKEN_SUFFIX=</code> (empty) <code>spoken_text("Ravi", "")</code> returns <code>Ravi</code> unchanged.</li><li><code>spoken_text</code> never duplicates the suffix: <code>spoken_text("Ravi जी", "जी")</code> returns <code>Ravi जी</code>. Surrounding spaces are trimmed. A blank name raises the existing invalid-name error; a name that is only the suffix is treated as blank, so no suffix is ever spoken alone.</li><li>A suffix that is longer than 20 characters or contains a control character is rejected at start-up with a clear configuration error. Nothing is rendered with it.</li><li>Every batch row speaks <code>spoken_text(name, suffix)</code>, and the row's audio length follows the longer speech (the slot and the timing adapt). The preview speaks the same text as the batch rows for the same name and suffix.</li><li><code>LipSyncer.sync(video, audio, out)</code> without <code>start_s</code> behaves exactly as today (regression test). <code>start_s</code> below 0 or beyond the video length is rejected with a typed error and no output file is written.</li><li>With <code>start_s</code> &gt; 0 the lip sync changes only the frames from <code>start_s</code> onward and the output has the same fps, width, height, duration and audio stream as the input video; the audio stays in sync with the mouth movement at the slot.</li><li>Face boxes are cached per (template, start_s): a second render of the same template and start reuses the cached boxes and does not detect faces again.</li><li>The synthetic two-wheeler dealer template (name in the middle) renders end to end on the Admin's Mac with the spoken suffix, and the Admin confirms by ear and by eye that the mouth moves with the name. ruff, mypy and pytest pass; coverage meets the targets above; no migration and no new dependency are added.</li></ol>
+<h2>Test tree outline</h2>
+<p>See docs/test-tree/spoken-suffix-and-mid-slot.md (tester writes it in SUF-RED and MID-RED). Each scenario has positive, negative and edge cases:</p>
+<ul><li>Suffix: default, empty (off), already present, extra spaces, blank name, suffix only, over-long suffix, control characters, Devanagari and mixed-script names.</li><li>Batch and preview: same text for the same row, timing adapts to longer speech, preview and batch agree.</li><li>Mid-slot: start_s default 0.0 (regression), start_s in the middle, start_s = 0, start_s at the end, negative start_s, start_s beyond duration, corrupt input video, fps and size preserved, audio sync preserved, face-box cache hit and miss.</li></ul>
+<h2>Tasks</h2>
+<table><tr><th>ID</th><th>Task</th><th>Agent</th><th>Why this agent</th><th>Depends on</th><th>Model</th><th>Worktree?</th><th>Done when</th></tr><tr><td>SUF-RED</td><td>Write failing tests for the spoken suffix (R1–R3, AC1–AC4)</td><td>tester</td><td>Owns tests/ and the test tree; writes red tests first</td><td>DD-39 approval</td><td>haiku</td><td>No (sequential on the feature branch)</td><td>Tests exist and fail only on missing code</td></tr><tr><td>SUF-GREEN</td><td>Implement <code>VIDGEN_SPOKEN_SUFFIX</code>, <code>spoken_text</code>, batch and preview wiring</td><td>backend-dev</td><td>Owns backend/ (settings, services, TTS input)</td><td>SUF-RED</td><td>haiku</td><td>No</td><td>SUF-RED tests pass; ruff and mypy clean; no test edited</td></tr><tr><td>DEMO-TEMPLATE</td><td>Script <code>backend/spikes/m2_mac/make_marketing_template.py</code> that builds a two-wheeler dealer template with the name in the middle; outputs in the git-ignored work folder</td><td>backend-dev</td><td>Owns backend/spikes and the local render tooling</td><td>SUF-GREEN</td><td>haiku</td><td>No</td><td>Script runs; the template and a sample row are in the work folder; Admin can open them</td></tr><tr><td>MID-RED</td><td>Write failing tests for <code>start_s</code> (R4–R6, AC5–AC7)</td><td>tester</td><td>Owns tests/ and the test tree</td><td>DEMO-TEMPLATE</td><td>haiku</td><td>No</td><td>Tests exist and fail only on missing code</td></tr><tr><td>MID-GREEN</td><td>Add <code>start_s</code> to the <code>LipSyncer</code> port and the adapter; segment splice; face-box cache per (template, start_s)</td><td>backend-dev</td><td>Owns the infrastructure adapter and the port</td><td>MID-RED</td><td>haiku</td><td>No</td><td>MID-RED tests pass; regression with start_s = 0.0 identical; ruff and mypy clean</td></tr><tr><td>VERIFY</td><td>Run full suites on the branch; real mid-slot render of the demo template on the Admin's Mac; the Admin listens and watches</td><td>CEO</td><td>Only the CEO verifies and reports to the Admin</td><td>MID-GREEN</td><td>haiku (CEO checks)</td><td>No</td><td>Suites green; Admin accepts the render (AC8)</td></tr><tr><td>PR</td><td>Open the PR to main, CI green, CEO diff review</td><td>CEO</td><td>Merging needs CEO review and Admin approval</td><td>VERIFY</td><td>haiku</td><td>No</td><td>PR ready; Admin decides merge</td></tr></table>
+<h2>Order (TDD)</h2>
+<p>tester (SUF-RED) → backend-dev (SUF-GREEN) → backend-dev (DEMO-TEMPLATE) → tester (MID-RED) → backend-dev (MID-GREEN) → CEO (VERIFY, Admin listens) → PR → Admin approves merge</p>
+<h2>Risks</h2>
+<ol><li><strong>The MuseTalk segment splice must keep fps, size and audio sync.</strong> Splicing a lip-synced segment back into the full-length video can change frame count, frame rate or audio offset. Mitigation: the tests check fps, width, height, duration and audio stream against the input (AC6); the CEO checks a real render before the PR.</li><li><strong>A Lekha-voiced demo template sounds synthetic.</strong> The test voice is not a natural voice for a dealer advert. Mitigation: this is accepted for a test template only; it is not used for any delivered video.</li><li><strong>The suffix default changes every new render.</strong> After this change, each new render speaks the name followed by <code>जी</code>, which the Admin did not hear before. Undo: set <code>VIDGEN_SPOKEN_SUFFIX=</code> (empty) in the local environment, which restores today's speech.</li></ol>
+<h2>Migrations / dependencies (need separate approval)</h2>
+<ul><li>Migrations: none. A per-template suffix would need one and is out of scope (DD-39).</li><li>Dependencies: none added.</li><li>Port change: <code>LipSyncer.sync</code> gains an optional <code>start_s</code> argument (additive; existing callers and fakes keep working).</li></ul>
+<h2>Admin approval</h2>
+<ul><li>[x] Plan approved (2026-10-31, DD-39)</li><li>[x] Task assignment approved (2026-10-31, DD-39; all tasks haiku)</li><li>[ ] Merge approved</li></ul></div></body></html>

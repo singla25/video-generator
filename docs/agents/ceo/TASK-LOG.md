@@ -68,6 +68,7 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | LB | AI label bubble then see-through bubble (DD-32, DD-36) | tester → backend-dev | haiku | ✅ merged in PR #5 and PR #7 (c3b3055) | Yes (Admin) | ✅ |
 | NG | 0.25 s gap after the name (DD-34) | tester → backend-dev | haiku | ✅ merged in PR #5 | Yes (Admin) | ✅ |
 | RM-G3 | Remove the redundant red adapter tests (DD-35) | tester | haiku | ✅ merged in PR #6 (bde91b3) | Yes (Admin approved the deletions) | ✅ |
+| G1 | M2 licence audit of all models + sub-models; update ADR-010 | CEO | — | ✅ Done 2026-10-28: ADR-010 audit section; 3 unresolved weights → DD-31 (pilot only), G8 | Plan: yes (Admin, DD-30) | ✅ (rescued 2026-11-16) |
 | G8 | Production licence gate for Demucs / face-parse / S3FD-FAN weights | backend-dev + CEO | haiku | Plan written: docs/plans/g8-licence-gate.md | Waiting for Admin approval | — |
 | CI-1 | GitHub Actions workflow (ADR-011, scope B) | backend-dev | haiku | In progress | Plan approved (DD-28) | — |
 | DD37-BE | Backend: batch views filter, start limit (NOT_SELECTED), template delete | tester → backend-dev | haiku | ✅ red f13e042 · green 43f0351 · 2 old tests updated 59af3f7 — CEO-verified: 2381 passed, 1 skipped | Yes (Admin, DD-37) | PR pending |

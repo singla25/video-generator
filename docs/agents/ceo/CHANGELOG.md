@@ -13,6 +13,11 @@ Newest first. One entry per task.
 - Tests on main: 2174 → 2192 passed, 2 skipped (unit + integration, test_worker.py run alone with the dev worker stopped).
 - Open: Admin tries local mode from the dashboard; G8 production licence gate (plan docs/plans/g8-licence-gate.md, waiting for approval); CI workflow (ADR-011, approved scope B).
 
+## 2026-10-28 — M2 re-planned Mac-first (DD-30)
+- Rewrote `docs/plans/m2-real-ai.md` (Mac-first; G2 done by the spike; defaults D-M2-1..4). Started G1 (licence audit, see ADR-010) and G3.
+- W-1 (GPU) no longer blocks; new W-5 (Admin reviews the 3 spike videos; later resolved when the Admin reviewed the pilot videos, TASK-LOG row M2-local).
+- Files: `docs/plans/m2-real-ai.md`, `DELEGATED-DECISIONS.md`, `TASK-LOG.md`. This entry was on the unmerged branch `feat/m2-mac-first` and was rescued into main on 2026-11-16.
+
 ## 2026-10-27 — M2 Mac feasibility spike (branch spike/m2-mac-feasibility)
 - Merged feat/dev-migration-prompt (dev_up.sh asks y/N before migrations); suite 1750 pass.
 - Spike S1–S6: whisper ✅, IndicXlit ❌ (fairseq vs Py3.11), Chatterbox ✅, Demucs ✅, MuseTalk ✅ (patched landmarks), real sample ✅ (3 local videos, 158–189 s each, 16–18 GB peak). Results: backend/spikes/m2_mac/RESULTS.md.

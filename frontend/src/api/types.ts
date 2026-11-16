@@ -33,7 +33,12 @@ export interface Template {
   id: string;
   original_name: string;
   duration_s: number;
+  /** The primary name slot, or null when none was found or set. */
   slot: { start_s: number; end_s: number } | null;
+  /** Extra name slots (DD-40), as [start, end] pairs in the order the user set them. */
+  extra_slots: [number, number][];
+  /** Every slot, primary and extra, sorted by start. Empty without a primary slot (DD-40). */
+  slots: [number, number][];
   needs_manual_slot: boolean;
   slot_confirmed: boolean;
   consent_confirmed: boolean;

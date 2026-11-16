@@ -1,0 +1,72 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree: several name slots, dashboard (DD-40, task FE-RED)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree: several name slots, dashboard (DD-40, task FE-RED)</h1>
+<p>Plan: docs/plans/multi-name-slots.md (AC3, AC4, AC9, AC10). The template JSON gets <code>extra_slots</code> and <code>slots</code>; <code>PUT /api/templates/&lt;id&gt;/slot</code> takes <code>extra_slots</code> (always sent). The slot editor (SlotEditor, used by the wizard step 3 and the Templates card) adds up to 4 extra pairs and runs client-side checks. The template card lists all slots.</p>
+<p>Files:</p>
+<ul><li>tests/frontend/unit/multi-slot-editor.test.tsx (editor, wizard step 3, PUT body, confirm again)</li><li>tests/frontend/unit/multi-slot-card.test.tsx (card text, card editor prefill)</li><li>tests/frontend/mocks/data.ts and handlers.ts (fixtures and default PUT handler that records bodies)</li></ul>
+<p>Decisions from the Admin (through the CEO), now encoded in the tests:</p>
+<ol><li>The primary slot keeps its existing messages: end past the video -&gt; "The slot must be inside the video (20 s)."</li></ol>
+<p>   and end &lt;= start -&gt; "End must be after start." (P19, P20). The new messages are for extra slots only:    "Slot N ends after the video." and "Each slot must end after it starts.".</p>
+<ol><li>After a removal the extra slots are renumbered, so the labels follow the position (P21, P22).</li><li>extra_slots in the PUT body are sent sorted ascending by start, whatever the typing order (P23, P24).</li></ol>
+<p>Overlap ("Slots must not overlap or touch.") and "Fill in every slot or remove it." check all slots.</p>
+<pre><code>Feature: several name slots in the dashboard (DD-40)
+├── Scenario: add and remove extra name slots  (multi-slot-editor.test.tsx)
+│   ├── ✅ TT-DD40-P1 &quot;Add another name slot&quot; shows empty &quot;Slot 2 start (s)&quot; / &quot;Slot 2 end (s)&quot;
+│   ├── ✅ TT-DD40-P2 each further click adds the next pair: &quot;Slot 3 ...&quot;, &quot;Slot 4 ...&quot;
+│   ├── ✅ TT-DD40-P3 &quot;Remove slot 2&quot; removes its pair; Add again gives an empty Slot 2
+│   ├── ✅ TT-DD40-P4 every extra pair has its own &quot;Remove slot N&quot; button
+│   ├── ❌ TT-DD40-N1 &quot;Remove slot N&quot; never touches the primary Slot start/end fields
+│   ├── ⚠️ TT-DD40-E1 no extra pair by default: the editor looks as before (no &quot;Slot 2&quot; fields)
+│   ├── ⚠️ TT-DD40-E2 &quot;Add another name slot&quot; is disabled with 5 slots shown (primary + 4), no &quot;Slot 6&quot;
+│   └── ⚠️ TT-DD40-E3 a template with 4 extra slots starts with the button disabled
+├── Scenario: prefill from the template  (multi-slot-editor.test.tsx)
+│   ├── ✅ TT-DD40-P5 extra_slots [[2,3],[10,11]] -&gt; Slot 2 = 2 / 3, Slot 3 = 10 / 11, primary unchanged
+│   ├── ✅ TT-DD40-P6 a template without extra slots has no extra pair
+│   └── ✅ TT-DD40-P7 wizard step 3 (StepSlot) shows the same extra pairs for a draft
+├── Scenario: save sends the slots  (multi-slot-editor.test.tsx)
+│   ├── ✅ TT-DD40-P8 zero extra slots: body {start_s, end_s, extra_slots: []}
+│   ├── ✅ TT-DD40-P9 one extra slot: extra_slots [[10, 11]]
+│   ├── ✅ TT-DD40-P10 two extra slots: extra_slots [[10, 11], [15, 16]]
+│   ├── ✅ TT-DD40-P11 prefilled extra slots are sent unchanged when nothing is edited
+│   ├── ✅ TT-DD40-P12 numbers, not strings, for start_s, end_s and every extra value
+│   ├── ❌ TT-DD40-N2 a removed extra slot is not sent (extra_slots [])
+│   └── ⚠️ TT-DD40-E4 typed &quot;10.0&quot; and &quot;10&quot; send the same number 10
+├── Scenario: client checks disable Save and explain why  (multi-slot-editor.test.tsx)
+│   ├── ❌ TT-DD40-N3 overlap with the primary slot: 5.0-6.0 vs 4.2-5.1 -&gt; &quot;Slots must not overlap or touch.&quot;
+│   ├── ❌ TT-DD40-N4 touching: extra start equals primary end -&gt; same text
+│   ├── ❌ TT-DD40-N5 gap of 0.1 s (&lt; 0.2 s) -&gt; same text
+│   ├── ❌ TT-DD40-N6 overlap found after sorting: extra 1-4.5 placed before 4.2-5.1 -&gt; same text
+│   ├── ❌ TT-DD40-N7 two extra slots overlap each other (10-12, 11-13) -&gt; same text
+│   ├── ❌ TT-DD40-N8 end equal to start, or before start -&gt; &quot;Each slot must end after it starts.&quot;
+│   ├── ❌ TT-DD40-N9 an empty extra start or end -&gt; &quot;Fill in every slot or remove it.&quot;
+│   ├── ❌ TT-DD40-N10 extra end above the video duration (21 s of 20 s) -&gt; &quot;Slot 2 ends after the video.&quot;
+│   ├── ❌ TT-DD40-N11 the same check names the right slot (&quot;Slot 3 ends after the video.&quot;)
+│   ├── ⚠️ TT-DD40-E5 gap of exactly 0.2 s is allowed (5.3 after 5.1)
+│   ├── ⚠️ TT-DD40-E6 a slot ending exactly at the video duration (20 s) is allowed
+│   ├── ⚠️ TT-DD40-E7 fixing the value removes the alert and enables Save again
+│   └── ⚠️ TT-DD40-E8 all slots valid and sorted: no alert, Save enabled
+├── Scenario: after saving, the slot must be confirmed again  (multi-slot-editor.test.tsx)
+│   ├── ✅ TT-DD40-P13 confirmed slot -&gt; save with an extra slot -&gt; &quot;Slot confirmed&quot; gone, &quot;Confirm slot&quot; back
+│   └── ✅ TT-DD40-P14 then Confirm slot posts once and shows &quot;Slot confirmed&quot; again
+└── Scenario: the template card lists all slots  (multi-slot-card.test.tsx)
+    ├── ✅ TT-DD40-P15 one slot reads exactly as today: &quot;Slot 4.2 s - 5.1 s&quot;
+    ├── ✅ TT-DD40-P16 two slots: &quot;Slots 2 s - 3 s, 10 s - 11 s&quot;
+    ├── ✅ TT-DD40-P17 three slots with decimals: &quot;Slots 1 s - 2.5 s, 3 s - 4 s, 10 s - 11.5 s&quot;
+    ├── ✅ TT-DD40-P18 an unconfirmed card shows the editor prefilled with the extra slots
+    ├── ❌ TT-DD40-N12 no primary slot shows &quot;No slot yet&quot; (extra slots alone are not a slot)
+    ├── ⚠️ TT-DD40-E9 a single slot never shows the plural &quot;Slots&quot;
+    └── ✅ TT-DD40-P25 one slot and several slots print the numbers in the same format (table of values)</code></pre>
+<p>Mapping of plan acceptance criteria to tests:</p>
+<ul><li>AC3 (PUT accepts extra_slots, empty list clears): TT-DD40-P8, P9, P10, N2.</li><li>AC4 (template JSON has extra_slots and slots): fixtures in data.ts; TT-DD40-P5, P15, P16, P17.</li><li>AC9 (Add button up to 5, Remove per extra slot, client checks, card lists all slots):</li></ul>
+<p>  TT-DD40-P1 to P4, E2, E3, N3 to N11, P15 to P18, P19 to P25.</p>
+<ul><li>AC10 (one-slot template unchanged): TT-DD40-P15, E1, E9, P6.</li><li>AC1 and AC2 (server rules) are covered by the backend tree, not here; the client mirrors them</li></ul>
+<p>  (5 slots, 0.2 s gap, no overlap).</p></div></body></html>

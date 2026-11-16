@@ -4,6 +4,9 @@ Usage (one process at a time: a lip sync peaks at 16-18 GB of the 24 GB; do not 
 
     PYTHONPATH=backend .venv-m2/bin/python backend/spikes/m2_mac/make_marketing_template.py
     ... make_marketing_template.py --slot-only   (re-times the name; no say, lip sync or compose)
+    ... make_marketing_template.py --two-names   (the name is said twice: a slot near the start
+                                                 and one near the end; writes *_2names files)
+    ... make_marketing_template.py --slot-only --two-names   (re-times the two-name template)
 
 Steps: macOS ``say`` (Lekha) makes the Hindi audio; the app's MuseTalk adapter lip syncs a stock
 face clip to the whole audio; FFmpeg composes a 1080x1300 template with a Pillow headline. The
@@ -21,6 +24,7 @@ import csv
 import difflib
 import itertools
 import json
+import math
 import re
 import string
 import subprocess
@@ -41,6 +45,9 @@ WORK = ROOT / "backend" / "spikes" / "m2_mac" / "work"
 MARKETING = WORK / "marketing_demo"
 TMP = MARKETING / "_tmp"
 TEMPLATE = MARKETING / "marketing_template.mp4"
+TEMPLATE_2NAMES = MARKETING / "marketing_template_2names.mp4"
+README_2NAMES = MARKETING / "README_2names.txt"
+TMP_2NAMES = TMP / "two_names"
 FACE_CLIP = WORK / "musetalk" / "data" / "video" / "sun.mp4"
 FONT = ROOT / "backend" / "vidgen" / "assets" / "fonts" / "NotoSansDevanagari-Bold.ttf"
 sys.path.insert(0, str(ROOT / "backend" / "scripts"))
@@ -57,6 +64,10 @@ SCRIPT_PARTS = (BEFORE_NAME, NAME_LEAD, NAME, AFTER_NAME)
 SCRIPT_TEXT = " ".join(SCRIPT_PARTS)
 FIRST_NAME, LAST_NAME = "सलमान", "खान"
 WORD_TO_REPLACE = FIRST_NAME  # the template form replaces the first word; the slot covers both
+# --two-names: the same name again at the end, in the same voice style as the rest of the script.
+SECOND_NAME_SENTENCE = "आख़िर में फिर कहूँगा, मैं सलमान खान, आप सब सिंगला टीवीएस पर ज़रूर आइए।"
+SCRIPT_TEXT_2NAMES = f"{SCRIPT_TEXT} {SECOND_NAME_SENTENCE}"
+TWO_NAME_MIN_GAP_S = 1.0  # "well above" the app's 0.2 s minimum gap between two slots
 
 VOICE = "Lekha"  # the Hindi voice from the earlier spikes
 SAMPLE_RATE = 16000
@@ -78,6 +89,7 @@ SILENCE_EVENT = re.compile(r"silence_(start|end): (-?\d+(?:\.\d+)?)")
 NAME_MATCH_RATIO = 0.6  # SequenceMatcher similarity for the misspelt first name (सल्मान)
 WIDEN_S = 0.05  # only used for the printed comparison with the raw Whisper span
 SLOT_DECIMALS = 1
+SLOT_SCALE = 10**SLOT_DECIMALS
 SHEET = (
     ("Rahul Verma", "MKT0001"),
     ("Priya Sharma", "MKT0002"),
@@ -98,6 +110,29 @@ class SlotChoice:
     whisper: tuple[float, float]
     run: tuple[float, float]
     widened: tuple[float, float]
+
+
+@dataclass(frozen=True)
+class NameSlot:
+    """One name slot of the two-name template: the rounded outward span and its sources."""
+
+    start: float
+    end: float
+    whisper: tuple[float, float]
+    run: tuple[float, float]
+
+
+@dataclass(frozen=True)
+class Variant:
+    """One template to build: its script, the video it is written to and its scratch folder."""
+
+    script: str
+    template: Path
+    scratch: Path
+
+
+ONE_NAME = Variant(SCRIPT_TEXT, TEMPLATE, TMP)
+TWO_NAMES = Variant(SCRIPT_TEXT_2NAMES, TEMPLATE_2NAMES, TMP_2NAMES)
 
 
 def _execute(*command: str) -> subprocess.CompletedProcess[str]:
@@ -163,10 +198,14 @@ def normal(text: str) -> str:
     return text.strip().strip(PUNCTUATION).casefold()
 
 
+def _name_similarity(heard: str, wanted: str) -> float:
+    """Similarity of a transcript word to a name, 0 to 1 (Whisper misspells Hindi names)."""
+    return difflib.SequenceMatcher(None, normal(heard), normal(wanted)).ratio()
+
+
 def _similar(heard: str, wanted: str) -> bool:
     """Whisper often misspells a Hindi name (सल्मान for सलमान), so compare by similarity."""
-    ratio = difflib.SequenceMatcher(None, normal(heard), normal(wanted)).ratio()
-    return ratio >= NAME_MATCH_RATIO
+    return _name_similarity(heard, wanted) >= NAME_MATCH_RATIO
 
 
 def name_span_from_words(words: Sequence[Word]) -> tuple[float, float] | None:
@@ -223,6 +262,80 @@ def choose_slot(words: Sequence[Word], runs: Sequence[tuple[float, float]]) -> S
         run=run,
         widened=widened,
     )
+
+
+def name_candidates(words: Sequence[Word]) -> list[tuple[float, tuple[float, float]]]:
+    """Every similar first name followed by the exact surname: (similarity, span), in time order."""
+    found: list[tuple[float, tuple[float, float]]] = []
+    for this, following in itertools.pairwise(words):
+        if normal(following.text) != normal(LAST_NAME):
+            continue
+        ratio = _name_similarity(this.text, FIRST_NAME)
+        if ratio >= NAME_MATCH_RATIO:
+            found.append((ratio, (this.start_s, following.end_s)))
+    return found
+
+
+def best_name_spans(words: Sequence[Word], count: int) -> list[tuple[float, float]]:
+    """The ``count`` best-matching name spans, in time order; fails if the name is heard less."""
+    best = sorted(name_candidates(words), key=lambda candidate: candidate[0], reverse=True)[:count]
+    if len(best) < count:
+        raise SystemExit(
+            f"the name is heard {len(best)} time(s), need {count}; mark the slots by hand"
+        )
+    return sorted(span for _, span in best)
+
+
+def _floor_slot(value: float) -> float:
+    """Round down to one decimal; the 6-digit rounding first removes float noise (50.9999999)."""
+    return math.floor(round(value * SLOT_SCALE, 6)) / SLOT_SCALE
+
+
+def _ceil_slot(value: float) -> float:
+    """Round up to one decimal; the 6-digit rounding first removes float noise (50.0000001)."""
+    return math.ceil(round(value * SLOT_SCALE, 6)) / SLOT_SCALE
+
+
+def slot_for_span(
+    span: tuple[float, float], runs: Sequence[tuple[float, float]], length_s: float
+) -> NameSlot:
+    """The silence-bounded run that holds a name span, rounded outwards to one decimal.
+
+    Start rounds down and end rounds up, so the slot never cuts the speech. The end is capped at
+    the video length (a slot may not run past the video).
+    """
+    middle = (span[0] + span[1]) / 2
+    run = next(((s, e) for s, e in runs if s <= middle <= e), None)
+    if run is None:
+        raise SystemExit("no silence-bounded speech run holds a name; mark the slots by hand")
+    end = min(_ceil_slot(run[1]), _floor_slot(length_s))
+    return NameSlot(start=_floor_slot(run[0]), end=end, whisper=span, run=run)
+
+
+def choose_two_slots(
+    words: Sequence[Word], runs: Sequence[tuple[float, float]], length_s: float
+) -> tuple[NameSlot, NameSlot]:
+    """The two name slots of the two-name template, in time order."""
+    first_span, second_span = best_name_spans(words, 2)
+    if first_span[1] >= second_span[0]:
+        raise SystemExit("the two name spans overlap in the transcript; mark the slots by hand")
+    return (
+        slot_for_span(first_span, runs, length_s),
+        slot_for_span(second_span, runs, length_s),
+    )
+
+
+def check_two_slots(first: NameSlot, second: NameSlot, length_s: float) -> None:
+    """Slot 1 must lie in the first half, slot 2 in the last third, and the gap must be clear."""
+    if not (0 <= first.start < first.end <= length_s / 2):
+        raise SystemExit(f"name slot 1 {first.start:.1f}-{first.end:.1f}s is not in the first half")
+    if not (2 * length_s / 3 <= second.start < second.end <= length_s):
+        raise SystemExit(
+            f"name slot 2 {second.start:.1f}-{second.end:.1f}s is not in the last third"
+        )
+    gap = second.start - first.end
+    if gap < TWO_NAME_MIN_GAP_S:
+        raise SystemExit(f"gap {gap:.1f}s between the name slots is below {TWO_NAME_MIN_GAP_S}s")
 
 
 def draw_background(out: Path) -> None:
@@ -324,6 +437,37 @@ def write_readme(out: Path, length_s: float, slot: SlotChoice) -> None:
     out.write_text(text, encoding="utf-8")
 
 
+def write_readme_2names(out: Path, length_s: float, first: NameSlot, second: NameSlot) -> None:
+    """Plain-text notes for the Admin on the two-name template: both slots and how to enter them."""
+    method = (
+        f"ffmpeg silencedetect speech runs (noise {SILENCE_NOISE_DB} dB, {SILENCE_MIN_S} s) that "
+        "hold the two Whisper spans of the misspelt name. Each run is rounded outwards to one "
+        "decimal (start down, end up; the end is capped at the video length). "
+        f"Slot 1: Whisper {first.whisper[0]:.2f}-{first.whisper[1]:.2f} s in run "
+        f"{first.run[0]:.3f}-{first.run[1]:.3f} s. "
+        f"Slot 2: Whisper {second.whisper[0]:.2f}-{second.whisper[1]:.2f} s in run "
+        f"{second.run[0]:.3f}-{second.run[1]:.3f} s. "
+        f"Gap between the slots: {second.start - first.end:.1f} s."
+    )
+    text = (
+        "Synthetic marketing template, name spoken twice (DD-40). Spike output, not campaign "
+        "data.\n\n"
+        f"Script text (Hindi, macOS Lekha voice):\n{SCRIPT_TEXT_2NAMES}\n\n"
+        f"Video: marketing_template_2names.mp4, {length_s:.1f} s, 1080x1300, 60 fps, H.264 + AAC.\n"
+        "Headline (top banner, whole video): सिंगला टीवीएस / बजाज बाइक्स\n"
+        f"Face clip: {FACE_CLIP.name} (front-facing stock clip from the MuseTalk test set), "
+        "lip synced to the whole script.\n\n"
+        "Enter in the template form:\n"
+        f"  Word to replace: {WORD_TO_REPLACE}\n"
+        f"  Slot 1 start/end (s): {first.start:.1f} / {first.end:.1f}  (main slot)\n"
+        f"  Slot 2 start/end (s): {second.start:.1f} / {second.end:.1f}  "
+        "(enter with 'Add another name slot')\n\n"
+        f"Slot method: {method}\n"
+        "Sheet: names_marketing.csv (6 synthetic rows, MKT0001 to MKT0006), unchanged.\n"
+    )
+    out.write_text(text, encoding="utf-8")
+
+
 def _report_transcript(words: Sequence[Word]) -> None:
     """Print every word with its times, so the Admin can check the Hindi by eye."""
     for word in words:
@@ -336,28 +480,39 @@ def _check_middle_third(start: float, end: float, length: float) -> None:
         raise SystemExit(f"name slot {start:.2f}-{end:.2f}s is outside the middle third")
 
 
-def build_template(adapters: Any, timer: smoke.Timer) -> float:
+def build_template(adapters: Any, timer: smoke.Timer, variant: Variant) -> float:
     """Say, lip sync and compose the template; returns the audio length in seconds."""
     started = time.perf_counter()
-    speech = TMP / "speech.wav"
-    length = _say(SCRIPT_TEXT, speech)
+    speech = variant.scratch / "speech.wav"
+    length = _say(variant.script, speech)
     timer.stage("say", started)
     print(f"speech {length:.2f}s (Lekha, {VOICE})")
 
-    face = TMP / "face_trimmed.mp4"
+    face = variant.scratch / "face_trimmed.mp4"
     trim_face(length, face)
-    synced = TMP / "face_synced.mp4"
+    synced = variant.scratch / "face_synced.mp4"
     started = time.perf_counter()
     adapters.lipsync.sync(face, speech, synced)  # the adapter output carries no audio
     adapters.lipsync.release()
     timer.stage("lipsync", started)
 
-    background = TMP / "background.png"
+    background = variant.scratch / "background.png"
     draw_background(background)
-    TEMPLATE.unlink(missing_ok=True)
-    compose(background, synced, speech, length, TEMPLATE)
+    variant.template.unlink(missing_ok=True)
+    compose(background, synced, speech, length, variant.template)
     timer.stage("compose", started)
     return length
+
+
+def _print_two_slots(first: NameSlot, second: NameSlot) -> None:
+    """Print both name slots with their Whisper spans and silencedetect runs."""
+    for number, slot in enumerate((first, second), start=1):
+        print(
+            f"name {number}: whisper {slot.whisper[0]:.2f}-{slot.whisper[1]:.2f}s; "
+            f"silencedetect run {slot.run[0]:.3f}-{slot.run[1]:.3f}s; "
+            f"CHOSEN slot {slot.start:.1f}-{slot.end:.1f}s"
+        )
+    print(f"gap between the slots {second.start - first.end:.1f}s")
 
 
 def main() -> int:
@@ -366,7 +521,11 @@ def main() -> int:
     parser.add_argument(
         "--slot-only", action="store_true", help="re-time the name in the existing template"
     )
+    parser.add_argument(
+        "--two-names", action="store_true", help="say the name twice: a second slot near the end"
+    )
     args = parser.parse_args()
+    variant = TWO_NAMES if args.two_names else ONE_NAME
     smoke._prepare_environment()
     from vidgen.infrastructure.local_ai.factory import build_ai_adapters
     from vidgen.settings import Settings
@@ -374,19 +533,19 @@ def main() -> int:
     settings = Settings()  # type: ignore[call-arg]  # secrets come from the placeholder env
     adapters: Any = build_ai_adapters(settings)
     MARKETING.mkdir(parents=True, exist_ok=True)
-    TMP.mkdir(parents=True, exist_ok=True)
+    variant.scratch.mkdir(parents=True, exist_ok=True)
     timer = smoke.Timer()
 
     if args.slot_only:
-        if not TEMPLATE.is_file():
+        if not variant.template.is_file():
             raise SystemExit("no template to re-time; run without --slot-only first")
-        length = _duration(TEMPLATE)
+        length = _duration(variant.template)
     else:
-        length = build_template(adapters, timer)
+        length = build_template(adapters, timer, variant)
 
-    final_audio = TMP / "template_16k.wav"
+    final_audio = variant.scratch / "template_16k.wav"
     _run(
-        "ffmpeg", "-v", "error", "-y", "-i", str(TEMPLATE), "-vn", "-ac", "1",
+        "ffmpeg", "-v", "error", "-y", "-i", str(variant.template), "-vn", "-ac", "1",
         "-ar", str(SAMPLE_RATE), str(final_audio),
     )  # fmt: skip
     started = time.perf_counter()
@@ -398,21 +557,33 @@ def main() -> int:
 
     runs = silence_runs(final_audio, length)
     print("silencedetect speech runs: " + ", ".join(f"{s:.3f}-{e:.3f}" for s, e in runs))
-    slot = choose_slot(words, runs)
-    print(
-        f"whisper name span {slot.whisper[0]:.2f}-{slot.whisper[1]:.2f}s; "
-        f"silencedetect run {slot.run[0]:.3f}-{slot.run[1]:.3f}s; "
-        f"whisper widened 0.05s {slot.widened[0]}-{slot.widened[1]}s; "
-        f"CHOSEN slot {slot.start:.1f}-{slot.end:.1f}s"
-    )
-    _check_middle_third(slot.start, slot.end, length)
+    if args.two_names:
+        first, second = choose_two_slots(words, runs, length)
+        _print_two_slots(first, second)
+        check_two_slots(first, second, length)
+        extract_frame(
+            variant.template, (first.start + first.end) / 2, MARKETING / "frame_name1.png"
+        )
+        extract_frame(
+            variant.template, (second.start + second.end) / 2, MARKETING / "frame_name2.png"
+        )
+        write_readme_2names(README_2NAMES, length, first, second)
+    else:
+        slot = choose_slot(words, runs)
+        print(
+            f"whisper name span {slot.whisper[0]:.2f}-{slot.whisper[1]:.2f}s; "
+            f"silencedetect run {slot.run[0]:.3f}-{slot.run[1]:.3f}s; "
+            f"whisper widened 0.05s {slot.widened[0]}-{slot.widened[1]}s; "
+            f"CHOSEN slot {slot.start:.1f}-{slot.end:.1f}s"
+        )
+        _check_middle_third(slot.start, slot.end, length)
 
-    extract_frame(TEMPLATE, (slot.start + slot.end) / 2, MARKETING / "frame_name.png")
-    extract_frame(TEMPLATE, 0.5, MARKETING / "frame_start.png")
-    write_sheet(MARKETING / "names_marketing.csv")
-    write_readme(MARKETING / "README.txt", length, slot)
+        extract_frame(TEMPLATE, (slot.start + slot.end) / 2, MARKETING / "frame_name.png")
+        extract_frame(TEMPLATE, 0.5, MARKETING / "frame_start.png")
+        write_sheet(MARKETING / "names_marketing.csv")
+        write_readme(MARKETING / "README.txt", length, slot)
 
-    info = describe(TEMPLATE)
+    info = describe(variant.template)
     print(f"template: {info}")
     if (info["width"], info["height"]) != (CANVAS_W, CANVAS_H) or info["audio"] == "none":
         raise SystemExit("the template does not match the required format")

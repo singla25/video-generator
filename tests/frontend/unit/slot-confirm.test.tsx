@@ -73,7 +73,7 @@ describe('slot confirmation on the Templates page', () => {
     await userEvent.type(within(c).getByRole('spinbutton', { name: 'Slot start (s)' }), '1');
     await userEvent.type(within(c).getByRole('spinbutton', { name: 'Slot end (s)' }), '2');
     await userEvent.click(within(c).getByRole('button', { name: 'Save slot' }));
-    await waitFor(() => expect(seen.put).toEqual({ start_s: 1, end_s: 2 }));
+    await waitFor(() => expect(seen.put).toEqual({ start_s: 1, end_s: 2, extra_slots: [] }));
     await userEvent.click(await within(c).findByRole('button', { name: 'Confirm slot' }));
     await waitFor(() => expect(seen.confirms).toBe(1));
     expect(seen.confirmCsrf).toBe(CSRF);

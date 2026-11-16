@@ -23,6 +23,7 @@ class FailureCode(StrEnum):
     INTERNAL_ERROR = "INTERNAL_ERROR"
     OUTPUT_CHECK_FAILED = "OUTPUT_CHECK_FAILED"
     SLOT_NOT_FOUND = "SLOT_NOT_FOUND"
+    SLOTS_INVALID = "SLOTS_INVALID"
     STT_FAILED = "STT_FAILED"
     UNSUPPORTED_VIDEO = "UNSUPPORTED_VIDEO"
     CORRUPT_VIDEO = "CORRUPT_VIDEO"
@@ -57,6 +58,7 @@ _MESSAGES: dict[FailureCode, str] = {
     FailureCode.INTERNAL_ERROR: "Something went wrong while making this video.",
     FailureCode.OUTPUT_CHECK_FAILED: "The finished video did not match the template format.",
     FailureCode.SLOT_NOT_FOUND: "The part of the video to replace could not be found.",
+    FailureCode.SLOTS_INVALID: "The name slots overlap or are too close.",
     FailureCode.STT_FAILED: "The speech in the video could not be read.",
     FailureCode.UNSUPPORTED_VIDEO: "This video type is not supported. Use MP4 or MOV.",
     FailureCode.CORRUPT_VIDEO: "This video file looks damaged.",

@@ -95,6 +95,8 @@ class Template(Base):
     consent_confirmed: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
     )
+    # Extra name slots as a JSON list of [start_s, end_s] pairs; NULL means none (DD-40).
+    extra_slots: Mapped[list[list[float]] | None] = mapped_column(JsonDict)
     created_at: Mapped[datetime] = _created_at()
 
 

@@ -1,27 +1,45 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 import { ApiError, apiFetch, apiUrl } from '../../api/client';
 import type { Template } from '../../api/types';
+import { ExtraSlotRow } from './ExtraSlotRow';
+import { SlotField } from './SlotField';
+import {
+  MAX_SLOTS,
+  type Pair,
+  type Span,
+  extraSlotIssues,
+  matchesSaved,
+  parseField,
+  slotProblem,
+  toPairs,
+} from './slotChecks';
 
-const FIELD = 'w-full rounded-tile border px-3 py-2';
-
-function parse(text: string): number {
-  return text.trim() === '' ? Number.NaN : Number(text);
+/** An extra slot as the user sees it; `id` keeps the rows apart when one in the middle is removed. */
+interface ExtraRow {
+  id: number;
+  start: string;
+  end: string;
 }
 
-/** Returns a plain-language problem with the slot, or null when it is valid. */
-export function slotProblem(start: number, end: number, duration: number): string | null {
-  if (Number.isNaN(start) || Number.isNaN(end)) return 'Enter both start and end.';
-  if (end <= start) return 'End must be after start.';
-  if (start < 0 || end > duration) return `The slot must be inside the video (${duration} s).`;
-  return null;
+/** Most extra slots: the primary slot plus these makes MAX_SLOTS. */
+const MAX_EXTRA = MAX_SLOTS - 1;
+const BUTTON =
+  'rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint disabled:opacity-50';
+
+function prefill(template: Template): ExtraRow[] {
+  return template.extra_slots.map(([start, end], i) => ({
+    id: i,
+    start: String(start),
+    end: String(end),
+  }));
 }
 
 /** Bar for the whole video with the slot marked on it (nothing is marked until both ends are set). */
 function Timeline({ start, end, duration }: { start: string; end: string; duration: number }) {
-  const s = parse(start);
-  const e = parse(end);
+  const s = parseField(start);
+  const e = parseField(end);
   const marked = !Number.isNaN(s) && !Number.isNaN(e) && duration > 0;
   const left = marked ? Math.min(100, Math.max(0, (s / duration) * 100)) : 0;
   const width = marked ? Math.min(100 - left, Math.max(0, ((e - s) / duration) * 100)) : 0;
@@ -40,7 +58,7 @@ function Timeline({ start, end, duration }: { start: string; end: string; durati
   );
 }
 
-/** Start/end fields for the name slot with a small timeline; saves with PUT. */
+/** Name slot fields (primary plus up to four extra slots) with a timeline; saves with PUT. */
 export function SlotEditor({
   template,
   showVideo = true,
@@ -51,12 +69,16 @@ export function SlotEditor({
   const client = useQueryClient();
   const [start, setStart] = useState(template.slot ? String(template.slot.start_s) : '');
   const [end, setEnd] = useState(template.slot ? String(template.slot.end_s) : '');
+  const [extras, setExtras] = useState<ExtraRow[]>(() => prefill(template));
+  const [freshId, setFreshId] = useState<number | null>(null);
+  const nextId = useRef(template.extra_slots.length);
+  const addButton = useRef<HTMLButtonElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   const ids = useId();
 
   const save = useMutation({
-    mutationFn: (body: { start_s: number; end_s: number }) =>
+    mutationFn: (body: { start_s: number; end_s: number; extra_slots: Pair[] }) =>
       apiFetch(`/templates/${template.id}/slot`, { method: 'PUT', body: JSON.stringify(body) }),
     onSuccess: () => client.invalidateQueries(),
   });
@@ -67,14 +89,42 @@ export function SlotEditor({
   });
   const error = save.isError ? save.error : confirm.isError ? confirm.error : null;
   const saved = template.slot;
-  const unsavedEdit = !saved || parse(start) !== saved.start_s || parse(end) !== saved.end_s;
+
+  const primary: Span = { start: parseField(start), end: parseField(end) };
+  const spans: Span[] = extras.map((row) => ({
+    start: parseField(row.start),
+    end: parseField(row.end),
+  }));
+  const issues = extraSlotIssues(primary, spans, template.duration_s);
+  const unsavedEdit =
+    !saved ||
+    primary.start !== saved.start_s ||
+    primary.end !== saved.end_s ||
+    !matchesSaved(spans, template.extra_slots);
 
   function submit() {
-    const s = parse(start);
-    const e = parse(end);
-    const issue = slotProblem(s, e, template.duration_s);
+    const issue = slotProblem(primary.start, primary.end, template.duration_s);
     setProblem(issue);
-    if (!issue) save.mutate({ start_s: s, end_s: e });
+    if (!issue && issues.length === 0) {
+      save.mutate({ start_s: primary.start, end_s: primary.end, extra_slots: toPairs(spans) });
+    }
+  }
+
+  function addSlot() {
+    const id = nextId.current;
+    nextId.current += 1;
+    setExtras((rows) => [...rows, { id, start: '', end: '' }]);
+    setFreshId(id);
+  }
+
+  function editSlot(id: number, field: 'start' | 'end', value: string) {
+    setExtras((rows) => rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
+  }
+
+  function removeSlot(id: number) {
+    setExtras((rows) => rows.filter((row) => row.id !== id));
+    // The removed row had the focus; move it to the add button so keyboard users keep their place.
+    addButton.current?.focus();
   }
 
   return (
@@ -96,35 +146,34 @@ export function SlotEditor({
       )}
       <Timeline start={start} end={end} duration={template.duration_s} />
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor={`${ids}-start`} className="mb-1 block text-sm font-semibold">
-            Slot start (s)
-          </label>
-          <input
-            id={`${ids}-start`}
-            type="number"
-            step="0.1"
-            min="0"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-            className={FIELD}
-          />
-        </div>
-        <div>
-          <label htmlFor={`${ids}-end`} className="mb-1 block text-sm font-semibold">
-            Slot end (s)
-          </label>
-          <input
-            id={`${ids}-end`}
-            type="number"
-            step="0.1"
-            min="0"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-            className={FIELD}
-          />
-        </div>
+        <SlotField id={`${ids}-start`} label="Slot start (s)" value={start} onChange={setStart} />
+        <SlotField id={`${ids}-end`} label="Slot end (s)" value={end} onChange={setEnd} />
       </div>
+      {extras.map((row, i) => (
+        <ExtraSlotRow
+          key={row.id}
+          index={i}
+          start={row.start}
+          end={row.end}
+          autoFocus={row.id === freshId}
+          onChange={(field, value) => editSlot(row.id, field, value)}
+          onRemove={() => removeSlot(row.id)}
+        />
+      ))}
+      <button
+        ref={addButton}
+        type="button"
+        onClick={addSlot}
+        disabled={extras.length >= MAX_EXTRA}
+        className={BUTTON}
+      >
+        Add another name slot
+      </button>
+      {issues.map((message) => (
+        <p key={message} role="alert" className="text-sm text-status-failed">
+          {message}
+        </p>
+      ))}
       {problem && <p className="text-sm text-status-failed">{problem}</p>}
       {error && (
         <p role="alert" className="text-sm text-status-failed">
@@ -135,7 +184,7 @@ export function SlotEditor({
         <button
           type="button"
           onClick={submit}
-          disabled={save.isPending}
+          disabled={save.isPending || issues.length > 0}
           className="rounded-full border px-4 py-1.5 text-sm font-semibold hover:bg-mint disabled:opacity-50"
         >
           Save slot

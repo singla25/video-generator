@@ -36,7 +36,7 @@ Upload a video and a sheet of names. VidGen Studio replaces the spoken name, re-
 
 ## Screenshots
 
-Captured on 2026-11-11 from a running instance in local AI mode on a MacBook Pro (M4 Pro, 24 GB), using a separate demo database, a synthetic demo template and a sheet of made-up names. No real personal data is shown. The build shown includes the several-name-slots work (DD-40), which is not on `main` yet, so the template card shows an extra "Add another name slot" button.
+Captured on 2026-11-11 from a running instance in local AI mode on a MacBook Pro (M4 Pro, 24 GB), using a separate demo database, a synthetic demo template and a sheet of made-up names. No real personal data is shown. The template card's "Add another name slot" button comes from the several-name-slots work (DD-40, merged in PR #17).
 
 **Overview**: KPI cards, videos per week, the current batch and its rows.
 

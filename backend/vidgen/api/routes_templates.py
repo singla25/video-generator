@@ -100,9 +100,11 @@ def analyse(template_id: UUID, request: Request, force: bool = False) -> dict[st
 
 @router.put("/{template_id}/slot")
 def set_slot(template_id: UUID, body: SlotRequest, request: Request) -> dict[str, Any]:
-    """Set the slot manually; it must be confirmed again."""
+    """Set the slot and any extra name slots manually; they must be confirmed again."""
     return template_json(
-        container(request).templates.set_slot(template_id, body.start_s, body.end_s)
+        container(request).templates.set_slot(
+            template_id, body.start_s, body.end_s, tuple(body.extra_slots)
+        )
     )
 
 

@@ -20,7 +20,8 @@ from uuid import UUID
 from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.domain.naming import output_file_name
 from vidgen.domain.outcomes import RowOutcomeKind
-from vidgen.domain.timing import plan_timing
+from vidgen.domain.slot_match import Slot
+from vidgen.domain.timing import TimingPlan, plan_timing
 from vidgen.domain.validation import effective_spoken_name
 from vidgen.logging import log_event
 from vidgen.ports import (
@@ -58,6 +59,7 @@ from vidgen.services.render_support import (
     is_silent,
     logger,
 )
+from vidgen.services.slot_passes import encode_slots, lip_sync_slots
 from vidgen.services.spoken_text import spoken_text
 
 __all__ = ["RenderConfig", "RowOutcome", "RowOutcomeKind", "RowRenderer"]
@@ -208,8 +210,8 @@ class RowRenderer:
     def _produce_video(self, run: Run, folder: Path) -> Path:
         """tts -> lipsync -> encode -> check. Returns the path of the checked output."""
         job = run.job
-        slot = job.template.slot
-        assert slot is not None  # noqa: S101 - guaranteed by _ensure_allowed
+        slots = job.template.slots  # sorted by start; the primary slot is one of them
+        assert slots  # noqa: S101 - guaranteed by _ensure_allowed
         template = folder / "template.mp4"
         with run.stage("fetch"), self._storage.open(job.template.video_key) as source:
             template.write_bytes(source.read())
@@ -219,16 +221,9 @@ class RowRenderer:
                 effective_spoken_name(job.name, job.spoken_name), self._config.spoken_suffix
             )
             seconds = self._synthesize(spoken, template, speech)
-        plan = plan_timing(
-            round(slot[1] - slot[0], SECONDS_DIGITS),
-            self._config.pause_s,
-            seconds,
-            self._config.timing,
-            gap_s=self._config.name_gap_s,
-        )
-        synced = folder / "lipsync.mp4"
+        plans = [self._slot_plan(slot, seconds) for slot in slots]
         with run.stage("lipsync"):
-            self._lipsync.sync(template, speech, synced, start_s=slot[0])
+            synced = lip_sync_slots(self._lipsync, template, speech, slots, folder)
         label = folder / "label.png"
         if self._config.label_style == "bubble":
             self._labels.render_label(job.template.width, job.template.height, label)
@@ -242,11 +237,23 @@ class RowRenderer:
             "batch_id": str(job.batch_id),
         }
         with run.stage("encode"):
-            self._encoder.render(synced, speech, slot, plan, label, metadata, output)
+            encode_slots(
+                self._encoder, synced, speech, slots, plans, label, metadata, folder, output
+            )
         with run.stage("check"):
             if self._quality.check(template, output):
                 raise DomainError(FailureCode.OUTPUT_CHECK_FAILED)
         return output
+
+    def _slot_plan(self, slot: Slot, seconds: float) -> TimingPlan:
+        """The timing plan of one name slot: its own length, the shared voice length."""
+        return plan_timing(
+            round(slot[1] - slot[0], SECONDS_DIGITS),
+            self._config.pause_s,
+            seconds,
+            self._config.timing,
+            gap_s=self._config.name_gap_s,
+        )
 
     def _synthesize(self, text: str, sample: Path, out: Path) -> float:
         """Create the new speech; an error, zero length or silence is TTS_FAILED (B2)."""

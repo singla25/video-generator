@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 import unicodedata
 from collections.abc import Iterable, Sequence
@@ -9,6 +10,13 @@ from collections.abc import Iterable, Sequence
 from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.domain.timing import EPSILON_S
 from vidgen.domain.values import Word
+
+# A template may hold several name slots (DD-40); the sheet's name is spoken in each one.
+MAX_SLOTS = 5
+# Neighbouring slots must leave at least this much video between them (seconds).
+MIN_SLOT_GAP_S = 0.2
+
+Slot = tuple[float, float]
 
 
 class InvalidSlotError(DomainError):
@@ -48,6 +56,35 @@ def validate_slot(start_s: float, end_s: float, duration_s: float) -> None:
     finite = math.isfinite(start_s) and math.isfinite(end_s)
     if not (finite and 0 <= start_s < end_s <= duration_s):
         raise InvalidSlotError
+
+
+def validate_slots(slots: Sequence[Slot], duration_s: float) -> None:
+    """Raise if the slots are not valid together: each alone, at most MAX_SLOTS, well apart.
+
+    Each slot first gets validate_slot's own error. Then the set is checked in start order:
+    at most MAX_SLOTS slots, and every gap between neighbours at least MIN_SLOT_GAP_S.
+    Overlapping or touching slots have a gap below that minimum, so they are refused too.
+    """
+    ordered = sorted(slots, key=_start_of)
+    for start_s, end_s in ordered:
+        validate_slot(start_s, end_s, duration_s)
+    if len(ordered) > MAX_SLOTS:
+        raise DomainError(FailureCode.SLOTS_INVALID)
+    for (_, previous_end), (next_start, _) in itertools.pairwise(ordered):
+        if next_start - previous_end < MIN_SLOT_GAP_S:
+            raise DomainError(FailureCode.SLOTS_INVALID)
+
+
+def all_slots(primary: Slot | None, extra: Sequence[Slot]) -> tuple[Slot, ...]:
+    """The primary slot and the extra slots as one tuple sorted by start; () without a primary."""
+    if primary is None:
+        return ()
+    return tuple(sorted((primary, *extra), key=_start_of))
+
+
+def _start_of(slot: Slot) -> float:
+    """Sort key: the start of a slot."""
+    return slot[0]
 
 
 def ensure_within_slot(

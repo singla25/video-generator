@@ -120,7 +120,7 @@ def _working_dir(folder: Path) -> Iterator[None]:
 
 
 class _MuseTalkModel:
-    """``run(video, audio, out, start_s)`` around the vendored MuseTalk v1.5, loaded once.
+    """``run(video, audio, out, start_s, key_from)`` around the vendored MuseTalk v1.5, loaded once.
 
     Peak memory is 16-18 GB (float32, MPS), so callers hold a ``SingleRenderGuard``.
     """
@@ -171,10 +171,22 @@ class _MuseTalkModel:
         )
         self._timesteps = self._torch.tensor([0], device=self._device)
 
-    def run(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
-        """Lip-sync the part of ``video`` from ``start_s`` to ``audio``; the rest is kept."""
+    def run(
+        self,
+        video: Path,
+        audio: Path,
+        out: Path,
+        start_s: float = 0.0,
+        key_from: Path | None = None,
+    ) -> None:
+        """Lip-sync the part of ``video`` from ``start_s`` to ``audio``; the rest is kept.
+
+        The face boxes are cached under the fingerprint of ``key_from`` (DD-40: later passes of
+        a row reuse the template's boxes); ``None`` means ``video``.
+        """
         video, audio, out = video.resolve(), audio.resolve(), out.resolve()
-        cache_key = support.landmark_key(support.video_fingerprint(video), start_s)
+        source = video if key_from is None else key_from.resolve()
+        cache_key = support.landmark_key(support.video_fingerprint(source), start_s)
         try:
             with TemporaryDirectory(prefix="musetalk-") as folder, _working_dir(self._repo):
                 work = Path(folder)

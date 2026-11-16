@@ -5,13 +5,17 @@ import { useSystemStatus } from '../../api/queries';
 import type { Template } from '../../api/types';
 import { hasDevanagari } from '../../format';
 import { SlotEditor } from '../wizard/SlotEditor';
+import { slotStateKey } from '../wizard/slotChecks';
 import { ConsentForm } from './ConsentForm';
 import { DeleteTemplateDialog } from './DeleteTemplateDialog';
 
+/** "Slot 4.2 s - 5.1 s" for one slot, "Slots 2 s - 3 s, 10 s - 11 s" for several (DD-40). */
 function slotText(template: Template): string {
-  return template.slot
-    ? `Slot ${template.slot.start_s} s - ${template.slot.end_s} s`
-    : 'No slot yet';
+  if (!template.slot) return 'No slot yet';
+  const pairs: [number, number][] =
+    template.slots.length > 0 ? template.slots : [[template.slot.start_s, template.slot.end_s]];
+  const parts = pairs.map(([start, end]) => `${start} s - ${end} s`);
+  return pairs.length === 1 ? `Slot ${parts[0]}` : `Slots ${parts.join(', ')}`;
 }
 
 /** One template: placeholder thumbnail, name, slot, consent badge and usable state. */
@@ -61,11 +65,7 @@ export function TemplateCard({ template }: { template: Template }) {
       )}
       {template.consent_confirmed && !template.slot_confirmed && (
         <div className="mt-4">
-          <SlotEditor
-            key={`${template.slot?.start_s}-${template.slot?.end_s}`}
-            template={template}
-            showVideo={false}
-          />
+          <SlotEditor key={slotStateKey(template)} template={template} showVideo={false} />
         </div>
       )}
       {asking && <ConsentForm templateId={template.id} onDone={() => setAsking(false)} />}

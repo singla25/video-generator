@@ -3,14 +3,14 @@
 Usage (one process only, a render peaks at 16-18 GB; do not start the app meanwhile):
 
     PYTHONPATH=backend .venv-m2/bin/python backend/scripts/local_ai_smoke.py [--rows 2]
-        [--template PATH] [--slot START END] [--sheet PATH.csv] [--out-name NAME]
+        [--template PATH] [--slot START END]... [--sheet PATH.csv] [--out-name NAME]
 
-Pipeline per sheet row: transcribe the template once -> find the name slot (or take --slot) ->
-pre-fill the spoken name (Qwen) -> clone the voice (Chatterbox) -> lip sync (MuseTalk) -> splice,
-add the AI label (FFmpeg encoder). Models run one stage at a time and are released in between
-so they fit in RAM. Only row indexes are printed, never names or ids. Outputs go to the
-git-ignored work folder (or its sub-folder NAME). Pilot weights, this Mac only (DD-31): nothing
-leaves the machine.
+Pipeline per sheet row: transcribe the template once -> find the name slots (or take each --slot,
+repeatable, sorted by start) -> pre-fill the spoken name (Qwen) -> clone the voice (Chatterbox) ->
+lip sync (MuseTalk, one pass per slot) -> splice, add the AI label (FFmpeg encoder, one pass per
+slot). Models run one stage at a time and are released in between so they fit in RAM. Only row
+indexes are printed, never names or ids. Outputs go to the git-ignored work folder (or its
+sub-folder NAME). Pilot weights, this Mac only (DD-31): nothing leaves the machine.
 """
 
 from __future__ import annotations
@@ -25,7 +25,11 @@ import sys
 import time
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # the vidgen imports run only after _prepare_environment()
+    from vidgen.domain.timing import TimingPlan, TimingRules
+    from vidgen.domain.values import Word
 
 ROOT = Path(__file__).resolve().parents[2]
 WORK = ROOT / "backend" / "spikes" / "m2_mac" / "work"
@@ -148,17 +152,24 @@ class Timer:
         )
 
 
-def _template_slot(  # type: ignore[no-untyped-def]
-    adapters,
+def _pause_after(words: list[Word], end_s: float) -> float:
+    """Silence between a name ending at ``end_s`` and the next spoken word; 0 at the end."""
+    following = [w.start_s for w in words if w.start_s >= end_s]
+    pause = (following[0] - end_s) if following else DEFAULT_PAUSE_S
+    return max(pause, 0.0)
+
+
+def _template_slots(
+    adapters: Any,
     template: Path,
     tmp: Path,
     timer: Timer,
-    manual: tuple[float, float] | None,
-):
-    """Transcribe the template and return (slot, pause_s, voice_sample).
+    manual: list[tuple[float, float]] | None,
+) -> tuple[list[tuple[float, float]], list[float], Path]:
+    """Transcribe the template and return (slots, pauses_s, voice_sample), sorted by start.
 
-    The transcript always gives the pause after the name; the slot itself is the manual one
-    when ``manual`` is given, otherwise the first word that matches the opening name.
+    The slots are the manual ones when ``manual`` is given, otherwise the first word that
+    matches the opening name. Each pause is the silence after its own slot in the transcript.
     """
     from vidgen.infrastructure.local_ai.name_slot import detect_name_slot
 
@@ -186,13 +197,33 @@ def _template_slot(  # type: ignore[no-untyped-def]
     timer.stage("stt", started)
     if not words:
         raise SystemExit("no speech found in the template")
-    slot = detect_name_slot(words, words[0].text, manual=manual)  # default: opening name
-    following = [w.start_s for w in words if w.start_s >= slot.end_s]
-    pause = (following[0] - slot.end_s) if following else DEFAULT_PAUSE_S
-    print(
-        f"slot {slot.start_s:.2f}-{slot.end_s:.2f}s, ambiguous={slot.ambiguous}, pause {pause:.2f}s"
-    )
-    return slot, max(pause, 0.0), sample
+    if manual:
+        found = [detect_name_slot(words, words[0].text, manual=slot) for slot in manual]
+    else:
+        found = [detect_name_slot(words, words[0].text)]  # default: the opening name
+    pauses = [_pause_after(words, slot.end_s) for slot in found]
+    for slot, pause in zip(found, pauses, strict=True):
+        print(
+            f"slot {slot.start_s:.2f}-{slot.end_s:.2f}s, ambiguous={slot.ambiguous}, "
+            f"pause {pause:.2f}s"
+        )
+    return [(slot.start_s, slot.end_s) for slot in found], pauses, sample
+
+
+def _row_plans(
+    slots: list[tuple[float, float]],
+    pauses: list[float],
+    seconds: float,
+    rules: TimingRules,
+    gap_s: float,
+) -> list[TimingPlan]:
+    """One timing plan per slot for a name that lasts ``seconds`` (same rules as the product)."""
+    from vidgen.domain.timing import plan_timing
+
+    return [
+        plan_timing(end - start, pause, seconds, rules, gap_s=gap_s)
+        for (start, end), pause in zip(slots, pauses, strict=True)
+    ]
 
 
 def _names(sheet: Path, count: int) -> list[tuple[str, str]]:
@@ -234,16 +265,21 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--template", type=Path, default=SAMPLES / "template_video.mp4")
     parser.add_argument(
         "--slot",
+        dest="slots",
+        action="append",
         nargs=2,
         type=float,
         metavar=("START", "END"),
-        help="manual name slot in seconds; skips the transcript-based slot search",
+        help="manual name slot in seconds, repeatable; skips the transcript-based slot search",
     )
     parser.add_argument("--sheet", type=Path, help="csv sheet with header Name,VID")
     parser.add_argument("--out-name", help="sub-folder of local_out/ for the outputs")
     args = parser.parse_args(argv)
-    if args.slot is not None and not 0 <= args.slot[0] < args.slot[1]:
-        parser.error("--slot needs START >= 0 and END > START")
+    if args.slots is not None:
+        for start, end in args.slots:
+            if not 0 <= start < end:
+                parser.error("--slot needs START >= 0 and END > START")
+        args.slots = sorted((start, end) for start, end in args.slots)
     if args.out_name is not None and Path(args.out_name).name != args.out_name:
         parser.error("--out-name must be a plain folder name")
     return args
@@ -254,10 +290,13 @@ def main() -> int:
     args = _parse_args(None)
     _prepare_environment()
 
-    from vidgen.domain.timing import TimingRules, plan_timing
+    from vidgen.domain.codes import DomainError
+    from vidgen.domain.slot_match import validate_slots
+    from vidgen.domain.timing import TimingRules
     from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
     from vidgen.infrastructure.ffmpeg.label import build_label_renderer, label_band_height
     from vidgen.infrastructure.local_ai.factory import build_ai_adapters
+    from vidgen.services.slot_passes import encode_slots, lip_sync_slots
     from vidgen.services.spoken_text import spoken_text
     from vidgen.settings import Settings
     from vidgen.worker.runner import DEVANAGARI_FONT, FONT_DIR, LATIN_FONT
@@ -274,8 +313,11 @@ def main() -> int:
     tmp = out_dir / "_tmp"
     tmp.mkdir(exist_ok=True)
     timer, info = Timer(), _probe(template)
-    manual = (args.slot[0], args.slot[1]) if args.slot is not None else None
-    slot, pause, sample = _template_slot(adapters, template, tmp, timer, manual)
+    slots, pauses, sample = _template_slots(adapters, template, tmp, timer, args.slots)
+    try:
+        validate_slots(slots, info["duration"])
+    except DomainError as exc:
+        raise SystemExit(f"the name slots are not valid for this template: {exc.message}") from None
 
     started = time.perf_counter()
     spoken = [adapters.transliterator.transliterate(name, "Devanagari") for name, _ in people]
@@ -307,34 +349,30 @@ def main() -> int:
         "generated_on": date.today().isoformat(),
         "batch_id": "local-smoke",
     }
+    rules = TimingRules(crossfade_ms=settings.crossfade_ms)
     for index, ((_, voter_id), (wav, seconds)) in enumerate(zip(people, speech, strict=True)):
+        row_dir = tmp / f"row{index}"
+        row_dir.mkdir(exist_ok=True)
         started = time.perf_counter()
-        synced = tmp / f"synced{index}.mp4"
-        adapters.lipsync.sync(template, wav, synced, start_s=slot.start_s)
+        synced = lip_sync_slots(adapters.lipsync, template, wav, slots, row_dir)
         timer.stage("lipsync", started)
-        print(f"row {index}: {_fidelity_report(template, synced, tmp, slot.start_s)}")
+        print(f"row {index}: {_fidelity_report(template, synced, tmp, slots[0][0])}")
         started = time.perf_counter()
         out = out_dir / f"{voter_id}.mp4"
         out.unlink(missing_ok=True)
-        plan = plan_timing(
-            slot.end_s - slot.start_s,
-            pause,
-            seconds,
-            TimingRules(crossfade_ms=settings.crossfade_ms),
-            gap_s=settings.name_gap_s,
-        )
-        encoder.render(
-            synced,
-            wav,
-            (slot.start_s, slot.end_s),
-            plan,
-            label,
-            metadata,
-            out,
-        )
+        plans = _row_plans(slots, pauses, seconds, rules, settings.name_gap_s)
+        for stale in row_dir.glob("encode*.mp4"):  # the encoder refuses to overwrite
+            stale.unlink()
+        encode_slots(encoder, synced, wav, slots, plans, label, metadata, row_dir, out)
         timer.stage("encode", started)
+        for number, plan in enumerate(plans, start=1):
+            print(
+                f"row {index} slot {number}: extension {plan.extension_s:.2f}s, "
+                f"gap {plan.gap_s:.2f}s, stretch {plan.stretch_factor:.3f}"
+            )
         result = _probe(out)
-        ok = abs(result["duration"] - info["duration"] - plan.duration_delta_s) < 0.1 and (
+        expected_delta = sum(plan.duration_delta_s for plan in plans)
+        ok = abs(result["duration"] - info["duration"] - expected_delta) < 0.1 and (
             bubble or band / result["height"] >= 0.10
         )
         failures += 0 if ok else 1

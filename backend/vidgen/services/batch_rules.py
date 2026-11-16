@@ -60,10 +60,12 @@ def counts_from(by_status: Mapping[str, int]) -> StatusCounts:
 
 
 def fingerprint_for(template: TemplateRecord, mapping: MappingRecord | None) -> ApprovalFingerprint:
-    """What a preview approval depends on: slot, template and column mapping (A5)."""
+    """What a preview approval depends on: slots, template and column mapping (A5, DD-40)."""
     start, end = template.slot or (0.0, 0.0)
     indexes = mapping.indexes if mapping else ()
-    return ApprovalFingerprint(start, end, str(template.id), indexes)
+    return ApprovalFingerprint(
+        start, end, str(template.id), indexes, extra_slots=template.extra_slots
+    )
 
 
 def day_series(

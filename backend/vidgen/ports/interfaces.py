@@ -44,8 +44,19 @@ class VoiceCloner(Protocol):
 class LipSyncer(Protocol):
     """Adjusts the mouth region of video frames to match new audio."""
 
-    def sync(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
-        """Write the lip-synced video to ``out``; only the part from ``start_s`` changes."""
+    def sync(
+        self,
+        video: Path,
+        audio: Path,
+        out: Path,
+        start_s: float = 0.0,
+        key_from: Path | None = None,
+    ) -> None:
+        """Write the lip-synced video to ``out``; only the part from ``start_s`` changes.
+
+        ``key_from`` names the video whose face boxes are used (the cache key); ``None`` means
+        ``video`` itself. The lip sync is always applied to ``video`` (DD-40).
+        """
         ...
 
 

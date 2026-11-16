@@ -39,14 +39,24 @@ class MuseTalkLipSyncer:
         self._model = LazyModel("lip sync", weights_dir, loader)
         self._guard = guard or SingleRenderGuard()
 
-    def sync(self, video: Path, audio: Path, out: Path, start_s: float = 0.0) -> None:
-        """Write ``video`` lip-synced to ``audio`` from ``start_s`` on to ``out``."""
+    def sync(
+        self,
+        video: Path,
+        audio: Path,
+        out: Path,
+        start_s: float = 0.0,
+        key_from: Path | None = None,
+    ) -> None:
+        """Write ``video`` lip-synced to ``audio`` from ``start_s`` on to ``out``.
+
+        ``key_from`` is the video whose face boxes are reused (DD-40); ``None`` uses ``video``.
+        """
         _check_start(start_s)
         require_audio(audio)
         with self._guard.acquire():
             model = self._model.get()
             with atomic_output(out) as tmp:
-                model.run(video, audio, tmp, start_s)
+                model.run(video, audio, tmp, start_s, key_from)
 
     def warm_up(self) -> None:
         """Load the model now (no inference), so missing weights show at start-up."""

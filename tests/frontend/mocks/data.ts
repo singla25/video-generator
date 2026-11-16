@@ -111,14 +111,26 @@ export function batchesPage(batches: Json[], page = 1, totalPages = 1): Json {
   return { batches, page, page_size: 50, total: batches.length, total_pages: totalPages };
 }
 
+/** The API's `slots` list (DD-40): the primary slot and the extra slots, sorted; empty without a primary. */
+function slotsOf(primary: unknown, extra: unknown): [number, number][] {
+  if (!primary) return [];
+  const p = primary as { start_s: number; end_s: number };
+  const all: [number, number][] = [
+    [p.start_s, p.end_s],
+    ...((extra as [number, number][] | undefined) ?? []),
+  ];
+  return all.sort((a, b) => a[0] - b[0]);
+}
+
 export function template(over: Json = {}): Json {
-  return {
+  const merged: Json = {
     id: IDS.template,
     original_name: 'Rahul',
     duration_s: 20,
     width: 1280,
     height: 720,
     slot: { start_s: 4.2, end_s: 5.1 },
+    extra_slots: [],
     slot_source: 'STT',
     slot_confidence: 0.93,
     slot_confirmed: true,
@@ -129,6 +141,7 @@ export function template(over: Json = {}): Json {
     created_at: '2026-10-18T10:00:00+00:00',
     ...over,
   };
+  return { ...merged, slots: over.slots ?? slotsOf(merged.slot, merged.extra_slots) };
 }
 
 export const TEMPLATE_NO_CONSENT: Json = template({

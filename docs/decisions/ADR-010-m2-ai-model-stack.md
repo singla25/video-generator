@@ -38,7 +38,31 @@ faster-whisper + IndicXlit + Chatterbox-Multilingual (Hindi) + MuseTalk + Demucs
 - **Every bundled sub-model gets a licence line in G1.** If one is non-commercial, swap it out or drop the candidate.
 - GPU cost: Chatterbox + MuseTalk fit a single 24 GB GPU. Renting one costs money, so the Admin decides.
 
-## Sources (checked 2026-10-19)
+## G1 licence audit (CEO, 2026-10-28)
+Checked against the official repos and Hugging Face cards (fetched 2026-10-28). Weights trained on restricted data are a legal grey area; this is a technical reading, not legal advice.
+
+| Component | Code | Weights | Verdict |
+|-----------|------|---------|---------|
+| faster-whisper | MIT | converted Whisper weights (OpenAI Whisper; HF `whisper-tiny` card: Apache-2.0) | ✅ |
+| Qwen3-4B-Instruct-2507 (transliteration pre-fill) | Apache-2.0 | Apache-2.0 (HF field) | ✅ |
+| Chatterbox-Multilingual (+ `-hi` pack) | MIT | MIT (HF field; no separate licence shown for the Hindi pack) | ✅ keep Perth watermark on |
+| MuseTalk v1.5 | MIT | "any purpose, even commercially" | ✅ for MuseTalk itself; sub-models below |
+| sd-vae-ft-mse (MuseTalk) | — | MIT (HF field) | ✅ |
+| whisper-tiny (MuseTalk audio features) | — | Apache-2.0 (HF field) | ✅ |
+| DWPose (unused after the Mac landmark swap) | — | Apache-2.0 (per spike) | ✅ not needed on Mac |
+| `face-alignment` (landmark swap on the Mac) | BSD-3 | S3FD + FAN weights from adrianbulat.com: **no licence stated**; S3FD original repo states none either | ⚠️ unresolved |
+| `face-parse-bisent` (face parsing in MuseTalk) | MIT (zllrunning) | **no licence stated; trained on CelebAMask-HQ, which is "non-commercial research and educational" only** | ❌ treat as non-commercial |
+| resnet18 init (MuseTalk) | — | skipped in the Mac patch (weights overwritten) | ✅ not used |
+| **Demucs htdemucs** | MIT | **Author states the weights' licence "is not clear"** (MUSDB has research-only data; he cannot grant a licence) | ❌ unresolved, contradicts the "MIT" assumption above |
+
+### Consequences
+- Blocking for production use: **Demucs weights** and **face-parse-bisent weights** (and, less clearly, the S3FD/FAN weights).
+- Development on the Mac is not blocked. The adapters sit behind ports, so a component can be swapped without touching the pipeline.
+- Candidate replacements to evaluate in G4 (not yet verified, so no decision here): for face parsing and landmarks, a MediaPipe-based mask and landmarks (Apache-2.0 code and bundled models); for separation, skipping separation (replace the name in the full mix and crossfade) or another source-separation model with a clear licence.
+- **Admin decision needed (W-6):** accept the risk for pilot use only, or require replacements before any production run.
+
+## Sources (checked 2026-10-19; G1 audit sources 2026-10-28 below)
+- G1: https://github.com/adefossez/demucs · https://github.com/1adrianb/face-alignment · https://github.com/zllrunning/face-parsing.PyTorch · https://github.com/switchablenorms/CelebAMask-HQ · https://github.com/sfzhang15/SFD · https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507 · https://huggingface.co/stabilityai/sd-vae-ft-mse · https://huggingface.co/openai/whisper-tiny · https://huggingface.co/ResembleAI/chatterbox
 - Chatterbox: https://github.com/resemble-ai/chatterbox · https://huggingface.co/ResembleAI/chatterbox
 - MuseTalk: https://github.com/TMElyralab/MuseTalk
 - LatentSync: https://github.com/bytedance/LatentSync · https://huggingface.co/ByteDance/LatentSync-1.6

@@ -2,7 +2,7 @@
 
 Written by the CEO on branch `docs/ceo/status-report-2026-11-13` from `origin/main`. Documentation only: no code, tests, dependencies or migrations were changed or run for this report. Numbers in section 7 are the last check reported by the Admin and were not re-run for this report.
 
-> **Update 2026-11-16 (CEO refresh at the Admin's request).** Since this report was written, PRs #18, #20, #21 and #23 (C5: Modal is for demo data only) have been merged. #22 (rescue of the M2 docs) is open. Corrected below, each marked "2026-11-16": the summary, the PR table, the branch rows for the Docker work and `feat/m2-mac-first`, B3 (kept, now decided), B4, B17, B18, and section 11. The TASK-LOG on main was cleaned by #21 (15 finished rows marked done; F7 and G8 still open). Everything else is unchanged from 2026-11-13.
+> **Update 2026-11-16 (CEO refresh at the Admin's request).** Since this report was written, PRs #18, #20, #21, #22 (rescue of the M2 docs) and #23 (C5: Modal is for demo data only) have been merged. Corrected below, each marked "2026-11-16": the summary, the PR table, the branch rows for the Docker work and `feat/m2-mac-first`, B3 (kept, now decided), B4, B17, B18, and section 11. The TASK-LOG on main was cleaned by #21 (15 finished rows marked done; F7 and G8 still open). Everything else is unchanged from 2026-11-13.
 
 ## Summary
 
@@ -27,7 +27,7 @@ All 18 PRs in the repository (`gh pr list --state all`). PR #4 was closed withou
 | # | Title | State | Merged (date) | Branch |
 |---|-------|-------|---------------|--------|
 | 23 | feat(installer): Modal mode is for demo and learning data only (C5) | MERGED | 2026-11-16 | feat/backend/c5-demo-only |
-| 22 | docs(ceo): rescue M2 Mac-first plan, ADR-010 G1 licence audit, DD-30/DD-31 | OPEN (2026-11-16) | - | docs/ceo/m2-docs-rescue |
+| 22 | docs(ceo): rescue M2 Mac-first plan, ADR-010 G1 licence audit, DD-30/DD-31 | MERGED | 2026-11-16 | docs/ceo/m2-docs-rescue |
 | 21 | docs(ceo): mark finished TASK-LOG items done (F7, G8 stay open) | MERGED | 2026-11-16 | docs/ceo/task-log-cleanup |
 | 20 | Docker app stack, guided installer and README modes (Stage 1 of docker-and-cloud-setup) | MERGED | 2026-11-16 | feat/tester/cloud-setup |
 | 19 | docs(ceo): project status report and next-phase backlog (this report) | OPEN | - | docs/ceo/status-report-2026-11-13 |
@@ -50,7 +50,7 @@ All 18 PRs in the repository (`gh pr list --state all`). PR #4 was closed withou
 | 2 | Spike/m2 mac feasibility | MERGED | 2026-10-28 | spike/m2-mac-feasibility |
 | 1 | Fix/upload feedback | MERGED | 2026-10-27 | fix/upload-feedback |
 
-Count: 18 PRs listed; 16 merged, 1 open, 1 closed. **2026-11-16:** 23 PRs; 20 merged, 2 open (#19, #22), 1 closed.
+Count: 18 PRs listed; 16 merged, 1 open, 1 closed. **2026-11-16:** 23 PRs; 21 merged, 1 open (#19, this report), 1 closed.
 
 ## 2. Decisions
 
@@ -124,7 +124,7 @@ Classification of all 35 non-main branch names (local, with origin copies where 
 | feat/m1-domain | local | Merged (ancestor) | - |
 | feat/m1-ingest | local | Merged (ancestor) | - |
 | feat/m2-local-real-ai | local + origin | Squash-merged | #5 |
-| feat/m2-mac-first | local | NOT merged (4 commits, 4 unmatched); the licence audit it produced is captured in the ADR-012 correction, so nothing else needs rescuing. **2026-11-16 correction: a line-by-line check found 85 doc lines only on this branch (the approved Mac-first M2 plan, the ADR-010 G1 audit section, DD-30/DD-31). They are rescued in PR #22; the branch is safe to delete once #22 is merged** | #22 |
+| feat/m2-mac-first | local | NOT merged (4 commits, 4 unmatched); the licence audit it produced is captured in the ADR-012 correction, so nothing else needs rescuing. **2026-11-16 correction: a line-by-line check found 85 doc lines only on this branch (the approved Mac-first M2 plan, the ADR-010 G1 audit section, DD-30/DD-31). They are rescued in PR #22 (merged 2026-11-16), so the branch is now safe to delete** | #22 |
 | feat/m3-dashboard | local | Merged (ancestor; DD-25) | - |
 | feat/multi-slot | local + origin | Squash-merged | #17 |
 | feat/preview-progress | local + origin | Squash-merged | #9 |
@@ -143,7 +143,7 @@ Classification of all 35 non-main branch names (local, with origin copies where 
 
 Count: 35 branch names classified. 26 are merged (ancestor or squash). 9 have unmerged commits or an open PR: chore/guard-grants-and-worktrees, claude/exciting-cannon-t53afd, docs/ci-workflow-draft, feat/backend/installer, feat/frontend/dashboard-image, feat/m2-mac-first, feat/tester/cloud-setup, fix/queue-depth, and this session's new branch. Deleting any of them needs the Admin's yes (backlog B17).
 
-**2026-11-16:** of those 9, #18 and #20 are merged, `docs/ci-workflow-draft` and `fix/queue-depth` are safe to delete (content in main), `feat/m2-mac-first` waits for #22, and this report's branch is #19. New branches since then: `feat/backend/mode-gate` (contained in #20), `docs/ceo/task-log-cleanup` (#21, merged), `docs/ceo/m2-docs-rescue` (#22), `feat/tester/c5-demo-only` and `feat/backend/c5-demo-only` (#23), and `docs/ceo/status-report-refresh` (the refresh of this report, pushed to #19's branch).
+**2026-11-16:** of those 9, #18 and #20 are merged, `docs/ci-workflow-draft` and `fix/queue-depth` are safe to delete (content in main), `feat/m2-mac-first` is safe to delete now that #22 is merged, and this report's branch is #19. New branches since then: `feat/backend/mode-gate` (contained in #20), `docs/ceo/task-log-cleanup` (#21, merged), `docs/ceo/m2-docs-rescue` (#22, merged), `feat/tester/c5-demo-only` and `feat/backend/c5-demo-only` (#23, merged), and `docs/ceo/status-report-refresh` (the refresh of this report, pushed to #19's branch).
 
 ## 4. Plans and ADRs
 
@@ -248,7 +248,7 @@ ADR-013 does not exist yet; backlog B3 needs it.
 | B14 | prettier --check does not cover tests/frontend (the e2e spec differs at HEAD) | config only covers frontend/ | none | frontend-dev | small |
 | B15 | The slot editor does not refuse a negative start for an extra slot locally (the server does) | no message was specified | none | frontend-dev | tiny |
 | B16 | Check the log line `error fetching models/sd-vae` during labelling in the local smoke run | run finished, probably an offline fallback | none | backend-dev | small |
-| B17 | Delete old branches (see the branch table in section 3): merged ones are safe; DELETING NEEDS THE ADMIN'S YES; also consider deleting the REMOTE branch feat/m2-local-real-ai because its history contains one sample-sheet row id that never reached main (main was squash-merged). **2026-11-16: see the updated note under the branch table; `feat/m2-mac-first` only after #22** | Admin approval | Admin | CEO | small |
+| B17 | Delete old branches (see the branch table in section 3): merged ones are safe; DELETING NEEDS THE ADMIN'S YES; also consider deleting the REMOTE branch feat/m2-local-real-ai because its history contains one sample-sheet row id that never reached main (main was squash-merged). **2026-11-16: see the updated note under the branch table; `feat/m2-mac-first` is safe too, #22 is merged** | Admin approval | Admin | CEO | small |
 | B18 | Leftover test databases from killed pytest runs (names ending _test, for example vidgen_55e3f615_test, vidgen_63e1f22e_test, vidgen_76ce4e2b_test) and the stash and untracked files in the Admin's checkout (docs/pr-worker-health.md, docs/patches/local-ai-deps-fix.patch, docs/html/pr-worker-health.html, .worktrees/). **2026-11-16: full list of the 16 leftovers (no open connections, about 8 MB each): vidgen_12ba5b90_test, vidgen_13443f2b_test, vidgen_55e3f615_test, vidgen_63e1f22e_test, vidgen_818aab8e_test, vidgen_9052763e_test, vidgen_92fc2a4a_test, vidgen_95246324_test, vidgen_c462cd53_test, vidgen_d940db43_test, vidgen_fda9fdb5_test, vidgen_mig_3ac40085_test, vidgen_mig_cf5cff62_test, vidgen_mig_f5658f31_test, vidgen_selftest, vidgen_selftest2. Keep vidgen, vidgen_demo, and vidgen_test and vidgen_migration_test (protected by tests/integration/conftest.py). The Admin drops them.** | deletions need the Admin | Admin | Admin | tiny |
 | B19 | GitHub: turn on branch protection for main (require python, frontend, e2e); merge PR #18 (guard change by the Admin) | Admin's GitHub setting | Admin | Admin | tiny |
 | B20 | Paste docs/agents/ceo/CLAUDE-md-proposal.md into CLAUDE.md if wanted (agents cannot edit CLAUDE.md) | rule §3.8 | Admin | Admin | tiny |
@@ -306,4 +306,4 @@ Working method: tests first (tester red, developer green, verify); Haiku agents 
 7. Turn on branch protection on GitHub.
 8. Decide whether real voter data may ever go to a cloud worker.
 
-**2026-11-16 status:** item 2 approved (plus licence option (c) for the spike); item 3 done (#18 merged); item 8 decided (C5: never; demo and learning data only, PR #23). New: the spike credit cap and "go"; merge #22, #23 and this PR; delete the branches that are safe (section 3 note); drop the 16 test databases (B18).
+**2026-11-16 status:** item 2 approved (plus licence option (c) for the spike); item 3 done (#18 merged); item 8 decided (C5: never; demo and learning data only, PR #23, merged). #22 merged. New: the spike credit cap and "go"; merge this PR; delete the branches that are safe (section 3 note); drop the 16 test databases (B18).

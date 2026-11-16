@@ -103,14 +103,20 @@ The numbers below must come from your own data. Run the read-only report on the 
 
 It reports: total videos and batches, success rate, average / median / P95 / min / max render time per video, and throughput (videos per hour, from completed batches' wall-clock time).
 
+Measured with `bench_stats.py` on a **demo database**:
+- **Mode:** local AI (`VIDGEN_AI_MODE=local`).
+- **Machine:** Apple M4 Pro, 24 GB RAM.
+- **Data:** one batch of 4 made-up names.
+- **Template:** a 10.5 s, 1080×1300 demo clip.
+
 | Metric | Result |
 |---|---|
-| Videos rendered, batches | *not measured yet* |
-| Success rate | *not measured yet* |
-| Render time: average / median / P95 | *not measured yet* |
-| Throughput (videos/hour) | *not measured yet* |
+| Videos rendered, batches | 4 videos, 1 batch |
+| Success rate | 100 % (4 of 4) |
+| Render time: average / median / P95 | 46.5 s / 46.5 s / 76.0 s (min 16.6 s, max 76.2 s) |
+| Throughput (videos/hour) | 77.1 (batch wall-clock time 186.7 s) |
 
-*Not filled in yet: `bench_stats.py` has to be run by the database owner, because the project's guard hook blocks automated tools from loading `.env`. Single row render times from the local AI demo batch are visible in the batch screenshot above, but four rows are not a benchmark.*
+*This is a small sample, not a benchmark: one batch, four rows, one short template, on a 24 GB Mac that swaps under local AI (see [System requirements](#system-requirements)). Run the report on your own data for real figures. Fake mode has no AI cost, so its timings say nothing about real rendering.*
 
 Documented design figures (from the project's plans, **not measurements of a production run**):
 

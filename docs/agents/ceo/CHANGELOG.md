@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-11-16 — TASK-LOG clean-up (done items only)
+- Marked 15 stale rows done, each with its evidence (merged PR #10, #11, #12, #14, #17; gate 3; migration 0002 run on 2026-11-12 after the Admin's yes). DD39-B checked against the code and tests first; T15–T16 was a duplicate of the done T15/T16 rows.
+- Left open on purpose: F7 (Admin visual sign-off) and G8 (licence gate plan waiting for the Admin).
+
 ## 2026-11-13 — Docker and cloud setup, Stage 1 (T1–T3, T6)
 - Plan `docs/plans/docker-and-cloud-setup.md` approved with fixes P1–P9; ADR-013 (Modal) drafted as Proposed. New licence point R5: ADR-012 limits two lip-sync weights to "this Mac only", so lip sync on Modal needs an Admin decision.
 - T1 tester (sonnet): test tree + red tests; T2 backend-dev: `scripts/setup.py` (stdlib only) + `dev_setup.py hash-password` (Admin grant); T3 backend-dev + frontend-dev: `Dockerfile.backend`, `Dockerfile.frontend`, `frontend/docker/nginx.conf`, `.dockerignore`, compose profile `app` (Admin grants).

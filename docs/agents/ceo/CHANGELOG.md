@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-11-16 — TASK-LOG clean-up (done items only)
+- Marked 15 stale rows done, each with its evidence (merged PR #10, #11, #12, #14, #17; gate 3; migration 0002 run on 2026-11-12 after the Admin's yes). DD39-B checked against the code and tests first; T15–T16 was a duplicate of the done T15/T16 rows.
+- Left open on purpose: F7 (Admin visual sign-off) and G8 (licence gate plan waiting for the Admin).
+
 ## 2026-10-31 — PR #9 merged; DD-37 started
 - PR #9 (e4b0cee): preview progress, batch controls, queue-depth fix, local autostart files. Database emptied at the Admin's request (backup in .dev/backups, old media moved to .dev/media-*).
 - DD-37 built and verified (not merged yet): Running, Completed and Failed pages show real batch lists (`GET /batches?view=`); a "Videos to generate" choice on the last wizard step (All, First 5/10/15, custom; rows beyond the limit become SKIPPED with code NOT_SELECTED); Delete template (refused with 409 TEMPLATE_IN_USE while any batch uses it; removes the template, consent records and stored files); a redesigned New template form with a drop zone and an extension fallback for empty file types. No migration. Checks: backend 2381 passed, Vitest 488, E2E 21 passed. Known: `mypy --strict` reports 8 errors only in local_ai/loaders.py when the optional local-ai packages are installed (CI installs without them).

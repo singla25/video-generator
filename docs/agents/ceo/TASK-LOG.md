@@ -15,7 +15,7 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 
 | ID | Task | Agent | Model | Status | Approved by Admin | Merged |
 |----|------|-------|-------|--------|-------------------|--------|
-| T0 | Install uv, ffmpeg, Docker; move old .venv | Admin | — | Waiting for Admin | — | — |
+| T0 | Install uv, ffmpeg, Docker; move old .venv | Admin | — | ✅ Done 2026-10-18 (duplicate of the next T0 row; tools re-verified 2026-11-12) | — | — |
 | T1 | M1 test tree | tester | sonnet | ✅ Done & CEO-reviewed — 374 cases (105 P / 98 N / 171 E), addenda A–C applied in plan; branch `feat/tester/m1-tree` (round 1 was blocked by guard on worktree) | Yes, 2026-10-18 | Waits for gate 1 |
 | T0 | Install tools, move old venv | Admin | — | ✅ Done 2026-10-18 | — | — |
 | T2 | Tooling + skeleton | backend-dev | sonnet | ✅ Done & CEO-reviewed after 1 fix round (video limit 300 s, creator_entity required, port semantics). Incident: `ruff format .` briefly touched `.claude/` + `scripts/`, reverted, verified identical; Admin informed | Yes, 2026-10-18 | Waits for gate 1 |
@@ -41,7 +41,7 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | T16 | CEO review → gate 3 | CEO | — | ✅ Review clean; V1 split done (a11472d, 046b3fd); final run 1611 pass + 1 xfail (V2), 98 % | Delegated (CEO) | ✅ gate 3 (DD-12) |
 | T13c | Tests: 8 defect fixes, injection contract + layering guard, domain/fakes coverage | tester | sonnet | ✅ Done & CEO-reviewed @ 15b6ef0; T14 round 2 (layering) in progress | Delegated (CEO) | — |
 | T15a | RED: E2E tests (synthetic 10-row batch, retry, deletion) | tester | sonnet | ✅ Done & CEO-reviewed @ 5a1b106 — 3 e2e tests (real app/DB/storage/ffmpeg/label; fake AI; in-process StubBroker worker); probes label + creator metadata | Delegated (CEO) | — |
-| T15–T16 | Verify + coverage report; CEO review → gate 3 | tester / CEO | sonnet | Planned | — | — |
+| T15–T16 | Verify + coverage report; CEO review → gate 3 | tester / CEO | sonnet | ✅ Done: stale planning row, see T15 and T16 above (gate 3, DD-12) | — | ✅ |
 | — | **Merge gate 3** (M1 complete) | CEO | — | ✅ Merged `49f0767` (DD-12); main: 1611 pass + 1 xfail, mypy/ruff clean | Delegated (CEO) | ✅ |
 | F0 | Node.js | Admin | — | ✅ Already installed (v26.12.0, DD-2); placeholder brand DD-1 | — | — |
 | F1a | Frontend tooling scaffold (no app code) | frontend-dev | sonnet | ✅ Done & CEO-verified after 3 rounds @ b42f597 (types DD-14, Tailwind 4 DD-15); npm audit 0, build ok | Delegated (CEO) | — |
@@ -63,21 +63,21 @@ Plan: `docs/plans/m1-batch-pipeline.md` (approved 2026-10-18)
 | F6 | VERIFY M3: Playwright E2E on real stack (throwaway DB), axe, coverage, privacy | tester | sonnet | ✅ Verification done @ fd1e9ce — E2E 43/45, Vitest 178/178, frontend 93 % lines; defects D-F6-1..3 + hatch → F6 r2 (RED) → fixes (DD-21/22) | Delegated (CEO) | — |
 | DD-20 | Per-session throwaway test DBs | tester | sonnet | ✅ Done & CEO-verified @ 94e6225 (2 concurrent runs identical; protected-name guard); also fixed the tests' TS typecheck | Delegated (CEO) | — |
 | F5 | BatchDetail, Templates, History, Security | frontend-dev | sonnet | ✅ Done & CEO-verified @ 1073286 — 166/170 UI tests (4 = P10 defect + DD-18 wiring); privacy scan clean | Delegated (CEO) | — |
-| F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | Planned; F1 after F1a | Plan: yes (Admin); assignment: delegated | — |
+| F1–F7 | M3 dashboard (plan `docs/plans/m3-dashboard.md`, ADR-009) | tester / frontend-dev / CEO | sonnet | ✅ F1–F6 done (rows above, M3 gate DD-25); F7 sign-off still open (row F7) | Plan: yes (Admin); assignment: delegated | ✅ (F7 open) |
 | M2-local | Local real AI pilot: adapters, confirm-spelling, face fix, queue fix, local-ai group | backend-dev / tester / frontend-dev | sonnet and haiku | ✅ merged in PR #5 (bf14a93); Admin reviewed the real videos: good | Yes (Admin, DD-30/31) | ✅ |
 | LB | AI label bubble then see-through bubble (DD-32, DD-36) | tester → backend-dev | haiku | ✅ merged in PR #5 and PR #7 (c3b3055) | Yes (Admin) | ✅ |
 | NG | 0.25 s gap after the name (DD-34) | tester → backend-dev | haiku | ✅ merged in PR #5 | Yes (Admin) | ✅ |
 | RM-G3 | Remove the redundant red adapter tests (DD-35) | tester | haiku | ✅ merged in PR #6 (bde91b3) | Yes (Admin approved the deletions) | ✅ |
 | G8 | Production licence gate for Demucs / face-parse / S3FD-FAN weights | backend-dev + CEO | haiku | Plan written: docs/plans/g8-licence-gate.md | Waiting for Admin approval | — |
-| CI-1 | GitHub Actions workflow (ADR-011, scope B) | backend-dev | haiku | In progress | Plan approved (DD-28) | — |
-| DD37-BE | Backend: batch views filter, start limit (NOT_SELECTED), template delete | tester → backend-dev | haiku | ✅ red f13e042 · green 43f0351 · 2 old tests updated 59af3f7 — CEO-verified: 2381 passed, 1 skipped | Yes (Admin, DD-37) | PR pending |
-| DD37-FE | Dashboard: batch list pages, start limit step, delete template, new template form, .mkv fallback | tester → frontend-dev | haiku | ✅ red 0728071, 69f315a · green d2f8ea5, 99e9d1a — CEO-verified: Vitest 488/488, typecheck, lint, format, build clean; E2E 21 passed (a766ff0) with screenshots in media/review/ui/dd37-*.png | Yes (Admin, DD-37) | PR pending |
-| DD38-BE | Backend: keep the confirmed spoken name on a new preview; GET /batches?view=drafts | tester → backend-dev | haiku | In progress | Yes (Admin, DD-38) | — |
-| DD38-FE | Dashboard: drafts on Running, resume the wizard, Overview draft button, Confirm spelling regenerates | tester → frontend-dev | haiku | In progress | Yes (Admin, DD-38) | — |
-| DD39-A | Spoken suffix after the name (setting, spoken_text, batch and preview) | tester → backend-dev | haiku | In progress | Yes (Admin, DD-39) | — |
-| DD39-DEMO | Synthetic marketing template with the name in the middle (script and outputs) | backend-dev | haiku | In progress | Yes (Admin, DD-39) | — |
-| DD39-B | Mid-video slot support for the lip sync | tester → backend-dev | haiku | Planned (after the demo template exists) | Yes (Admin, DD-39) | — |
-| DD40-BE-A | Template extra slots: model, validation, DB column, migration 0002, API, fingerprint | tester → backend-dev | haiku | In progress | Yes (Admin, DD-40) | — |
-| DD40-BE-B | Pipeline: lip sync and encoder once per slot, key_from, transparent intermediate label | tester → backend-dev | haiku | In progress | Yes (Admin, DD-40) | — |
-| DD40-FE | Dashboard: slot editor with several slots, template card | tester → frontend-dev | haiku | In progress | Yes (Admin, DD-40) | — |
-| DD40-MIG | Rehearse migration 0002 on a throwaway database; Admin runs it | backend-dev + Admin | haiku | Planned | Yes (Admin, DD-40); running it needs the Admin | — |
+| CI-1 | GitHub Actions workflow (ADR-011, scope B) | backend-dev | haiku | ✅ Done: `.github/workflows/ci.yml` on main | Plan approved (DD-28) | ✅ PR #11 |
+| DD37-BE | Backend: batch views filter, start limit (NOT_SELECTED), template delete | tester → backend-dev | haiku | ✅ red f13e042 · green 43f0351 · 2 old tests updated 59af3f7 — CEO-verified: 2381 passed, 1 skipped | Yes (Admin, DD-37) | ✅ PR #10 |
+| DD37-FE | Dashboard: batch list pages, start limit step, delete template, new template form, .mkv fallback | tester → frontend-dev | haiku | ✅ red 0728071, 69f315a · green d2f8ea5, 99e9d1a — CEO-verified: Vitest 488/488, typecheck, lint, format, build clean; E2E 21 passed (a766ff0) with screenshots in media/review/ui/dd37-*.png | Yes (Admin, DD-37) | ✅ PR #10 |
+| DD38-BE | Backend: keep the confirmed spoken name on a new preview; GET /batches?view=drafts | tester → backend-dev | haiku | ✅ Done | Yes (Admin, DD-38) | ✅ PR #12 |
+| DD38-FE | Dashboard: drafts on Running, resume the wizard, Overview draft button, Confirm spelling regenerates | tester → frontend-dev | haiku | ✅ Done | Yes (Admin, DD-38) | ✅ PR #12 |
+| DD39-A | Spoken suffix after the name (setting, spoken_text, batch and preview) | tester → backend-dev | haiku | ✅ Done | Yes (Admin, DD-39) | ✅ PR #14 |
+| DD39-DEMO | Synthetic marketing template with the name in the middle (script and outputs) | backend-dev | haiku | ✅ Done | Yes (Admin, DD-39) | ✅ PR #14 |
+| DD39-B | Mid-video slot support for the lip sync | tester → backend-dev | haiku | ✅ Done: `LipSyncer.sync(..., start_s)`, tests `test_mid_slot_adapter.py` and `test_render_row_mid_slot.py` (checked 2026-11-16) | Yes (Admin, DD-39) | ✅ PR #14 |
+| DD40-BE-A | Template extra slots: model, validation, DB column, migration 0002, API, fingerprint | tester → backend-dev | haiku | ✅ Done | Yes (Admin, DD-40) | ✅ PR #17 |
+| DD40-BE-B | Pipeline: lip sync and encoder once per slot, key_from, transparent intermediate label | tester → backend-dev | haiku | ✅ Done | Yes (Admin, DD-40) | ✅ PR #17 |
+| DD40-FE | Dashboard: slot editor with several slots, template card | tester → frontend-dev | haiku | ✅ Done | Yes (Admin, DD-40) | ✅ PR #17 |
+| DD40-MIG | Rehearse migration 0002 on a throwaway database; Admin runs it | backend-dev + Admin | haiku | ✅ Done: rehearsed by `test_migration_0002_extra_slots.py` on throwaway databases; applied to the dev database on 2026-11-12 after the Admin's yes | Yes (Admin, DD-40) | n/a |

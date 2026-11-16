@@ -1,0 +1,108 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree: dashboard lists, start limit, template delete, new template form (DD-37)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree: dashboard lists, start limit, template delete, new template form (DD-37)</h1>
+<p>Decision: DD-37. Tests: <code>tests/frontend/unit/batch-list-pages.test.tsx</code> (A), <code>start-limit.test.tsx</code> (B), <code>template-delete.test.tsx</code> (C), <code>new-template-form.test.tsx</code> (D). E2E lines for the new template form updated in <code>tests/frontend/e2e/full-flow.spec.ts</code>. Old structure asserted in <code>tests/frontend/unit/new-template.test.tsx</code> (TT-UI-AC7-P3, N3, N4) is updated to the new structure.</p>
+<p>Case IDs: <code>TT-DD37-&lt;A|B|C|D&gt;-&lt;P|N|E&gt;&lt;n&gt;</code>. Status at red: 72 new tests fail (missing feature), 5 new guard tests pass (behaviour that must keep working).</p>
+<pre><code>Feature: A. Batch list pages Running, Completed, Failed
+├── Scenario: opening a list page from the sidebar
+│   ├── ✅ P1 /batches/running|completed|failed render the table, not &quot;is coming soon&quot;
+│   ├── ✅ P2 each view asks GET /batches?page=1&amp;page_size=50&amp;view=&lt;its view&gt;
+│   └── ❌ N1 an empty view shows &quot;No running|completed|failed batches&quot;
+├── Scenario: reading a row
+│   ├── ✅ P3 headers exactly Batch, Template, Progress, Rows, Created
+│   ├── ✅ P4 a full row reads name, template, &quot;75 %&quot;, &quot;100 rows · 10 failed&quot;, date
+│   ├── ✅ P5 the batch name links to /batches/&lt;id&gt;
+│   ├── ✅ P6 name falls back: sheet name, then folder name, then &quot;Batch&quot;
+│   ├── ✅ P7 progress = (completed + failed + skipped) / total, rounded (33 %, 67 %, processing not counted)
+│   ├── ✅ P8 template column shows the template name
+│   ├── ✅ P9 created column shows the date like History
+│   ├── ⚠️ E1 zero rows shows &quot;-&quot; progress and &quot;0 rows&quot;
+│   ├── ⚠️ E2 zero failures omit &quot;· n failed&quot;
+│   └── ❌ N4 a template id not in the list shows &quot;-&quot;
+├── Scenario: paging
+│   ├── ✅ P10 Next and Previous move page; &quot;Page 2 of 3&quot;
+│   ├── ⚠️ E3 a single page disables both buttons (&quot;Page 1 of 1&quot;)
+│   └── (paging buttons follow History)
+├── Scenario: API failure
+│   ├── ❌ N2 role=alert &quot;Could not load batches&quot; with a Retry button
+│   └── ❌ N3 Retry asks again and shows the list
+├── Scenario: live refresh
+│   ├── ✅ P11 running view refetches every 5 s
+│   ├── ✅ P12 completed and failed views do not poll
+│   └── ⚠️ E4 leaving the running page stops polling
+└── (no other edge cases: all counted above)
+
+Feature: B. Wizard step 4 &quot;Videos to generate&quot; and the start limit
+├── Scenario: choosing how many videos
+│   ├── ✅ P1 radio group with All N rows (selected), First 5, First 10, First 15, Custom
+│   ├── ✅ P2 with 8 rows First 5 enabled, First 10 and First 15 disabled
+│   ├── ✅ P3 with 20 rows all fixed options enabled
+│   ├── ✅ P4 summary &quot;You will get 5 videos. The other 3 rows are skipped.&quot; and &quot;You will get 8 videos.&quot;
+│   ├── ✅ P5 Custom reveals &quot;Number of videos&quot;; typing 3 gives the 3 of 8 summary
+│   ├── ✅ P6 &quot;Number of videos&quot; has min 1 and max N
+│   └── ⚠️ E3 with 20 rows First 15 is allowed (limit 15)
+├── Scenario: start request body
+│   ├── ✅ P7 First 5 posts {folder_name, limit: 5}
+│   ├── ✅ P8 All posts {folder_name} with no limit key (guard, passes today)
+│   ├── ✅ P9 Custom 3 posts limit 3
+│   ├── ✅ P10 Idempotency-Key header still sent
+│   ├── ✅ N1 switching back to All drops the limit
+│   └── ⚠️ E2 Custom equal to N is accepted and sends no limit
+├── Scenario: invalid custom number
+│   ├── ❌ N2 0, a negative, empty, or 9 (above 8): Review and start disabled, &quot;Enter a number from 1 to 8&quot;
+│   ├── ❌ N3 an invalid number sends nothing and opens no dialog
+│   └── ⚠️ E1 bounds 1 and N-1 (1 and 7 for 8 rows) are sent as the limit
+└── Scenario: few rows
+    └── ⚠️ E4 a single valid row disables all fixed options
+
+Feature: C. Delete a template from its card
+├── Scenario: opening the confirmation
+│   ├── ✅ P1 every card has &quot;Delete template&quot;
+│   └── ✅ P2 dialog &quot;Delete this template?&quot; with &quot;This cannot be undone.&quot;, Delete, Cancel
+├── Scenario: confirming
+│   ├── ✅ P3 Delete sends DELETE /templates/&lt;id&gt;; dialog closes; card disappears
+│   ├── ✅ P4 the templates list is refetched after the delete
+│   ├── ⚠️ E3 deleting the last template shows &quot;No templates yet&quot;
+│   ├── ⚠️ E1 Delete is disabled while the request runs
+│   └── ⚠️ E2 double click sends one DELETE
+├── Scenario: cancelling or failing
+│   ├── ✅ N1 Cancel closes the dialog and sends nothing
+│   ├── ❌ N2 409 keeps the dialog open; the API message (&quot;This template is used by 2 batches...&quot;) in role=alert
+│   └── ❌ N3 network failure keeps the dialog and the card, with an alert
+
+Feature: D. New template form (drop zone)
+├── Scenario: the layout
+│   ├── ✅ P1 drop zone named &quot;Template video&quot; with &quot;Drop the video here or choose a file&quot; and a video input
+│   ├── ✅ P2 &quot;Word to replace&quot; with helper text and the consent reminder line
+│   └── ✅ P3 Cancel and Upload template are offered
+├── Scenario: choosing a video
+│   ├── ✅ P4 chosen video shows &quot;intro.mp4 · 0.1 MB&quot; (one decimal)
+│   ├── ✅ P5 &quot;Remove file&quot; clears the choice
+│   ├── ✅ P6 a dropped video behaves like a chosen one
+│   ├── ✅ P7 size line has one decimal for a larger file
+│   ├── ✅ P8 Upload enabled only when a file is chosen and the word is not blank (guard, passes today)
+│   ├── ✅ P9 multipart upload with the trimmed word (guard, passes today)
+│   ├── ✅ P10 empty type + clip.MKV / clip.mp4 / clip.mov / clip.m4v / clip.webm is accepted by extension (case-insensitive)
+│   ├── ✅ P11 the same empty-type rule through a dropped clip.MKV
+│   ├── ⚠️ E2 unicode and spaces in the file name are shown intact
+│   └── ⚠️ E3 after Remove file a new video can be chosen
+├── Scenario: refusing a file
+│   ├── ❌ N1 a non-video file: role=alert &quot;Choose a video file.&quot;, not shown, Upload disabled
+│   ├── ❌ N2 a dropped non-video file is refused the same way
+│   ├── ❌ N3 text/plain named clip.mp4 is refused (a non-empty non-video type wins)
+│   ├── ❌ N4 the same refusal when the file is dropped
+│   ├── ❌ N5 empty type with notes.txt or no extension is refused
+│   └── ⚠️ E1 a word of spaces only keeps Upload disabled (guard, passes today)
+└── Scenario: Cancel
+    └── ✅ P3 (see Layout) Cancel stays</code></pre>
+<h2>Acceptance mapping</h2>
+<table><tr><th>Contract item</th><th>Cases</th></tr><tr><td>A. Batch list pages, routes, columns, progress, empty, error, paging, polling</td><td>A-P1..P12, A-N1..N4, A-E1..E4</td></tr><tr><td>B. Wizard step 4 "Videos to generate", limit, custom number</td><td>B-P1..P10, B-N1..N3, B-E1..E4</td></tr><tr><td>C. Template delete dialog, 204, 409, disabled while pending</td><td>C-P1..P4, C-N1..N3, C-E1..E3</td></tr><tr><td>D. New template drop zone, file summary, refusal, helper text, extension fallback for empty file type</td><td>D-P1..P11, D-N1..N5, D-E1..E3</td></tr></table></div></body></html>

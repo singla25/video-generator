@@ -32,4 +32,25 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 <h2>Alternatives considered</h2>
 <ul><li>One remote call per row (whole <code>render_row</code> remotely): fewer round trips, but copies render logic into Modal and</li></ul>
 <p>  bypasses the ports. Rejected unless P2-S shows per-step calls are too slow.</p>
-<ul><li>Other clouds / self-hosted CUDA worker: out of scope (Admin decision 2026-11-12; plan m2-real-ai G6).</li></ul></div></body></html>
+<ul><li>Other clouds / self-hosted CUDA worker: out of scope (Admin decision 2026-11-12; plan m2-real-ai G6).</li></ul>
+<p>  <em>Superseded in part by amendment A1 (proposed): any provider can be registered; a self-hosted or rented CUDA   machine joins as a <code>remote_worker</code> once G6 exists.</em></p>
+<h2>Amendment A1 — pluggable render providers (PROPOSED 2026-11-17, not accepted)</h2>
+<p><strong>Plan:</strong> <code>docs/plans/render-providers.md</code>. Accepted only with the Admin's approval of that plan, after the spike review.</p>
+<p><strong>Context.</strong> The Admin asked that rendering not be fixed to three modes (fake, local, modal). Batches should go to whichever registered provider the Admin picks at preview approval, with honest estimates and a spend limit.</p>
+<p><strong>Decision (proposed).</strong></p>
+<ol><li>A <strong>provider registry</strong> (TOML file, standard library, no secrets) replaces the single process-wide choice. Each</li></ol>
+<p>   provider declares: name, <strong>kind</strong> (<code>local</code> · <code>remote_function</code> · <code>remote_worker</code>), queue, <code>ai_mode</code>,    <strong>data rule</strong> (<code>real_allowed</code> · <code>demo_only</code>), <strong>spend cap</strong>, cost rate and required environment variables.    Without a registry file the app behaves as today (one provider from <code>ai_mode</code>).</p>
+<ol><li><strong>Setup state</strong> and <strong>estimates</strong> are derived, never declared: ready = required variables present and a live</li></ol>
+<p>   heartbeat on the provider's queue; estimates come <strong>only from measured runs</strong> of that provider in this app    ("not measured yet" otherwise).</p>
+<ol><li><strong>One queue per provider.</strong> The worker is unchanged in shape: it serves the queue named by <code>VIDGEN_QUEUE_NAME</code></li></ol>
+<p>   and loads the adapters of its <code>ai_mode</code>. The batch stores its provider; rows, retries and requeue are routed to    that queue. Heartbeat and queue depth become per queue.</p>
+<ol><li>The <strong>chooser</strong> at preview approval lists ready providers that fit the batch's declared data class, side by</li></ol>
+<p>   side (time, cost, remaining credit); an option whose estimate exceeds its remaining credit is refused; the    worker <strong>pauses</strong> the batch before a row would pass the spend cap.</p>
+<ol><li><strong>C5:</strong> remote kinds (<code>remote_function</code>, <code>remote_worker</code>) are <code>demo_only</code>. The data class is declared per batch</li></ol>
+<p>   at upload, and both the API and the worker check it. Decision 6a stands unchanged.</p>
+<ol><li><strong>Modal</strong> becomes one <code>remote_function</code> provider (ai_mode <code>modal</code>, T4). The Modal design in decisions 1–8</li></ol>
+<p>   above is unchanged.</p>
+<ol><li><strong>remote_worker</strong> lets any machine (for example a rented GPU server) join by running the same worker with its</li></ol>
+<p>   own queue name. It needs the <strong>CUDA worker image (G6)</strong>, shared S3-compatible storage, a private network to    Redis and PostgreSQL, and the encryption keys on that machine. Until those exist it stays "needs setup".</p>
+<p><strong>Consequences.</strong> One migration (0003: batch provider, batch data class, row cost). New providers need a registry entry and a worker, not code. Per-queue heartbeats replace the single key. Lip sync on any remote provider stays blocked until licence option (a) or (b) is decided (ADR-012). Estimates are empty until a provider has measured runs, by design.</p>
+<p><strong>Alternatives considered.</strong> A fixed enum of modes (rejected: the Admin asked for pluggable). Provider records in the database (rejected for now: needs an admin UI and secrets handling; the file is reviewable in git). Estimates from the spike or from design figures (rejected: the Admin asked for measured runs only).</p></div></body></html>

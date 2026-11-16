@@ -48,3 +48,43 @@ Mac until (a) or (b) is decided, so Q1 (GPU type) is answered for those two mode
 - One remote call per row (whole `render_row` remotely): fewer round trips, but copies render logic into Modal and
   bypasses the ports. Rejected unless P2-S shows per-step calls are too slow.
 - Other clouds / self-hosted CUDA worker: out of scope (Admin decision 2026-11-12; plan m2-real-ai G6).
+  *Superseded in part by amendment A1 (proposed): any provider can be registered; a self-hosted or rented CUDA
+  machine joins as a `remote_worker` once G6 exists.*
+
+## Amendment A1 — pluggable render providers (PROPOSED 2026-11-17, not accepted)
+**Plan:** `docs/plans/render-providers.md`. Accepted only with the Admin's approval of that plan, after the spike
+review.
+
+**Context.** The Admin asked that rendering not be fixed to three modes (fake, local, modal). Batches should go to
+whichever registered provider the Admin picks at preview approval, with honest estimates and a spend limit.
+
+**Decision (proposed).**
+1. A **provider registry** (TOML file, standard library, no secrets) replaces the single process-wide choice. Each
+   provider declares: name, **kind** (`local` · `remote_function` · `remote_worker`), queue, `ai_mode`,
+   **data rule** (`real_allowed` · `demo_only`), **spend cap**, cost rate and required environment variables.
+   Without a registry file the app behaves as today (one provider from `ai_mode`).
+2. **Setup state** and **estimates** are derived, never declared: ready = required variables present and a live
+   heartbeat on the provider's queue; estimates come **only from measured runs** of that provider in this app
+   ("not measured yet" otherwise).
+3. **One queue per provider.** The worker is unchanged in shape: it serves the queue named by `VIDGEN_QUEUE_NAME`
+   and loads the adapters of its `ai_mode`. The batch stores its provider; rows, retries and requeue are routed to
+   that queue. Heartbeat and queue depth become per queue.
+4. The **chooser** at preview approval lists ready providers that fit the batch's declared data class, side by
+   side (time, cost, remaining credit); an option whose estimate exceeds its remaining credit is refused; the
+   worker **pauses** the batch before a row would pass the spend cap.
+5. **C5:** remote kinds (`remote_function`, `remote_worker`) are `demo_only`. The data class is declared per batch
+   at upload, and both the API and the worker check it. Decision 6a stands unchanged.
+6. **Modal** becomes one `remote_function` provider (ai_mode `modal`, T4). The Modal design in decisions 1–8
+   above is unchanged.
+7. **remote_worker** lets any machine (for example a rented GPU server) join by running the same worker with its
+   own queue name. It needs the **CUDA worker image (G6)**, shared S3-compatible storage, a private network to
+   Redis and PostgreSQL, and the encryption keys on that machine. Until those exist it stays "needs setup".
+
+**Consequences.** One migration (0003: batch provider, batch data class, row cost). New providers need a registry
+entry and a worker, not code. Per-queue heartbeats replace the single key. Lip sync on any remote provider stays
+blocked until licence option (a) or (b) is decided (ADR-012). Estimates are empty until a provider has measured
+runs, by design.
+
+**Alternatives considered.** A fixed enum of modes (rejected: the Admin asked for pluggable). Provider records in
+the database (rejected for now: needs an admin UI and secrets handling; the file is reviewable in git).
+Estimates from the spike or from design figures (rejected: the Admin asked for measured runs only).

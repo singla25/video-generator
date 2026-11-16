@@ -2,6 +2,11 @@
 
 Newest first. One entry per task.
 
+## 2026-11-17 — Render providers plan drafted; backlog recorded
+- Drafted `docs/plans/render-providers.md` and ADR-013 amendment A1 (both proposed, not accepted): provider registry (name, kind local / remote function / remote worker, measured-only estimates, C5 data rule, derived setup state, spend cap), chooser at preview approval, one queue per provider, pause at the cap. Remote worker needs G6 (CUDA image), shared storage and a private network. Open questions Q1–Q3 for the Admin.
+- TASK-LOG: Admin's backlog order BL-1 … BL-7 recorded, including BL-6 (name detection, last) and BL-7 (lip sync on Modal blocked on licence (a)/(b)).
+- Spike P2-S: harness built, GPU runs blocked by Modal ("Please add a payment method to use L4/T4 GPU functions"). Waiting for the Admin's choice A or B.
+
 ## 2026-11-16 — TASK-LOG clean-up (done items only)
 - Marked 15 stale rows done, each with its evidence (merged PR #10, #11, #12, #14, #17; gate 3; migration 0002 run on 2026-11-12 after the Admin's yes). DD39-B checked against the code and tests first; T15–T16 was a duplicate of the done T15/T16 rows.
 - Left open on purpose: F7 (Admin visual sign-off) and G8 (licence gate plan waiting for the Admin).

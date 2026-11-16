@@ -1,0 +1,19 @@
+# Keep secrets, local state and heavy folders out of every image build.
+.env
+.env.*
+!.env.example
+.dev
+media
+.venv
+node_modules
+.worktrees
+.git
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+docs
+tests
+frontend/dist
+*.mp4
+*.mov

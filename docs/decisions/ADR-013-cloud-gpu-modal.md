@@ -19,6 +19,11 @@ that Modal is the only cloud render worker; Kaggle is documentation only.
 5. GPU: L4 (24 GB) first, T4 (16 GB) fallback — to be confirmed by P2-S measurements.
 6. Privacy: in `modal` mode the dashboard requires an explicit confirmation that names, voices and faces go to Modal
    **before the first template upload**. Consent gate, encryption at rest and PII-free logs are unchanged.
+6a. **Data scope (Admin decision C5, 2026-11-16): `modal` mode is for demo and learning data only, never real voter
+   data.** Requirement C5 says voter data stays on our servers; Modal is a third-party cloud, so real sheets,
+   templates of real people and real voter IDs are never rendered there. The installer's Modal step shows this
+   ("demo and learning data only", "never real voter data") and continues only after an explicit "yes"; the
+   dashboard confirmation in T4 uses the same wording. Real data stays in `fake` or `local` mode on the Mac.
 7. Secrets: Modal token ID + secret are read from environment variables only (`MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`),
    written by the installer to `.env` (0600), and passed only to the worker container.
 8. Dependency: optional extra `cloud` with a pinned `modal`, added with T4 (separate approval). Until then the spike

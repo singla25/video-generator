@@ -94,4 +94,6 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 <h2>2026-11-13 - T6 verify (Stage 1)</h2>
 <ul><li>Added tests/unit/meta/test_setup_real_seams.py (real runner, real seams, script run without a terminal); setup.py coverage 97 -&gt; 99 %. COVERAGE.md updated.</li></ul>
 <h2>2026-11-13 - Gap-1 RED (installer mode gate)</h2>
-<ul><li>tests/unit/meta/test_setup_mode_gate.py (18 cases, 11 red); conftest Harness writes a fixture backend settings.py (<code>settings_source</code>, <code>top_level()</code>); tree scenario 9.</li></ul></div></body></html>
+<ul><li>tests/unit/meta/test_setup_mode_gate.py (18 cases, 11 red); conftest Harness writes a fixture backend settings.py (<code>settings_source</code>, <code>top_level()</code>); tree scenario 9.</li></ul>
+<h2>2026-11-16 - C5 RED (Modal demo-data-only confirmation)</h2>
+<ul><li>tests/unit/meta/test_setup_c5_demo_only.py (notice, "demo data" confirmation via seams.ask, only "yes" continues, EOF, fake/local untouched); conftest default answer "demo data": yes; modal rerun test answers it; tree scenario 10.</li></ul></div></body></html>

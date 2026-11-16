@@ -2,11 +2,9 @@
 
     python3 scripts/setup.py [--root PATH]
 
-Standard library only, so it runs on a bare python3 before any dependency is installed.
-Password hashing is delegated to ``scripts/dev_setup.py hash-password`` through ``uv run`` (the
-password goes over stdin, never on a command line). Secrets are never printed or logged, and the
-Modal token pair reaches child processes only through their environment. Migrations run only
-after an explicit "y".
+Standard library only (runs on a bare python3). The password is hashed by ``scripts/dev_setup.py
+hash-password`` over stdin; secrets are never printed, logged or put on a command line (Modal
+tokens reach children only via their environment). Migrations run only after an explicit "y".
 """
 
 import argparse
@@ -14,6 +12,7 @@ import ast
 import getpass
 import os
 import secrets
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -37,6 +36,12 @@ COMPOSE_COMMAND = "docker compose --profile app up -d"
 HASH_KEY = "VIDGEN_ADMIN_PASSWORD_HASH"
 WORKERS_KEY = "VIDGEN_DOCKER_WORKERS"
 UNSAFE_VALUE_CHARS = "'\"`\r\n \t"
+DEMO_NOTICE = (
+    "Modal mode is for demo and learning data only, never real voter data.",
+    "In this mode the names, voices and faces of your templates are sent to Modal.",
+)
+DEMO_PROMPT = "I will use demo data only. Type yes to continue: "
+DEMO_DECLINED = "Stopped: Modal mode needs a clear yes to demo data only. Nothing was written."
 # Keys that protect stored data: losing them makes existing encrypted rows unreadable.
 KEPT_KEYS = ("VIDGEN_ENCRYPTION_KEY", "VIDGEN_INDEX_KEY")
 
@@ -77,8 +82,6 @@ def _real_run(
 
 def real_seams() -> Seams:
     """The seams used when the installer runs for real."""
-    import shutil
-
     return Seams(
         which=shutil.which,
         run=_real_run,
@@ -106,11 +109,7 @@ BACKEND_SETTINGS = Path("backend") / "vidgen" / "settings.py"
 
 
 def accepted_modes(root: Path) -> tuple[str, ...]:
-    """Modes the backend accepts: the ``ai_mode: Literal[...]`` values, read with ``ast``.
-
-    The backend is parsed, never imported, so its dependencies are not needed. Anything missing
-    or unexpected falls back to the modes that always work.
-    """
+    """Modes in the backend's ``ai_mode: Literal[...]`` (parsed, never imported); else fallback."""
     try:
         tree = ast.parse((root / BACKEND_SETTINGS).read_text(encoding="utf-8"))
     except (OSError, SyntaxError, ValueError):
@@ -147,17 +146,19 @@ def choose_mode(seams: Seams, root: Path) -> str:
 
 
 def collect_modal_tokens(seams: Seams) -> tuple[str, str]:
-    """Show the account steps and privacy notice, then read and check the token pair."""
-    seams.echo("Modal setup steps:")
-    seams.echo("  1. Sign up for a free Modal account.")
-    seams.echo("  2. Create a token (you get a token ID and a token secret).")
-    seams.echo("  3. Paste both here; they are hidden while you type.")
+    """Require the demo-data yes, show the account steps, then read and check the token pair."""
+    for line in DEMO_NOTICE:
+        seams.echo(line)
+    if seams.ask(DEMO_PROMPT).strip().lower() != "yes":
+        raise InstallerError(DEMO_DECLINED)
+    seams.echo(
+        "Modal setup steps:\n  1. Sign up for a free Modal account.\n"
+        "  2. Create a token (you get a token ID and a token secret).\n"
+        "  3. Paste both here; they are hidden while you type."
+    )
     for url in MODAL_LINKS:
         seams.echo(f"  {url}")
         seams.open_url(url)
-    seams.echo(
-        "Privacy: in this mode the names, voices and faces of your templates are sent to Modal."
-    )
     token_id = seams.getpass("Modal token ID (hidden): ").strip()
     token_secret = seams.getpass("Modal token secret (hidden): ").strip()
     if not token_id or not token_secret:
@@ -193,13 +194,9 @@ def hash_admin_password(seams: Seams, root: Path) -> str:
 
 def read_kept_keys(path: Path) -> dict[str, str]:
     """The data-protecting keys of an existing settings file (never printed or logged)."""
-    found: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        key, sep, value = line.partition("=")
-        value = value.strip().strip("'\"")
-        if sep and key.strip() in KEPT_KEYS and value:
-            found[key.strip()] = value
-    return found
+    pairs = (line.partition("=") for line in path.read_text(encoding="utf-8").splitlines())
+    stripped = ((k.strip(), v.strip().strip("'\""), sep) for k, sep, v in pairs)
+    return {k: v for k, v, sep in stripped if sep and k in KEPT_KEYS and v}
 
 
 def render_settings(
@@ -273,8 +270,7 @@ def install(root: Path, seams: Seams) -> int:
         kept = read_kept_keys(target)
     mode = choose_mode(seams, root)
     tokens = collect_modal_tokens(seams) if mode == "modal" else None
-    admin_hash = hash_admin_password(seams, root)
-    write_private(target, render_settings(mode, admin_hash, tokens, kept))
+    write_private(target, render_settings(mode, hash_admin_password(seams, root), tokens, kept))
     seams.echo("Settings file written (owner-only permissions).")
     maybe_migrate(seams, root)
     seams.echo(f"Next: {COMPOSE_COMMAND}")

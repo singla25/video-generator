@@ -280,3 +280,6 @@ Newest first. One entry per task.
 
 ## 2026-11-13 - Gap-1 mode gate
 - `scripts/setup.py`: `accepted_modes(root)` reads `ai_mode: Literal[...]` from `backend/vidgen/settings.py` with `ast` (fallback fake+local); `choose_mode` offers only accepted modes and says "not available yet (see ADR-013)" for a refused known mode. Tests: `tests/unit/meta` 652 passed.
+
+## 2026-11-16 - C5 Modal demo-only gate
+- `scripts/setup.py`: `collect_modal_tokens` first shows the "demo and learning data only, never real voter data" notice, then asks once ("demo data" prompt); only "yes" continues, anything else raises `InstallerError` (nothing opened, asked or written). File trimmed to 300 lines. Tests: `tests/unit/meta` 679 passed.

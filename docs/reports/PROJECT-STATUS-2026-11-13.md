@@ -2,7 +2,7 @@
 
 Written by the CEO on branch `docs/ceo/status-report-2026-11-13` from `origin/main`. Documentation only: no code, tests, dependencies or migrations were changed or run for this report. Numbers in section 7 are the last check reported by the Admin and were not re-run for this report.
 
-> **Update 2026-11-16 (CEO refresh at the Admin's request).** Since this report was written, PRs #18, #20 and #21 have been merged. #22 (rescue of the M2 docs) and #23 (C5: Modal is for demo data only) are open. Corrected below, each marked "2026-11-16": the summary, the PR table, the branch rows for the Docker work and `feat/m2-mac-first`, B3 (kept, now decided), B4, B17, B18, and section 11. The TASK-LOG on main was cleaned by #21 (15 finished rows marked done; F7 and G8 still open). Everything else is unchanged from 2026-11-13.
+> **Update 2026-11-16 (CEO refresh at the Admin's request).** Since this report was written, PRs #18, #20, #21 and #23 (C5: Modal is for demo data only) have been merged. #22 (rescue of the M2 docs) is open. Corrected below, each marked "2026-11-16": the summary, the PR table, the branch rows for the Docker work and `feat/m2-mac-first`, B3 (kept, now decided), B4, B17, B18, and section 11. The TASK-LOG on main was cleaned by #21 (15 finished rows marked done; F7 and G8 still open). Everything else is unchanged from 2026-11-13.
 
 ## Summary
 
@@ -10,7 +10,7 @@ Written by the CEO on branch `docs/ceo/status-report-2026-11-13` from `origin/ma
 - Merged to `main`: M1 batch pipeline (gate 3), M3 dashboard (gate), the M2 local pilot (PR #5), and PRs #6 to #17 (label, CI, draft and list fixes, spoken suffix, multi name slots).
 - Last merged PR is #17 (`2496183`, DD-40); `main` is at that commit. Migration 0002 is in the repo; the real database `vidgen` is at 0002.
 - Open: PR #18 (guard change, needs Admin merge). Another session holds unmerged work for the Docker app, terminal installer and Modal cloud mode (branch `claude/exciting-cannon-t53afd`), waiting for four Admin approvals.
-  - **2026-11-16:** #18 merged. The four approvals were given, and Stage 1 (Docker app stack, installer, README modes) was merged as PR #20. Modal adapters (T4) wait for spike P2-S (credit cap and the Admin's go still pending). C5 is in open PR #23.
+  - **2026-11-16:** #18 merged. The four approvals were given, and Stage 1 (Docker app stack, installer, README modes) was merged as PR #20. Modal adapters (T4) wait for spike P2-S (credit cap and the Admin's go still pending). C5 is merged as PR #23.
 - Open: the G8 licence gate plan is a draft and not approved. Three weights (Demucs, face-parse-bisent, S3FD/FAN) are pilot-only on the Admin's Mac (DD-31, ADR-012).
 - Not done: per-row spoken names, music bed under the name slot, automatic detection of every name occurrence, per-template suffix and pause (each needs a migration or a design choice).
 - Top risk 1: the licence status of the pilot weights. Outputs must stay on the Admin's Mac until B1 is closed.
@@ -26,7 +26,7 @@ All 18 PRs in the repository (`gh pr list --state all`). PR #4 was closed withou
 
 | # | Title | State | Merged (date) | Branch |
 |---|-------|-------|---------------|--------|
-| 23 | feat(installer): Modal mode is for demo and learning data only (C5) | OPEN (2026-11-16) | - | feat/backend/c5-demo-only |
+| 23 | feat(installer): Modal mode is for demo and learning data only (C5) | MERGED | 2026-11-16 | feat/backend/c5-demo-only |
 | 22 | docs(ceo): rescue M2 Mac-first plan, ADR-010 G1 licence audit, DD-30/DD-31 | OPEN (2026-11-16) | - | docs/ceo/m2-docs-rescue |
 | 21 | docs(ceo): mark finished TASK-LOG items done (F7, G8 stay open) | MERGED | 2026-11-16 | docs/ceo/task-log-cleanup |
 | 20 | Docker app stack, guided installer and README modes (Stage 1 of docker-and-cloud-setup) | MERGED | 2026-11-16 | feat/tester/cloud-setup |
@@ -50,7 +50,7 @@ All 18 PRs in the repository (`gh pr list --state all`). PR #4 was closed withou
 | 2 | Spike/m2 mac feasibility | MERGED | 2026-10-28 | spike/m2-mac-feasibility |
 | 1 | Fix/upload feedback | MERGED | 2026-10-27 | fix/upload-feedback |
 
-Count: 18 PRs listed; 16 merged, 1 open, 1 closed. **2026-11-16:** 23 PRs; 19 merged, 3 open (#19, #22, #23), 1 closed.
+Count: 18 PRs listed; 16 merged, 1 open, 1 closed. **2026-11-16:** 23 PRs; 20 merged, 2 open (#19, #22), 1 closed.
 
 ## 2. Decisions
 
@@ -224,7 +224,7 @@ ADR-013 does not exist yet; backlog B3 needs it.
 |----|------|--------------------|-------|-------|------|
 | B1 | G8 licence gate: replace or clear the Demucs, face-parse-bisent and S3FD/FAN weights (plan docs/plans/g8-licence-gate.md, ADR-012 correction) | waiting for the Admin's approval of the plan; candidates (MediaPipe, a clearly licensed separation model or none) are unverified | Admin approves the plan | backend-dev + CEO | large |
 | B2 | Per-row spoken names: the confirmed spelling covers the preview row only and the automatic spelling is right about 45-55 % of the time | design limit of the pilot | Admin adds a Devanagari `Spoken name` column to the sheets, or a better transliterator | Admin / backend-dev | medium |
-| B3 | Privacy decision for cloud rendering: Modal would send names, voices and faces off the Mac, against rule C5 (voter data stays on our servers) | needs an Admin decision recorded in ADR-013. **2026-11-16: decided (C5): Modal mode is for demo and learning data only, never real voter data. Recorded in ADR-013 (6a), the README mode table, and the installer's Modal step, which needs an explicit "yes"; PR #23 (open). T4's dashboard confirmation must reuse the same wording** | Admin | CEO | small |
+| B3 | Privacy decision for cloud rendering: Modal would send names, voices and faces off the Mac, against rule C5 (voter data stays on our servers) | needs an Admin decision recorded in ADR-013. **2026-11-16: decided (C5): Modal mode is for demo and learning data only, never real voter data. Recorded in ADR-013 (6a), the README mode table, and the installer's Modal step, which needs an explicit "yes"; PR #23 (merged). T4's dashboard confirmation must reuse the same wording** | Admin | CEO | small |
 
 **P2 (product completeness)**
 

@@ -189,6 +189,6 @@ def test_modal_rerun_with_overwrite_declined_keeps_tokens_file_byte_identical(
 ) -> None:
     assert modal.run_main() == 0
     first = modal.dotenv.read_bytes()
-    modal.answers.update({"overwrite": ["n"], "mode": ["modal"]})
+    modal.answers.update({"overwrite": ["n"], "mode": ["modal"], "demo data": ["yes"]})
     assert modal.run_main() == 0
     assert modal.dotenv.read_bytes() == first

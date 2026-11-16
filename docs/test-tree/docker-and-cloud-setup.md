@@ -114,6 +114,20 @@ Accepted modes = `ai_mode: Literal[...]` in `<root>/backend/vidgen/settings.py`,
 | G1-E4 | Edge | missing, syntax error, no ai_mode, not a Literal | fallback fake/local | test_missing_or_unusable_settings_fall_back_to_fake_and_local_only |
 | G1-E5 | Edge | unknown mode "cuda" accepted by backend; backend lacks fake | not offered (intersection) | test_a_mode_the_installer_does_not_know_is_never_offered, test_a_mode_the_backend_does_not_accept_is_not_offered_even_if_fake |
 
+## Scenario 10: Installer: Modal is demo data only (Admin decision C5, 2026-11-16)
+Before any link opens or token is asked, the installer prints a notice ("demo and learning data only", "never real voter data", names, voices and faces are sent to Modal) and asks through `seams.ask`. The harness routes that prompt by the keyword **"demo data"** (conftest default answer "yes"; the prompt must not contain "mode", "migrat" or "overwrite"). Only "yes" (trimmed, any case) continues. File: `tests/unit/meta/test_setup_c5_demo_only.py`.
+| ID | Type | Given / When | Then | Test |
+|----|------|--------------|------|------|
+| C5-P1 | Positive | modal chosen | notice has both phrases and names/voices/faces/Modal | test_notice_names_demo_only_and_never_real_voter_data |
+| C5-P2 | Positive | order | notice, then confirmation, then links and token prompts | test_notice_is_shown_before_any_link_opens_or_token_is_asked |
+| C5-P3 | Positive | one run | confirmation asked exactly once | test_confirmation_is_asked_exactly_once_through_ask |
+| C5-P4 | Positive | "yes", "YES", "  Yes  " | continues | test_yes_in_any_case_or_spacing_continues_to_the_token_step |
+| C5-N1 | Negative | "", "y", "no", "ok", other | message, non-zero, no open_url, getpass, subprocess, file | test_anything_but_yes_stops_before_links_tokens_calls_and_writing |
+| C5-N2 | Negative | existing file, declined | byte-identical, no hash call | test_declined_confirmation_leaves_an_existing_file_byte_identical |
+| C5-N3 | Negative | declined | not asked again | test_declined_confirmation_is_not_asked_again |
+| C5-E1 | Edge | EOF at the prompt | clean message, non-zero, nothing written | test_eof_at_the_confirmation_exits_cleanly_and_writes_nothing |
+| C5-E2 | Edge | fake / local mode | no notice, no prompt | test_fake_and_local_modes_never_show_the_notice_or_ask |
+
 ## Outline: still to cover later
 - Port already in use gives a clear message; arm64 and amd64 build; restart keeps data; local mode (no worker container) plus native worker share the media folder.
 

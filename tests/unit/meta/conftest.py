@@ -73,7 +73,7 @@ class Harness:
     mod: ModuleType
     root: Path
     answers: dict[str, list[str]] = field(
-        default_factory=lambda: {"mode": ["fake"], "migrat": ["n"]}
+        default_factory=lambda: {"mode": ["fake"], "migrat": ["n"], "demo data": ["yes"]}
     )
     password: str = DEMO_PASSWORD
     password_again: str | None = None

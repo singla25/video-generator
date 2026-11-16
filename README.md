@@ -174,7 +174,7 @@ No paid or external online service is required.
 |------|-------------------|----------|--------|
 | `fake` | Nowhere: test stand-ins, no models, no cost | Docker | Ready |
 | `local` | Natively on your Mac (Apple GPU) | Apple silicon; worker peak 20–21 GB measured, 32 GB recommended | Ready with `scripts/dev_up.sh` (pilot) |
-| `modal` | On Modal cloud GPUs | Free Modal account + token | **Not available yet**: planned in [ADR-013](docs/decisions/ADR-013-cloud-gpu-modal.md) |
+| `modal` | On Modal cloud GPUs. **Demo and learning data only, never real voter data** | Free Modal account + token | **Not available yet**: planned in [ADR-013](docs/decisions/ADR-013-cloud-gpu-modal.md) |
 
 Docker cannot use the Apple GPU, so `local` AI never runs inside a container.
 

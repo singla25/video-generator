@@ -2,6 +2,18 @@
 
 Newest first. One entry per task.
 
+## 2026-11-16 — TASK-LOG clean-up (done items only)
+- Marked 15 stale rows done, each with its evidence (merged PR #10, #11, #12, #14, #17; gate 3; migration 0002 run on 2026-11-12 after the Admin's yes). DD39-B checked against the code and tests first; T15–T16 was a duplicate of the done T15/T16 rows.
+- Left open on purpose: F7 (Admin visual sign-off) and G8 (licence gate plan waiting for the Admin).
+
+## 2026-11-13 — Docker and cloud setup, Stage 1 (T1–T3, T6)
+- Plan `docs/plans/docker-and-cloud-setup.md` approved with fixes P1–P9; ADR-013 (Modal) drafted as Proposed. New licence point R5: ADR-012 limits two lip-sync weights to "this Mac only", so lip sync on Modal needs an Admin decision.
+- T1 tester (sonnet): test tree + red tests; T2 backend-dev: `scripts/setup.py` (stdlib only) + `dev_setup.py hash-password` (Admin grant); T3 backend-dev + frontend-dev: `Dockerfile.backend`, `Dockerfile.frontend`, `frontend/docker/nginx.conf`, `.dockerignore`, compose profile `app` (Admin grants).
+- CEO review found and got fixed: installer regenerated encryption keys on overwrite (data loss); Ctrl-D traceback; misleading token message; worker lost Modal tokens when the settings file came only via `VIDGEN_ENV_FILE` (verified with `docker compose config` and demo values); unpinned `uv` in the image.
+- T6: full suite 2653 passed; `scripts/setup.py` coverage 99 %; isolated Docker e2e (project `vidgen-t3test`) 2 passed and fully torn down; ruff + mypy --strict clean.
+- Guard hook blocked agents in worktrees twice; the Admin fixed `guard.py`. Agents reported the blocks instead of working around them.
+- Branches (not pushed): `feat/tester/cloud-setup` (integrated, 600f699), `feat/backend/installer`, `feat/frontend/dashboard-image`. Open: T4 (held for spike P2-S: credit cap + licence choice), T5 README.
+
 ## 2026-11-13 — Status report written
 - Report `docs/reports/PROJECT-STATUS-2026-11-13.md` (branch `docs/ceo/status-report-2026-11-13`, from origin/main): summary, 18 PRs, DD-1 to DD-40, 35 branches classified, plans and ADRs, architecture snapshot, milestones, last quality numbers (as reported, not re-run), and next-phase backlog B1 to B20 with the Admin decisions waiting.
 - Documentation only; no code, tests or migrations touched. Two example id values from the requirement docs were withheld from the report (the grep check forbids them in docs/reports); the rest of the brief was copied as given.

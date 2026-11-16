@@ -1,0 +1,58 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Plan — Drafts visible and resumable; confirmed spelling survives a new preview</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Plan — Drafts visible and resumable; confirmed spelling survives a new preview</h1>
+<p><strong>Status:</strong> Approved by the Admin on 2026-10-31 (DD-38; the Admin asked for these fixes). <strong>Decision record:</strong> DD-38 in <code>docs/agents/ceo/DELEGATED-DECISIONS.md</code>. <strong>Branch:</strong> <code>fix/draft-visibility-and-spelling</code></p>
+<h2>Goal</h2>
+<p>Fix three problems the Admin hit in local mode. No migration, no new dependency.</p>
+<ol><li><strong>BUG:</strong> <code>Confirm spelling</code> then <code>Generate preview</code> brought back the original name, because <code>BatchFlow.request_preview</code> built a new preview record and dropped the confirmed spoken name. Fix: keep the confirmed spoken name when a preview is requested again; in the dashboard <code>Confirm spelling</code> now immediately requests a new preview with the confirmed spelling.</li><li>A batch that was created but not started (DRAFT) vanished after a reload: it was not in Running, Completed or Failed, and the Overview showed its rows as "Queued". Fix: new <code>GET /batches?view=drafts</code>; the Running page gets a "Not started" section listing drafts with <code>Continue setup</code> and <code>Delete draft</code>; on the Overview a draft shows <code>Continue setup</code> instead of <code>Start batch</code> and its tile reads <code>Not started</code>.</li><li>No way back into the wizard for a draft. Fix: <code>/batches/new?batch=&lt;id&gt;</code> resumes a draft at step 3 (or step 4 when the preview is approved); a draft without sheet data or a batch that is not a draft shows a clear message.</li></ol>
+<p>Facts recorded (no change to these):</p>
+<ul><li>The dropdown "All" on the Overview Rows table is the row status filter.</li><li>The "Videos to generate" choice is on wizard step 4.</li></ul>
+<p>Cause: DD-37 deliberately left drafts out of the three lists (a CEO design error: nothing showed them). The Overview "Start batch" on a draft bypasses wizard step 4.</p>
+<h2>Acceptance criteria</h2>
+<ol><li>Backend: after a spoken name is confirmed, requesting a new preview for the same batch keeps the confirmed spoken name on the new preview record; the original name is not restored.</li><li>Dashboard: <code>Confirm spelling</code> sends the confirmed spelling and immediately requests a new preview, so the preview shown next uses the confirmed spelling without a separate <code>Generate preview</code> click.</li><li><code>GET /batches?view=drafts</code> returns only batches with status DRAFT; the existing Running, Completed and Failed views return the same results as before.</li><li>The Running page shows a "Not started" section that lists the drafts, each with <code>Continue setup</code> and <code>Delete draft</code>; batches that are running, completed or failed do not appear in that section.</li><li>On the Overview a draft shows <code>Continue setup</code> instead of <code>Start batch</code>, its tile reads <code>Not started</code>, and its rows are not shown as "Queued"; running, completed and failed batches keep their current buttons and labels.</li><li><code>/batches/new?batch=&lt;id&gt;</code> for a draft with sheet data opens the wizard at step 3, or at step 4 when the preview is approved.</li><li><code>/batches/new?batch=&lt;id&gt;</code> shows a clear message, creates no new batch and does not crash, when the draft has no sheet data or when the batch is not a draft.</li><li>No migration file and no new dependency are added; all existing tests still pass, and ruff, mypy, Vitest, typecheck, lint and build are green.</li></ol>
+<h2>Requirement tree</h2>
+<pre><code>Feature: drafts visible and resumable; confirmed spelling survives a new preview (DD-38)
+├── Functional
+│   ├── R1  Confirmed spoken name kept on a new preview (fix 1, backend)
+│   ├── R2  Dashboard Confirm spelling requests a new preview at once (fix 1, frontend)
+│   ├── R3  GET /batches?view=drafts returns DRAFT batches only (fix 2, backend)
+│   ├── R4  Running page &quot;Not started&quot; section: Continue setup, Delete draft (fix 2, frontend)
+│   ├── R5  Overview: draft shows Continue setup, tile reads Not started (fix 2, frontend)
+│   ├── R6  /batches/new?batch=&lt;id&gt; resumes at step 3, or step 4 when preview approved (fix 3)
+│   └── R7  Clear message for a draft without sheet data or a non-draft batch (fix 3)
+├── Non-functional
+│   ├── Same auth and privacy rules as the other batch endpoints; the batch id is the only query value (no personal data in URLs)
+│   └── No data loss on regenerate; a running batch is never changed by the draft work
+├── Constraints
+│   ├── No migration, no new dependency
+│   ├── Tests first (TDD); Haiku agents with exact briefs; CEO verifies each step
+│   └── Backend and frontend work in disjoint folders (DD-5)
+├── Out of scope
+│   ├── Moving the &quot;Videos to generate&quot; choice or the Rows status filter
+│   └── Any change to the render pipeline
+└── Open questions: none</code></pre>
+<p>Note for BE-GREEN: if the API has no route to delete a batch, backend-dev adds <code>DELETE /batches/{id}</code> that accepts DRAFT batches only, and says so in its report. The CEO reviews that route before merge.</p>
+<h2>Test tree outline</h2>
+<p>See <code>docs/test-tree/draft-visibility-and-spelling.md</code> (tester writes it). Scenarios:</p>
+<ul><li><strong>A. Confirmed name kept on regenerate</strong> — P: name confirmed, new preview keeps it (also after two regenerations). N: preview requested for an unknown batch gives an error and creates no record. E: a Devanagari confirmed name is kept exactly; the name survives a page reload.</li><li><strong>B. Drafts view and Overview</strong> — P: <code>view=drafts</code> lists the drafts; the Running page shows the section with both buttons. N: a running batch is not listed; the draft tile never reads "Queued". E: no drafts (section hidden); a draft that starts leaves the section; a draft with zero rows.</li><li><strong>C. Resume the wizard</strong> — P: draft with sheet data opens at step 3; with an approved preview opens at step 4. N: draft without sheet data shows the message and creates nothing; a non-draft id shows the message. E: malformed or unknown batch id; a draft whose preview is being regenerated.</li></ul>
+<h2>Tasks</h2>
+<table><tr><th>ID</th><th>Task</th><th>Agent</th><th>Why this agent</th><th>Depends on</th><th>Model</th><th>Worktree?</th><th>Done when</th></tr><tr><td>BE-RED</td><td>Write failing backend tests for R1, R3 and the resume data needed by R6–R7</td><td>tester</td><td>Writes tests only in its own folder; TDD red step</td><td>— (parallel with FE-RED)</td><td>haiku</td><td>No (disjoint folders, DD-5)</td><td>Tests collect and fail only because the behaviour is missing</td></tr><tr><td>FE-RED</td><td>Write failing UI tests for R2, R4, R5, R6, R7</td><td>tester</td><td>Writes UI tests only in <code>tests/frontend/</code>; TDD red step</td><td>— (parallel with BE-RED)</td><td>haiku</td><td>No (disjoint folders, DD-5)</td><td>Tests fail only because the behaviour is missing</td></tr><tr><td>BE-GREEN</td><td>Keep the confirmed name on a new preview; drafts view; resume data; delete-draft route if none exists</td><td>backend-dev</td><td>Owns <code>backend/</code>; implements the API</td><td>BE-RED</td><td>haiku</td><td>No</td><td>Backend tests green; ruff and mypy clean; no migration</td></tr><tr><td>FE-GREEN</td><td>Dashboard: Not started section, Overview draft button and tile, Confirm spelling regenerates, <code>?batch=</code> resume and messages</td><td>frontend-dev</td><td>Owns <code>frontend/</code>; implements the UI</td><td>FE-RED (API shape fixed in this plan)</td><td>haiku</td><td>No (parallel with BE-GREEN, disjoint folders)</td><td>Vitest, typecheck, lint and build green</td></tr><tr><td>VERIFY</td><td>Run all suites; restart the Admin's local app with <code>scripts/dev_up.sh</code>; check fixes 1–3 by hand</td><td>CEO</td><td>Owns review and the merge gate</td><td>BE-GREEN, FE-GREEN</td><td>haiku</td><td>No</td><td>All suites green; app restarted; three fixes checked</td></tr><tr><td>PR</td><td>Open PR <code>fix/draft-visibility-and-spelling</code> → <code>main</code> with a summary of the diff</td><td>CEO</td><td>Owns the PR; the Admin decides the merge</td><td>VERIFY</td><td>haiku</td><td>No</td><td>PR open; merge waits for Admin</td></tr></table>
+<p>API contract used by both GREEN tasks: <code>GET /batches?view=drafts</code> returns the same item shape as the existing batch list responses (backend-dev confirms this in its report).</p>
+<h2>Order (TDD)</h2>
+<ol><li>BE-RED and FE-RED in parallel (tester), red only.</li><li>BE-GREEN and FE-GREEN in parallel (backend-dev, frontend-dev), green and tidy; developers do not edit tests.</li><li>VERIFY (CEO): full suites, then restart of the Admin's app, then manual check of the three fixes.</li><li>PR; the Admin decides whether to merge.</li></ol>
+<p>tester (red) → developers (green + refactor) → CEO verify → Admin approves merge</p>
+<h2>Risks</h2>
+<ol><li><strong>Resuming a draft depends on the stored sheet report.</strong> If a draft has no stored report, the wizard cannot return to step 3. Mitigation: criterion 7 shows a clear message instead of a broken wizard.</li><li><strong>The preview regenerate must not lose the confirmed name.</strong> Mitigation: criterion 1 and scenario A test it at the backend; criterion 2 tests it in the dashboard.</li><li><strong>The Overview button change must not break running batches.</strong> Mitigation: <code>Continue setup</code> is shown only for DRAFT; criterion 5 requires running, completed and failed batches to keep their buttons and labels.</li></ol>
+<h2>Migrations / dependencies (need separate approval)</h2>
+<ul><li>Migrations: <strong>none.</strong> If a change needs a column that is not in the schema, backend-dev stops and reports to the CEO; a migration needs Admin approval.</li><li>Dependencies: <strong>none.</strong></li></ul>
+<h2>Admin approval</h2>
+<ul><li>[x] Plan approved (DD-38, 2026-10-31)</li><li>[ ] Task assignment approved</li><li>[ ] Merge approved</li></ul></div></body></html>

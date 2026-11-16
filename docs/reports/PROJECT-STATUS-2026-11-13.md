@@ -2,12 +2,15 @@
 
 Written by the CEO on branch `docs/ceo/status-report-2026-11-13` from `origin/main`. Documentation only: no code, tests, dependencies or migrations were changed or run for this report. Numbers in section 7 are the last check reported by the Admin and were not re-run for this report.
 
+> **Update 2026-11-16 (CEO refresh at the Admin's request).** Since this report was written, PRs #18, #20 and #21 have been merged. #22 (rescue of the M2 docs) and #23 (C5: Modal is for demo data only) are open. Corrected below, each marked "2026-11-16": the summary, the PR table, the branch rows for the Docker work and `feat/m2-mac-first`, B3 (kept, now decided), B4, B17, B18, and section 11. The TASK-LOG on main was cleaned by #21 (15 finished rows marked done; F7 and G8 still open). Everything else is unchanged from 2026-11-13.
+
 ## Summary
 
 - End to end, the local pipeline works: sheet upload, validation, consent-gated template, preview with confirmed spelling, local AI render (voice, lip sync, AI bubble), output folder and manifest, and the dashboard that drives it.
 - Merged to `main`: M1 batch pipeline (gate 3), M3 dashboard (gate), the M2 local pilot (PR #5), and PRs #6 to #17 (label, CI, draft and list fixes, spoken suffix, multi name slots).
 - Last merged PR is #17 (`2496183`, DD-40); `main` is at that commit. Migration 0002 is in the repo; the real database `vidgen` is at 0002.
 - Open: PR #18 (guard change, needs Admin merge). Another session holds unmerged work for the Docker app, terminal installer and Modal cloud mode (branch `claude/exciting-cannon-t53afd`), waiting for four Admin approvals.
+  - **2026-11-16:** #18 merged. The four approvals were given, and Stage 1 (Docker app stack, installer, README modes) was merged as PR #20. Modal adapters (T4) wait for spike P2-S (credit cap and the Admin's go still pending). C5 is in open PR #23.
 - Open: the G8 licence gate plan is a draft and not approved. Three weights (Demucs, face-parse-bisent, S3FD/FAN) are pilot-only on the Admin's Mac (DD-31, ADR-012).
 - Not done: per-row spoken names, music bed under the name slot, automatic detection of every name occurrence, per-template suffix and pause (each needs a migration or a design choice).
 - Top risk 1: the licence status of the pilot weights. Outputs must stay on the Admin's Mac until B1 is closed.
@@ -23,7 +26,12 @@ All 18 PRs in the repository (`gh pr list --state all`). PR #4 was closed withou
 
 | # | Title | State | Merged (date) | Branch |
 |---|-------|-------|---------------|--------|
-| 18 | chore(guard): worktree paths and write grants for the Docker and installer files | OPEN | - | chore/guard-grants-and-worktrees |
+| 23 | feat(installer): Modal mode is for demo and learning data only (C5) | OPEN (2026-11-16) | - | feat/backend/c5-demo-only |
+| 22 | docs(ceo): rescue M2 Mac-first plan, ADR-010 G1 licence audit, DD-30/DD-31 | OPEN (2026-11-16) | - | docs/ceo/m2-docs-rescue |
+| 21 | docs(ceo): mark finished TASK-LOG items done (F7, G8 stay open) | MERGED | 2026-11-16 | docs/ceo/task-log-cleanup |
+| 20 | Docker app stack, guided installer and README modes (Stage 1 of docker-and-cloud-setup) | MERGED | 2026-11-16 | feat/tester/cloud-setup |
+| 19 | docs(ceo): project status report and next-phase backlog (this report) | OPEN | - | docs/ceo/status-report-2026-11-13 |
+| 18 | chore(guard): worktree paths and write grants for the Docker and installer files | MERGED (2026-11-16) | 2026-11-16 | chore/guard-grants-and-worktrees |
 | 17 | feat: several name slots per template (DD-40) | MERGED | 2026-11-12 | feat/multi-slot |
 | 16 | Claude/exciting cannon t53afd (other session: README and docs) | MERGED | 2026-11-12 | claude/exciting-cannon-t53afd |
 | 15 | Claude/exciting cannon t53afd (other session: README and docs) | MERGED | 2026-11-06 | claude/exciting-cannon-t53afd |
@@ -42,7 +50,7 @@ All 18 PRs in the repository (`gh pr list --state all`). PR #4 was closed withou
 | 2 | Spike/m2 mac feasibility | MERGED | 2026-10-28 | spike/m2-mac-feasibility |
 | 1 | Fix/upload feedback | MERGED | 2026-10-27 | fix/upload-feedback |
 
-Count: 18 PRs listed; 16 merged, 1 open, 1 closed.
+Count: 18 PRs listed; 16 merged, 1 open, 1 closed. **2026-11-16:** 23 PRs; 19 merged, 3 open (#19, #22, #23), 1 closed.
 
 ## 2. Decisions
 
@@ -99,29 +107,29 @@ Classification of all 35 non-main branch names (local, with origin copies where 
 |--------|-------|--------|----|
 | chore/ci-github-actions | local + origin | Squash-merged | #3 |
 | chore/ci-workflow | local + origin | Squash-merged | #11 |
-| chore/guard-grants-and-worktrees | local + origin | NOT merged (open) | #18 |
-| claude/exciting-cannon-t53afd | local (worktree `.worktrees/readme`) + origin | PRs #15 and #16 squash-merged; later commits NOT merged (7 local commits, 6 with no match in main; 3 on origin, 2 unmatched) | #15, #16 |
+| chore/guard-grants-and-worktrees | local + origin | NOT merged (open). **2026-11-16: squash-merged** | #18 |
+| claude/exciting-cannon-t53afd | local (worktree `.worktrees/readme`) + origin | PRs #15 and #16 squash-merged; later commits NOT merged (7 local commits, 6 with no match in main; 3 on origin, 2 unmatched). **2026-11-16: its later commits are all inside #20 (merged)** | #15, #16, #20 |
 | docs/ceo/m1-plan | local | Merged (ancestor) | - |
 | docs/ceo/m3-wrapup | local | Merged (ancestor) | - |
 | docs/ceo/status-report-2026-11-13 | local (this session) | NOT merged (new, this report) | none |
 | docs/ceo/wrapup-2026-10-30 | local + origin | Squash-merged | #8 |
-| docs/ci-workflow-draft | local | NOT merged (2 commits, 1 unmatched) | no PR |
-| feat/backend/installer | local (worktree) | NOT merged (21 commits, 18 unmatched) | no PR |
+| docs/ci-workflow-draft | local | NOT merged (2 commits, 1 unmatched). **2026-11-16: its `docs/patches/ci.yml` is identical to main's `.github/workflows/ci.yml`; safe to delete** | no PR |
+| feat/backend/installer | local (worktree) | NOT merged (21 commits, 18 unmatched). **2026-11-16: contained in #20 (merged) except 2 HTML-only commits that are not needed** | #20 |
 | feat/backend/m1-skeleton | local | Merged (ancestor) | - |
 | feat/batch-lists-limit-template-delete | local + origin | Squash-merged | #10 |
 | feat/dev-migration-prompt | local | Merged (ancestor; DD-26) | - |
-| feat/frontend/dashboard-image | local (worktree) | NOT merged (16 commits, 14 unmatched) | no PR |
+| feat/frontend/dashboard-image | local (worktree) | NOT merged (16 commits, 14 unmatched). **2026-11-16: contained in #20 (merged)** | #20 |
 | feat/label-bubble-style | local + origin | Squash-merged | #7 |
 | feat/m1-api | local | Merged (ancestor; gate 3, DD-12) | - |
 | feat/m1-domain | local | Merged (ancestor) | - |
 | feat/m1-ingest | local | Merged (ancestor) | - |
 | feat/m2-local-real-ai | local + origin | Squash-merged | #5 |
-| feat/m2-mac-first | local | NOT merged (4 commits, 4 unmatched); the licence audit it produced is captured in the ADR-012 correction, so nothing else needs rescuing | no PR |
+| feat/m2-mac-first | local | NOT merged (4 commits, 4 unmatched); the licence audit it produced is captured in the ADR-012 correction, so nothing else needs rescuing. **2026-11-16 correction: a line-by-line check found 85 doc lines only on this branch (the approved Mac-first M2 plan, the ADR-010 G1 audit section, DD-30/DD-31). They are rescued in PR #22; the branch is safe to delete once #22 is merged** | #22 |
 | feat/m3-dashboard | local | Merged (ancestor; DD-25) | - |
 | feat/multi-slot | local + origin | Squash-merged | #17 |
 | feat/preview-progress | local + origin | Squash-merged | #9 |
 | feat/spoken-suffix-marketing-demo | local + origin | Squash-merged | #14 |
-| feat/tester/cloud-setup | local (worktree) | NOT merged (20 commits, 17 unmatched) | no PR |
+| feat/tester/cloud-setup | local (worktree) | NOT merged (20 commits, 17 unmatched). **2026-11-16: squash-merged as #20** | #20 |
 | feat/tester/m1-tree | local | Merged (ancestor) | - |
 | fix/draft-visibility-and-spelling | local + origin | Squash-merged | #12 |
 | fix/queue-depth | local | NOT merged by ancestry; 4 commits with no matching patch in main; the queue-depth fix is inside PR #9 (squash-merged), so this branch is safe to delete | no PR (title of #9 mentions a queue-depth fix) |
@@ -134,6 +142,8 @@ Classification of all 35 non-main branch names (local, with origin copies where 
 | worktree-agent-abe939d72a80997ab | local | Merged (ancestor; 0 commits outside main) | - |
 
 Count: 35 branch names classified. 26 are merged (ancestor or squash). 9 have unmerged commits or an open PR: chore/guard-grants-and-worktrees, claude/exciting-cannon-t53afd, docs/ci-workflow-draft, feat/backend/installer, feat/frontend/dashboard-image, feat/m2-mac-first, feat/tester/cloud-setup, fix/queue-depth, and this session's new branch. Deleting any of them needs the Admin's yes (backlog B17).
+
+**2026-11-16:** of those 9, #18 and #20 are merged, `docs/ci-workflow-draft` and `fix/queue-depth` are safe to delete (content in main), `feat/m2-mac-first` waits for #22, and this report's branch is #19. New branches since then: `feat/backend/mode-gate` (contained in #20), `docs/ceo/task-log-cleanup` (#21, merged), `docs/ceo/m2-docs-rescue` (#22), `feat/tester/c5-demo-only` and `feat/backend/c5-demo-only` (#23), and `docs/ceo/status-report-refresh` (the refresh of this report, pushed to #19's branch).
 
 ## 4. Plans and ADRs
 
@@ -214,13 +224,13 @@ ADR-013 does not exist yet; backlog B3 needs it.
 |----|------|--------------------|-------|-------|------|
 | B1 | G8 licence gate: replace or clear the Demucs, face-parse-bisent and S3FD/FAN weights (plan docs/plans/g8-licence-gate.md, ADR-012 correction) | waiting for the Admin's approval of the plan; candidates (MediaPipe, a clearly licensed separation model or none) are unverified | Admin approves the plan | backend-dev + CEO | large |
 | B2 | Per-row spoken names: the confirmed spelling covers the preview row only and the automatic spelling is right about 45-55 % of the time | design limit of the pilot | Admin adds a Devanagari `Spoken name` column to the sheets, or a better transliterator | Admin / backend-dev | medium |
-| B3 | Privacy decision for cloud rendering: Modal would send names, voices and faces off the Mac, against rule C5 (voter data stays on our servers) | needs an Admin decision recorded in ADR-013 | Admin | CEO | small |
+| B3 | Privacy decision for cloud rendering: Modal would send names, voices and faces off the Mac, against rule C5 (voter data stays on our servers) | needs an Admin decision recorded in ADR-013. **2026-11-16: decided (C5): Modal mode is for demo and learning data only, never real voter data. Recorded in ADR-013 (6a), the README mode table, and the installer's Modal step, which needs an explicit "yes"; PR #23 (open). T4's dashboard confirmation must reuse the same wording** | Admin | CEO | small |
 
 **P2 (product completeness)**
 
 | ID | Item | Why it is not done | Needs | Owner | Size |
 |----|------|--------------------|-------|-------|------|
-| B4 | Docker app stack, terminal installer (scripts/setup.py) and Modal cloud mode (plan docs/plans/docker-and-cloud-setup.md, tasks T1-T6 and spike P2-S) | being done by another session in .worktrees/readme on branch claude/exciting-cannon-t53afd; four approvals pending; Modal adapters must implement the new LipSyncer.sync(video, audio, out, start_s, key_from) | Admin approvals, Modal account for the spike | other session | large |
+| B4 | Docker app stack, terminal installer (scripts/setup.py) and Modal cloud mode (plan docs/plans/docker-and-cloud-setup.md, tasks T1-T6 and spike P2-S) | **2026-11-16:** Stage 1 (Docker app stack, installer, README modes) is merged as #20; Gap-1 (installer offers only modes the backend accepts) is in #20; C5 is in #23. Still open: T4 Modal adapters (they must implement `LipSyncer.sync(video, audio, out, start_s, key_from)`), held for spike P2-S (speech-to-text and voice cloning only, demo data, licence option (c)); and Gap 2 (local AI with the Docker app plus a native worker, not tested end to end). | Admin: spike credit cap and "go"; Modal account | CEO + backend-dev + tester | large |
 | B5 | Music bed under the name slot and the gap: the voice-only clip replaces the template audio, so the slot and the 0.25 s gap are silent | the app has no separation step (Demucs weights are unclear, see B1) | decision on a licensed separation model or filling the gap with room tone | backend-dev | medium |
 | B6 | Automatic detection of every occurrence of the word to replace (today the first slot is detected and extra slots are added by hand) | out of scope of DD-40 | none | backend-dev + frontend-dev | medium |
 | B7 | Per-template spoken suffix (today one global setting VIDGEN_SPOKEN_SUFFIX) | would need a migration | Admin approval of a migration | backend-dev | small |
@@ -238,8 +248,8 @@ ADR-013 does not exist yet; backlog B3 needs it.
 | B14 | prettier --check does not cover tests/frontend (the e2e spec differs at HEAD) | config only covers frontend/ | none | frontend-dev | small |
 | B15 | The slot editor does not refuse a negative start for an extra slot locally (the server does) | no message was specified | none | frontend-dev | tiny |
 | B16 | Check the log line `error fetching models/sd-vae` during labelling in the local smoke run | run finished, probably an offline fallback | none | backend-dev | small |
-| B17 | Delete old branches (see the branch table in section 3): merged ones are safe; DELETING NEEDS THE ADMIN'S YES; also consider deleting the REMOTE branch feat/m2-local-real-ai because its history contains one sample-sheet row id that never reached main (main was squash-merged) | Admin approval | Admin | CEO | small |
-| B18 | Leftover test databases from killed pytest runs (names ending _test, for example vidgen_55e3f615_test, vidgen_63e1f22e_test, vidgen_76ce4e2b_test) and the stash and untracked files in the Admin's checkout (docs/pr-worker-health.md, docs/patches/local-ai-deps-fix.patch, docs/html/pr-worker-health.html, .worktrees/) | deletions need the Admin | Admin | CEO | tiny |
+| B17 | Delete old branches (see the branch table in section 3): merged ones are safe; DELETING NEEDS THE ADMIN'S YES; also consider deleting the REMOTE branch feat/m2-local-real-ai because its history contains one sample-sheet row id that never reached main (main was squash-merged). **2026-11-16: see the updated note under the branch table; `feat/m2-mac-first` only after #22** | Admin approval | Admin | CEO | small |
+| B18 | Leftover test databases from killed pytest runs (names ending _test, for example vidgen_55e3f615_test, vidgen_63e1f22e_test, vidgen_76ce4e2b_test) and the stash and untracked files in the Admin's checkout (docs/pr-worker-health.md, docs/patches/local-ai-deps-fix.patch, docs/html/pr-worker-health.html, .worktrees/). **2026-11-16: full list of the 16 leftovers (no open connections, about 8 MB each): vidgen_12ba5b90_test, vidgen_13443f2b_test, vidgen_55e3f615_test, vidgen_63e1f22e_test, vidgen_818aab8e_test, vidgen_9052763e_test, vidgen_92fc2a4a_test, vidgen_95246324_test, vidgen_c462cd53_test, vidgen_d940db43_test, vidgen_fda9fdb5_test, vidgen_mig_3ac40085_test, vidgen_mig_cf5cff62_test, vidgen_mig_f5658f31_test, vidgen_selftest, vidgen_selftest2. Keep vidgen, vidgen_demo, and vidgen_test and vidgen_migration_test (protected by tests/integration/conftest.py). The Admin drops them.** | deletions need the Admin | Admin | Admin | tiny |
 | B19 | GitHub: turn on branch protection for main (require python, frontend, e2e); merge PR #18 (guard change by the Admin) | Admin's GitHub setting | Admin | Admin | tiny |
 | B20 | Paste docs/agents/ceo/CLAUDE-md-proposal.md into CLAUDE.md if wanted (agents cannot edit CLAUDE.md) | rule §3.8 | Admin | Admin | tiny |
 
@@ -295,3 +305,5 @@ Working method: tests first (tester red, developer green, verify); Haiku agents 
 6. Provide a second real template for tuning (B10).
 7. Turn on branch protection on GitHub.
 8. Decide whether real voter data may ever go to a cloud worker.
+
+**2026-11-16 status:** item 2 approved (plus licence option (c) for the spike); item 3 done (#18 merged); item 8 decided (C5: never; demo and learning data only, PR #23). New: the spike credit cap and "go"; merge #22, #23 and this PR; delete the branches that are safe (section 3 note); drop the 16 test databases (B18).

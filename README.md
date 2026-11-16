@@ -36,8 +36,27 @@ Upload a video and a sheet of names. VidGen Studio replaces the spoken name, re-
 
 ## Screenshots
 
-> **Not included yet.** Screenshots must come from a running instance, and the environment this README was prepared in could not start the PostgreSQL and Redis services the app needs. Rather than show mock-ups, none are shown.
-> To add them on your Mac, follow [docs/assets/screenshots/README.md](docs/assets/screenshots/README.md).
+Captured on 2026-11-11 from a running instance in local AI mode on a MacBook Pro (M4 Pro, 24 GB), using a separate demo database, a synthetic demo template and a sheet of made-up names. No real personal data is shown. The template card's "Add another name slot" button comes from the several-name-slots work (DD-40, merged in PR #17).
+
+**Overview**: KPI cards, videos per week, the current batch and its rows.
+
+![Overview](docs/assets/screenshots/overview.png)
+
+**Templates**: a template card with consent confirmed and the name slot found automatically, waiting for confirmation.
+
+![Templates](docs/assets/screenshots/templates.png)
+
+**New batch wizard**: step 2, mapping the sheet's Name and ID columns.
+
+![New batch wizard](docs/assets/screenshots/wizard.png)
+
+**A batch in progress**: progress, ETA, controls and per-row render times.
+
+![Batch in progress](docs/assets/screenshots/batch-detail.png)
+
+**History**: past batches with their success rate.
+
+![History](docs/assets/screenshots/history.png)
 
 ## How it works
 
@@ -84,18 +103,26 @@ The numbers below must come from your own data. Run the read-only report on the 
 
 It reports: total videos and batches, success rate, average / median / P95 / min / max render time per video, and throughput (videos per hour, from completed batches' wall-clock time).
 
+Measured with `bench_stats.py` on a **demo database**:
+- **Mode:** local AI (`VIDGEN_AI_MODE=local`).
+- **Machine:** Apple M4 Pro, 24 GB RAM.
+- **Data:** one batch of 4 made-up names.
+- **Template:** a 10.5 s, 1080×1300 demo clip.
+
 | Metric | Result |
 |---|---|
-| Videos rendered, batches | *not measured yet* |
-| Success rate | *not measured yet* |
-| Render time: average / median / P95 | *not measured yet* |
-| Throughput (videos/hour) | *not measured yet* |
+| Videos rendered, batches | 4 videos, 1 batch |
+| Success rate | 100 % (4 of 4) |
+| Render time: average / median / P95 | 46.5 s / 46.5 s / 76.0 s (min 16.6 s, max 76.2 s) |
+| Throughput (videos/hour) | 77.1 (batch wall-clock time 186.7 s) |
+
+*This is a small sample, not a benchmark: one batch, four rows, one short template, on a 24 GB Mac that swaps under local AI (see [System requirements](#system-requirements)). Run the report on your own data for real figures. Fake mode has no AI cost, so its timings say nothing about real rendering.*
 
 Documented design figures (from the project's plans, **not measurements of a production run**):
 
 | Item | Figure | Source |
 |---|---|---|
-| Local AI mode peak memory | 16–18 GB RAM, one render at a time | `docs/plans/m2-local-real-ai.md` |
+| Local AI mode peak memory | 16–18 GB RAM, one render at a time (the measured worker peak is higher, 20–21 GB: see [System requirements](#system-requirements)) | `docs/plans/m2-local-real-ai.md` |
 | GPU throughput target | ≥ 100 videos/hour for a 30 s template | `docs/plans/m2-real-ai.md` (target) |
 | Sheet validation target | 1,000 rows in < 3 s | `docs/plans/m1-batch-pipeline.md` (acceptance criterion) |
 
@@ -104,11 +131,25 @@ Documented design figures (from the project's plans, **not measurements of a pro
 | | Fake mode (demo / development) | Local AI mode (pilot) |
 |---|---|---|
 | Mac | Apple silicon or Intel | Apple silicon only |
-| Memory | Not benchmarked | 16–18 GB peak per render (documented); 32 GB recommended *(estimate)* |
+| Memory | Not benchmarked | **20–21 GB peak for the worker** (measured, see below); 32 GB recommended *(estimate)* |
 | Disk | Space for videos and Docker volumes | Plus model weights (several GB, downloaded on first use) |
 | Network | Needed for installs | Also for the first model download |
 
 Intel Macs: PostgreSQL, Redis and the app use multi-architecture images and packages, so fake mode is expected to work, but it has not been tested on Intel here.
+
+**Verified on (2026-11-11):** MacBook Pro (Mac16,8), Apple M4 Pro (12 cores: 8 performance + 4 efficiency), 24 GB RAM, macOS 27.0.1, with uv 0.13.1, Node.js 26.12.0, FFmpeg 9.0.2 and Docker Compose v5.6.0. The install steps below were run on this machine.
+
+**Measured peak memory, local AI mode (same Mac, 2026-11-11).** These are the "Memory" column in Activity Monitor (`top -stats mem`), sampled every 2 s while the app rendered a 10.5 s, 1080x1300 demo template, one video at a time:
+
+| Process / phase | Peak |
+|---|---|
+| Worker, first preview (models loading) | 21.0 GB |
+| Worker, second preview | 20.0 GB |
+| Worker, batch of 4 videos | 20.0 GB |
+| API process, at the same time | 8.7 GB |
+| Building the demo template (one MuseTalk lip sync, outside the app; `/usr/bin/time -l` peak footprint) | 13.9 GB |
+
+**Does it fit in 24 GB?** It runs, and the 4-video demo batch completed, but only with heavy swapping: the system used about 17.8 GB of swap during the batch. The worker alone peaks above the 16–18 GB in the project's plans, and the worker and API together exceed 24 GB. That is why 32 GB is recommended, though that figure is an *estimate* and was not tested.
 
 ### Dependencies
 
@@ -119,13 +160,43 @@ Intel Macs: PostgreSQL, Redis and the app use multi-architecture images and pack
 | Redis | Job queue | 7 (container) | No, via Docker |
 | [uv](https://docs.astral.sh/uv/) | Python and package manager | recent | **Yes** |
 | Python | Backend | 3.11 (`>=3.11,<3.12`) | No, uv installs it |
-| Node.js + npm | Dashboard | 22 | **Yes** |
+| Node.js + npm | Dashboard | 22 in CI; 26 verified on macOS | **Yes** |
 | FFmpeg (includes ffprobe) | Video and audio processing | recent | **Yes** |
 | Python packages | From `pyproject.toml` / `uv.lock` | locked | No, `uv sync` |
 | npm packages | From `frontend/package-lock.json` | locked | No, `npm ci` |
 | `local-ai` extra | Real AI models | pinned in `pyproject.toml` | No, installed by `dev_up.sh` in local mode |
 
 No paid or external online service is required.
+
+## Choose your mode
+
+| Mode | Where the AI runs | You need | Status |
+|------|-------------------|----------|--------|
+| `fake` | Nowhere: test stand-ins, no models, no cost | Docker | Ready |
+| `local` | Natively on your Mac (Apple GPU) | Apple silicon; worker peak 20–21 GB measured, 32 GB recommended | Ready with `scripts/dev_up.sh` (pilot) |
+| `modal` | On Modal cloud GPUs | Free Modal account + token | **Not available yet**: planned in [ADR-013](docs/decisions/ADR-013-cloud-gpu-modal.md) |
+
+Docker cannot use the Apple GPU, so `local` AI never runs inside a container.
+
+**Kaggle** is not a render worker. You can use a Kaggle notebook by hand to try the models on a free GPU, but the app never connects to it.
+
+## Quick start with Docker and the installer
+
+The guided installer needs only `python3`. It checks Docker, uv, Node and FFmpeg, asks for the mode, writes `.env` with owner-only permissions (0600) and sets your admin password (hidden input, at least 12 characters; only its hash is saved).
+
+```bash
+docker compose up -d                   # PostgreSQL and Redis first (the installer can then apply migrations)
+python3 scripts/setup.py               # answer the questions; migrations only run if you type y
+docker compose --profile app up -d     # API, worker and dashboard in containers
+```
+
+Open **http://localhost:5173**. The API answers at `http://127.0.0.1:8000/api/health`.
+
+- **Run it again** at any time. It asks before overwriting `.env`, and it keeps your encryption keys, so data that is already stored stays readable.
+- **Ports:** set `VIDGEN_API_PORT`, `VIDGEN_DASHBOARD_PORT`, `VIDGEN_DB_PORT` or `VIDGEN_REDIS_PORT` before `docker compose` to use other ones.
+- **Media** (templates and outputs) is kept in the host folder `./media` (change it with `VIDGEN_MEDIA_DIR`), not inside a container.
+- **Local mode:** the installer sets `VIDGEN_DOCKER_WORKERS=0`, so no worker container starts and the worker runs on your Mac. Running that native worker next to the Docker app has not been tested end to end yet. Until it has, use `scripts/dev_up.sh` for local mode (steps below).
+- **Stop:** `docker compose --profile app down`. Your data stays in Docker volumes and `./media`.
 
 ## Install on macOS
 
@@ -135,11 +206,11 @@ Works on Apple silicon and Intel. Commands assume [Homebrew](https://brew.sh).
 
 ```bash
 xcode-select --install                 # command line tools (skip if already installed)
-brew install uv node@22 ffmpeg
+brew install uv node ffmpeg
 brew install --cask docker             # then open Docker Desktop once and wait until it is running
 ```
 
-If `node` is not found after installing, run `brew link --overwrite node@22`.
+CI uses Node.js 22, but Homebrew deprecated the `node@22` formula on 2026-10-30, and it is keg-only (not on your `PATH` by default). The guide was verified with the current `node` formula (26.12.0). If you need exactly Node 22, run `brew install node@22` and add `$(brew --prefix node@22)/bin` to your `PATH`.
 
 **2. Get the code and dependencies**
 
@@ -172,7 +243,7 @@ scripts/dev_up.sh                      # first run creates .env with random secr
 scripts/dev_up.sh
 ```
 
-The first start lists any database migrations that are not applied yet and asks `y/N`. Answer `y` to create the tables. With no answer, nothing is applied and nothing starts.
+The first start lists any database migrations that are not applied yet and asks `y/N`. Answer `y` to create the tables. With no answer, nothing is applied and nothing starts. Run it from an interactive terminal: if the input is piped or redirected, the script refuses to apply migrations.
 
 **6. Verify**
 
@@ -213,7 +284,7 @@ Docker Desktop is not running or the containers are down. Open Docker Desktop, t
 <details>
 <summary><b>Port already in use (8000, 5173, 5432, 6379)</b></summary>
 
-Find the process with `lsof -i :5432`. The API (8000) and dashboard (5173) ports are fixed. For PostgreSQL and Redis set `VIDGEN_DB_PORT` / `VIDGEN_REDIS_PORT` before `docker compose up -d` and update the URLs in `.env`.
+Find the process with `lsof -i :5432`. With `scripts/dev_up.sh` the API (8000) and dashboard (5173) ports are fixed. With the Docker app, set `VIDGEN_API_PORT` / `VIDGEN_DASHBOARD_PORT`. For PostgreSQL and Redis set `VIDGEN_DB_PORT` / `VIDGEN_REDIS_PORT` before `docker compose up -d` and update the URLs in `.env`. Do not run `scripts/dev_up.sh` and the Docker app at the same time: both use ports 8000 and 5173.
 </details>
 
 <details>
@@ -237,7 +308,11 @@ Read the logs in `.dev/logs/` (`api.log`, `worker.log`, `web.log`, `migrate.log`
 <details>
 <summary><b>Devanagari text in the AI label looks wrong</b></summary>
 
-The font ships with the app, but text shaping may need the FRIBIDI library. Try `brew install fribidi` and restart. *(Not verified on macOS in this repository; CI installs `libraqm0` and `libfribidi0` on Linux.)*
+The fonts ship with the app. Correct Devanagari needs complex text shaping (Pillow's RAQM layout, which uses FriBiDi). Without it, vowel signs land in the wrong place (for example जनति instead of जनित).
+
+Check: `.venv/bin/python -c "from PIL import features; print(features.check('raqm'), features.check('fribidi'))"` should print `True True`. If it doesn't, run `brew install fribidi` and restart the app.
+
+*Verified on 2026-11-11 (Apple M4 Pro, macOS 27.0.1): with Homebrew `fribidi` 1.0.17 installed, both checks are `True` and the label renders correctly. The case without `fribidi` was not tested, because it was already installed on that Mac. On Linux, CI installs `libraqm0` and `libfribidi0`.*
 </details>
 
 ## Development
@@ -257,7 +332,7 @@ CI runs the same checks on every pull request.
 backend/vidgen/   api/ · services/ · domain/ · ports/ · infrastructure/ · worker/
 backend/migrations/   Alembic migrations (PostgreSQL)
 frontend/         React dashboard (Vite, TypeScript, Tailwind)
-scripts/          dev_up.sh · dev_down.sh · dev_setup.py · bench_stats.py
+scripts/          setup.py (installer) · dev_up.sh · dev_down.sh · dev_setup.py · bench_stats.py
 tests/            unit · integration · e2e
 docs/             plans · decisions (ADRs) · requirements · development-workflow.md
 docker-compose.yml   PostgreSQL 16 + Redis 7 for local use

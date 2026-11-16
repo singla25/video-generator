@@ -163,3 +163,6 @@ Newest first. One entry per task.
 
 ## 2026-11-13 - Gap-1 RED (installer mode gate)
 - tests/unit/meta/test_setup_mode_gate.py (18 cases, 11 red); conftest Harness writes a fixture backend settings.py (`settings_source`, `top_level()`); tree scenario 9.
+
+## 2026-11-16 - C5 RED (Modal demo-data-only confirmation)
+- tests/unit/meta/test_setup_c5_demo_only.py (notice, "demo data" confirmation via seams.ask, only "yes" continues, EOF, fake/local untouched); conftest default answer "demo data": yes; modal rerun test answers it; tree scenario 10.

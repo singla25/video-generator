@@ -1,0 +1,42 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree: preview progress, slow warning and fake-AI note</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree: preview progress, slow warning and fake-AI note</h1>
+<p>Feature: Wizard preview progress (T-PROG-FE) Tests: tests/frontend/unit/preview-progress.test.tsx Case IDs: TT-PP-&lt;P|N|E&gt;&lt;n&gt;.</p>
+<h2>Contract (frontend developer implements this)</h2>
+<table><tr><th>Item</th><th>Rule</th></tr><tr><td>API</td><td><code>batch.preview.stage</code>: `"preparing" \</td><td>"voice" \</td><td>"lipsync" \</td><td>"finishing" \</td><td>null<code> (optional). </code>/system/status<code> gives </code>ai_mode<code>: </code>"fake" \</td><td>"local"`; absent on older servers.</td></tr><tr><td>Progress list</td><td>While <code>preview.status</code> is PENDING: <code>&lt;ol role="list" aria-label="Preview progress"&gt;</code>, four items with exact texts "Preparing", "Speaking the name", "Matching the lips", "Finishing". Earlier steps <code>data-state="done"</code>; current has <code>aria-current="step"</code> and <code>data-state="current"</code>; later <code>data-state="todo"</code>. Null or missing stage = "Preparing" current. Hidden for READY, FAILED, NONE, STALE, no preview.</td></tr><tr><td>Local note</td><td><code>ai_mode</code> local and PENDING: <code>role="note"</code> "First run after a restart is slow, a few minutes. The AI models are loading."</td></tr><tr><td>Slow warning</td><td>PENDING for 30 s (fake, unchanged) or 180 s (local): "Preview is taking longer than expected." and a Retry button.</td></tr><tr><td>Fake note</td><td><code>ai_mode</code> fake: <code>role="note"</code> "Fake AI is on: the video will have a beep instead of the name." inside the Preview panel, any preview state. Not in local mode, not while the status call loads or fails.</td></tr></table>
+<p>Unknown stage values are not in the contract. The tests only require no crash, the four steps, and at most one current step.</p>
+<pre><code>Feature: Wizard preview progress, slow warning and fake-AI note
+├── Scenario: Preview is pending, progress list (P2, P3)
+│   ├── ✅ P1 ordered list &quot;Preview progress&quot; with the four exact texts
+│   ├── ✅ P2 stage preparing/voice/lipsync/finishing -&gt; done, current, todo states
+│   ├── ✅ P3 polling moves the current step; READY removes the list
+│   ├── ❌ N1 no list for READY (even with a stage), FAILED, STALE, NONE, no preview
+│   └── ⚠️ E1 null or missing stage -&gt; Preparing current; E2 unknown or empty stage -&gt; no crash;
+│          E3 same list in fake, local and older-server modes
+├── Scenario: Local mode first-run note (P4, N2-N4, E4, E9)
+│   ├── ✅ P4 local + PENDING shows the note as role=&quot;note&quot;
+│   ├── ❌ N2 fake + PENDING no note; N3 local + READY/FAILED/NONE/no preview no note; N4 no ai_mode no note
+│   └── ⚠️ E4 READY hides it; E9 local -&gt; fake switch removes it
+├── Scenario: Slow warning (P5-P7, N5-N7, E5-E7)
+│   ├── ✅ P5 fake at 31 s shows warning + Retry (unchanged); P6 local at 180 s shows it; P7 Retry re-posts
+│   ├── ❌ N5 fake at 29 s nothing; N6 local at 31 s nothing; N7 local at 179 s nothing
+│   └── ⚠️ E5 READY after 181 s hides it; E6 READY at 100 s never shows it; E7 unmount clears the timer (fake 30 s, local 180 s)
+├── Scenario: Fake-AI note (P8, N8-N12, E8)
+│   ├── ✅ P8 fake shows the note inside the Preview panel for no-preview, NONE, PENDING, READY, FAILED, STALE
+│   ├── ❌ N8 local no fake note; N9 local + PENDING no fake note; N10 no note while status loads (then shows);
+│   │      N11 HTTP or network error on status -&gt; no mode text; N12 no ai_mode -&gt; no note
+│   └── ⚠️ E8 fake -&gt; local mid-session swaps the notes
+└── Scenario: READY and status failures (E10-E12)
+    ├── ✅ E10 local READY hides list, note and warning; E11 fake READY hides list, keeps fake note
+    └── ⚠️ E12 failing status keeps the list (stage is mode-independent) and adds no mode-specific text</code></pre>
+<h2>Red expectations</h2>
+<p>Failing for the right reason before the feature exists: the list tests, the local note, the fake note, and the local warning at 31 s or 179 s (current code uses 30 s for every mode). Guards that pass before the feature (they pin unchanged behaviour): fake warning at 31 s and nothing at 29 s, the 180 s local warning, the absent-note checks, and the status-failure checks.</p></div></body></html>

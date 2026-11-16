@@ -150,3 +150,16 @@ Newest first. One entry per task.
 
 ## 2026-10-31 - T-PROG-FIX (stage key in shape asserts, one-model-at-a-time warm-up, cookie tests robust to httpx2)
 - Shape asserts take `"stage"` (None for READY/NONE, "preparing" for the PENDING POST response); warm-up tests rewritten for one-model-at-a-time (6 red); cookie tampering via new tests/fixtures/cookies.py `send_only_cookie`; logs test checks app records only (httpx2 client log excluded). Tree and commit: see git log.
+
+## 2026-11-12 - T1 RED (installer scripts/setup.py)
+- Tree docs/test-tree/docker-and-cloud-setup.md (installer complete, Docker and Modal outlines only; no Modal adapter tests).
+- Red tests: tests/unit/meta/test_setup_installer.py, test_setup_modal.py, conftest.py (fakes), __init__.py; fail because scripts/setup.py does not exist. Open: dev_setup.py needs a `hash-password` subcommand (backend-dev).
+
+## 2026-11-12 - T3 RED (Docker stack)
+- Tree scenarios 7-8 added. Red: tests/unit/meta/test_docker_stack.py (static, text-based), test_setup_workers.py (VIDGEN_DOCKER_WORKERS), tests/e2e/test_docker_stack_e2e.py (not run). Env names assumed: VIDGEN_MEDIA_DIR, VIDGEN_API_PORT, VIDGEN_DASHBOARD_PORT, VIDGEN_ENV_FILE, VIDGEN_DOCKER_WORKERS.
+
+## 2026-11-13 - T6 verify (Stage 1)
+- Added tests/unit/meta/test_setup_real_seams.py (real runner, real seams, script run without a terminal); setup.py coverage 97 -> 99 %. COVERAGE.md updated.
+
+## 2026-11-13 - Gap-1 RED (installer mode gate)
+- tests/unit/meta/test_setup_mode_gate.py (18 cases, 11 red); conftest Harness writes a fixture backend settings.py (`settings_source`, `top_level()`); tree scenario 9.

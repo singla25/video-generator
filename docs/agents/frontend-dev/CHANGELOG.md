@@ -96,3 +96,8 @@ Newest first. One entry per task.
 - Files: api/types.ts, pages/wizard/{SlotEditor,SlotField,ExtraSlotRow,slotChecks,StepSlot}.tsx/ts, pages/templates/TemplateCard.tsx.
 - Tests: full Vitest 600/600 (48 DD-40 tests now green); typecheck, lint, format:check, build green. No test edited.
 - Open: negative extra start is not refused locally (the API validates it; no message was specified); docs/html not regenerated (outside this task's paths).
+
+## 2026-11-13 T3-frontend (dashboard image)
+- Dockerfile.frontend: node:22-alpine build (npm ci, npm run build); final stage nginx-unprivileged on 8080, USER 101.
+- frontend/docker/nginx.conf: API prefix proxied to the api service on port 8000 (prefix kept); SPA fallback to index.html.
+- Tests: frontend tests in tests/unit/meta/test_docker_stack.py green. No image built, no dependency added.

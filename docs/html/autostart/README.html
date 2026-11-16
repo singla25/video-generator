@@ -1,0 +1,24 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Start VidGen Studio (local AI) when you log in</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Start VidGen Studio (local AI) when you log in</h1>
+<p>Nothing here is installed automatically. Both files stay in the project; you copy one into your own Library folder.</p>
+<h2>Try it first (changes nothing)</h2>
+<pre><code>bash docs/autostart/autostart_local.sh --dry-run</code></pre>
+<h2>Install (one command)</h2>
+<pre><code>cp docs/autostart/com.vidgen.local.plist ~/Library/LaunchAgents/ &amp;&amp; launchctl load ~/Library/LaunchAgents/com.vidgen.local.plist</code></pre>
+<p>It runs at every login: opens Docker Desktop if needed, starts postgres and redis, then starts the app with <code>VIDGEN_AI_MODE=local</code>. Open http://localhost:5173 after about a minute.</p>
+<h2>Remove</h2>
+<pre><code>launchctl unload ~/Library/LaunchAgents/com.vidgen.local.plist &amp;&amp; rm ~/Library/LaunchAgents/com.vidgen.local.plist</code></pre>
+<h2>Notes</h2>
+<ul><li>Log: <code>.dev/autostart.log</code> (plus <code>.dev/launchd.*.log</code>). Stop the app with <code>scripts/dev_down.sh</code>.</li><li>The models load when you generate a preview, not at login, so they stay out of memory in between.</li></ul>
+<p>  An opt-in warm-up setting (<code>VIDGEN_WARM_UP_ON_START</code>, off by default) is being added.</p>
+<ul><li>The plist contains the project path <code>/Users/singla/Developer/video-generator</code>. Edit it if you move the project.</li><li>To make Docker itself start at login: Docker Desktop, Settings, General, "Start Docker Desktop when you sign in".</li></ul></div></body></html>

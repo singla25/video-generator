@@ -2,6 +2,14 @@
 
 Newest first. One entry per task.
 
+## 2026-11-13 — Docker and cloud setup, Stage 1 (T1–T3, T6)
+- Plan `docs/plans/docker-and-cloud-setup.md` approved with fixes P1–P9; ADR-013 (Modal) drafted as Proposed. New licence point R5: ADR-012 limits two lip-sync weights to "this Mac only", so lip sync on Modal needs an Admin decision.
+- T1 tester (sonnet): test tree + red tests; T2 backend-dev: `scripts/setup.py` (stdlib only) + `dev_setup.py hash-password` (Admin grant); T3 backend-dev + frontend-dev: `Dockerfile.backend`, `Dockerfile.frontend`, `frontend/docker/nginx.conf`, `.dockerignore`, compose profile `app` (Admin grants).
+- CEO review found and got fixed: installer regenerated encryption keys on overwrite (data loss); Ctrl-D traceback; misleading token message; worker lost Modal tokens when the settings file came only via `VIDGEN_ENV_FILE` (verified with `docker compose config` and demo values); unpinned `uv` in the image.
+- T6: full suite 2653 passed; `scripts/setup.py` coverage 99 %; isolated Docker e2e (project `vidgen-t3test`) 2 passed and fully torn down; ruff + mypy --strict clean.
+- Guard hook blocked agents in worktrees twice; the Admin fixed `guard.py`. Agents reported the blocks instead of working around them.
+- Branches (not pushed): `feat/tester/cloud-setup` (integrated, 600f699), `feat/backend/installer`, `feat/frontend/dashboard-image`. Open: T4 (held for spike P2-S: credit cap + licence choice), T5 README.
+
 ## 2026-10-31 — PR #9 merged; DD-37 started
 - PR #9 (e4b0cee): preview progress, batch controls, queue-depth fix, local autostart files. Database emptied at the Admin's request (backup in .dev/backups, old media moved to .dev/media-*).
 - DD-37 built and verified (not merged yet): Running, Completed and Failed pages show real batch lists (`GET /batches?view=`); a "Videos to generate" choice on the last wizard step (All, First 5/10/15, custom; rows beyond the limit become SKIPPED with code NOT_SELECTED); Delete template (refused with 409 TEMPLATE_IN_USE while any batch uses it; removes the template, consent records and stored files); a redesigned New template form with a drop zone and an extension fallback for empty file types. No migration. Checks: backend 2381 passed, Vitest 488, E2E 21 passed. Known: `mypy --strict` reports 8 errors only in local_ai/loaders.py when the optional local-ai packages are installed (CI installs without them).

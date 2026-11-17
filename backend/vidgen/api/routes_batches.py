@@ -22,9 +22,11 @@ from vidgen.api.schemas_batches import (
     rows_json,
     status_json,
 )
+from vidgen.api.schemas_providers import ApproveBody
 from vidgen.api.uploads import PAYLOAD_TOO_LARGE, UploadTooLargeError, read_upload
 from vidgen.api.video_response import video_response
 from vidgen.domain.codes import FailureCode, plain_message
+from vidgen.domain.providers import DataClass
 from vidgen.domain.status import BatchListView, RowStatus
 from vidgen.services.batch_create import MappingRequest
 from vidgen.services.batch_rules import page_count
@@ -55,6 +57,20 @@ def _uuid(value: str) -> UUID:
         raise ApiError(422, VALIDATION_ERROR) from None
 
 
+def _data_class(fields: dict[str, str]) -> DataClass:
+    """The declared data class: "real" when absent; "demo" needs ``confirm_demo=true`` (C5)."""
+    raw = fields.get("data_class")
+    if raw is None:
+        return DataClass.REAL
+    try:
+        declared = DataClass(raw)
+    except ValueError:
+        raise ApiError(422, VALIDATION_ERROR) from None
+    if declared is DataClass.DEMO and fields.get("confirm_demo") != "true":
+        raise ApiError(422, VALIDATION_ERROR)
+    return declared
+
+
 @router.post("", status_code=201)
 async def create_batch(request: Request) -> dict[str, Any]:
     """Upload a sheet, map its columns and create a draft batch with a validation report."""
@@ -67,7 +83,10 @@ async def create_batch(request: Request) -> dict[str, Any]:
             if sheet is None or name is None or id_ is None or raw_template is None:
                 raise ApiError(422, VALIDATION_ERROR)
             mapping = MappingRequest(name, id_, _text(form.fields.get("spoken_name_column")))
-            view = await run_in_threadpool(app.batches.create, sheet, _uuid(raw_template), mapping)
+            data_class = _data_class(form.fields)
+            view = await run_in_threadpool(
+                app.batches.create, sheet, _uuid(raw_template), mapping, data_class
+            )
     except UploadTooLargeError:
         code = FailureCode.UNSUPPORTED_SHEET
         raise ApiError(PAYLOAD_TOO_LARGE, code.value, plain_message(code)) from None
@@ -171,9 +190,12 @@ def request_preview(batch_id: UUID, request: Request) -> dict[str, Any]:
 
 
 @router.post("/{batch_id}/preview/approve")
-def approve_preview(batch_id: UUID, request: Request) -> dict[str, Any]:
-    """Approve the rendered preview."""
-    return batch_json(container(request).batches.approve_preview(batch_id))
+def approve_preview(
+    batch_id: UUID, request: Request, body: ApproveBody | None = None
+) -> dict[str, Any]:
+    """Approve the rendered preview; an optional body names the render provider."""
+    provider_id = None if body is None else body.provider_id
+    return batch_json(container(request).batches.approve_preview(batch_id, provider_id))
 
 
 @router.post("/{batch_id}/preview/confirm-spelling")

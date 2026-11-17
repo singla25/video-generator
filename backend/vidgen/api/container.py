@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -19,8 +20,9 @@ from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.fakes import FakeSpeechToText
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
 from vidgen.infrastructure.local_ai.factory import build_ai_adapters
+from vidgen.infrastructure.provider_registry import load_registry
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
-from vidgen.infrastructure.queue.redis_heartbeat import RedisWorkerHeartbeat
+from vidgen.infrastructure.queue.redis_heartbeat import RedisQueueHeartbeats, RedisWorkerHeartbeat
 from vidgen.infrastructure.queue.redis_progress import RedisStageReporter
 from vidgen.infrastructure.sheets.reader import FileSheetReader
 from vidgen.infrastructure.storage.local import LocalStorage
@@ -35,6 +37,7 @@ from vidgen.ports import (
 )
 from vidgen.ports.models import TemplateRecord
 from vidgen.ports.progress import StageReporter
+from vidgen.ports.providers import QueueHeartbeats
 from vidgen.services.audit import AuditTrail
 from vidgen.services.batch_support import BatchContext
 from vidgen.services.batches import BatchService
@@ -54,6 +57,7 @@ class AppDeps:
     job_queue: JobQueue | None = None
     worker_heartbeat: WorkerHeartbeat | None = None
     stage_reporter: StageReporter | None = None
+    queue_heartbeats: QueueHeartbeats | None = None
 
 
 class _NotConfiguredSpeechToText:
@@ -105,6 +109,13 @@ def default_heartbeat(settings: Settings) -> RedisWorkerHeartbeat:
     )
 
 
+def default_queue_heartbeats(settings: Settings) -> RedisQueueHeartbeats:
+    """Per-queue worker heartbeats on the configured Redis (the connection opens on first use)."""
+    return RedisQueueHeartbeats(
+        redis.Redis.from_url(settings.redis_url), ttl_seconds=settings.heartbeat_ttl_seconds
+    )
+
+
 def default_stage_reporter(settings: Settings) -> RedisStageReporter:
     """The preview stage store on the configured Redis (the connection opens on first use)."""
     return RedisStageReporter(redis.Redis.from_url(settings.redis_url))
@@ -150,6 +161,9 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
     )
     queue = deps.job_queue or _default_queue(settings)
     ai = build_ai_adapters(settings)
+    registry = load_registry(
+        settings.providers_file, ai_mode=settings.ai_mode, queue_name=settings.queue_name
+    )
     batches = BatchService(
         BatchContext(
             uow=open_uow,
@@ -163,6 +177,10 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
             transliterator=ai.transliterator,
             require_spelling=settings.ai_mode == "local",
             stage_reporter=deps.stage_reporter or default_stage_reporter(settings),
+            providers=registry,
+            queue_heartbeats=deps.queue_heartbeats or default_queue_heartbeats(settings),
+            provider_env=os.environ,  # live view: requires_env is read at request time
+            row_timeout_seconds=settings.row_timeout_seconds,
         )
     )
     return Container(

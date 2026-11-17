@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     label_style: Literal["bubble", "band"] = "bubble"  # DD-32
     label_band_share: float = Field(default=0.10, ge=0.10, le=0.5)  # C2: at least 10 %
     queue_name: str = Field(default="vidgen", min_length=1)
+    providers_file: Path | None = None  # TOML registry of render providers; none = one default
     pause_poll_seconds: int = Field(default=5, gt=0)
     worker_threads: int = Field(default=2, gt=0)
     heartbeat_key: str = Field(default="vidgen:worker:heartbeat", min_length=1)

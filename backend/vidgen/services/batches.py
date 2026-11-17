@@ -8,6 +8,7 @@ from typing import BinaryIO
 from uuid import UUID
 
 from vidgen.domain.codes import FailureCode
+from vidgen.domain.providers import DataClass
 from vidgen.domain.status import BatchListView
 from vidgen.ports.batches import DayStat
 from vidgen.services.batch_create import BatchCreator, MappingRequest
@@ -17,6 +18,7 @@ from vidgen.services.batch_queries import BatchQueries
 from vidgen.services.batch_retention import BatchRetention
 from vidgen.services.batch_support import BatchContext
 from vidgen.services.batch_views import BatchReport, BatchStatus, BatchView, RowsPage
+from vidgen.services.provider_choice import ProviderChoices, ProviderFlow
 from vidgen.services.sheet_inspect import SheetInspection, inspect_sheet
 
 
@@ -27,14 +29,21 @@ class BatchService:
         self._reader = ctx.reader
         self._create = BatchCreator(ctx)
         self._flow = BatchFlow(ctx)
+        self._providers = ProviderFlow(ctx)
         self._queries = BatchQueries(ctx)
         self._downloads = BatchDownloads(ctx, self._queries)
         self._retention = BatchRetention(ctx)
 
     # creation and drafts
-    def create(self, sheet: Path, template_id: UUID, request: MappingRequest) -> BatchView:
-        """Validate a sheet and create a draft batch."""
-        return self._create.create(sheet, template_id, request)
+    def create(
+        self,
+        sheet: Path,
+        template_id: UUID,
+        request: MappingRequest,
+        data_class: DataClass = DataClass.REAL,
+    ) -> BatchView:
+        """Validate a sheet and create a draft batch of the declared data class."""
+        return self._create.create(sheet, template_id, request, data_class)
 
     def change_mapping(self, batch_id: UUID, request: MappingRequest) -> BatchView:
         """Re-read the stored sheet with other columns."""
@@ -53,9 +62,18 @@ class BatchService:
         """Queue the preview render."""
         return self._flow.request_preview(batch_id)
 
-    def approve_preview(self, batch_id: UUID) -> BatchView:
-        """Approve the rendered preview."""
-        return self._flow.approve_preview(batch_id)
+    def approve_preview(self, batch_id: UUID, provider_id: str | None = None) -> BatchView:
+        """Approve the rendered preview, optionally choosing the render provider."""
+        return self._flow.approve_preview(batch_id, provider_id)
+
+    def provider_choices(self, batch_id: UUID) -> ProviderChoices:
+        """The chooser content: every provider with estimate, credit and refusal."""
+        return self._providers.list_for_batch(batch_id)
+
+    def change_provider(self, batch_id: UUID, provider_id: str) -> BatchView:
+        """Move a draft or paused batch to another provider."""
+        self._providers.change_provider(batch_id, provider_id)
+        return self._queries.get(batch_id)
 
     def confirm_spelling(self, batch_id: UUID, spoken_name: str) -> BatchView:
         """Store the confirmed spoken-name spelling."""

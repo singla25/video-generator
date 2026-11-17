@@ -11,6 +11,7 @@ from datetime import date, datetime
 from typing import Literal, Protocol
 from uuid import UUID
 
+from vidgen.domain.providers import MeasuredRun
 from vidgen.domain.status import ApprovalFingerprint, BatchListView
 
 PREVIEW_NONE = "NONE"
@@ -66,6 +67,8 @@ class BatchRecord:
     finished_at: datetime | None = None
     mapping: MappingRecord | None = None
     preview: PreviewRecord = field(default_factory=PreviewRecord)
+    provider_id: str | None = None  # chosen render provider; None = the default provider
+    data_class: str = "real"  # "real" or "demo" (C5), declared at upload
 
 
 @dataclass(frozen=True)
@@ -110,6 +113,7 @@ class StuckRow:
     batch_id: UUID
     row_id: UUID
     kind: Literal["row", "preview"]
+    provider_id: str | None = None  # the batch's provider; None = default provider
 
 
 class BatchStore(Protocol):
@@ -232,20 +236,36 @@ class BatchStore(Protocol):
         """Storage keys of every rendered output file."""
         ...
 
+    def batch_spent(self, batch_id: UUID) -> float:
+        """Measured cost (USD) of this batch's rows."""
+        ...
+
+    def provider_spent(self, provider_id: str, include_unrouted: bool) -> float:
+        """Measured cost of every row the provider rendered; unrouted batches if asked."""
+        ...
+
+    def provider_runs(
+        self, provider_id: str, include_unrouted: bool, limit: int
+    ) -> list[MeasuredRun]:
+        """The latest completed rows the provider rendered (time only)."""
+        ...
+
 
 class JobQueue(Protocol):
     """Hands render work to the workers. The API never renders (CLAUDE.md section 4)."""
 
-    def enqueue_preview(self, batch_id: UUID, row_id: UUID) -> None:
-        """Queue the preview render of one row."""
+    def enqueue_preview(self, batch_id: UUID, row_id: UUID, queue_name: str | None = None) -> None:
+        """Queue the preview render of one row (``queue_name`` None = the default queue)."""
         ...
 
-    def enqueue_rows(self, batch_id: UUID, row_ids: list[UUID]) -> None:
-        """Queue one render job per row."""
+    def enqueue_rows(
+        self, batch_id: UUID, row_ids: list[UUID], queue_name: str | None = None
+    ) -> None:
+        """Queue one render job per row on ``queue_name`` (None = the default queue)."""
         ...
 
-    def depth(self) -> int:
-        """Messages waiting in the queue."""
+    def depth(self, queue_name: str | None = None) -> int:
+        """Messages waiting in the queue (None = the default queue)."""
         ...
 
     def has_live_job(self, row_id: UUID) -> bool:

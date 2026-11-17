@@ -11,7 +11,6 @@ from dataclasses import replace
 from uuid import UUID
 
 from vidgen.domain.codes import DomainError, FailureCode
-from vidgen.domain.naming import resolve_folder_name, unique_folder_name
 from vidgen.domain.status import (
     BatchAction,
     BatchState,
@@ -31,13 +30,16 @@ from vidgen.services.batch_support import (
     audit,
     describe,
     describe_preview,
+    enqueue_rows,
     load_batch,
     load_template,
+    pick_folder,
     preview_gate,
     transition,
 )
 from vidgen.services.batch_views import BatchView
 from vidgen.services.errors import BatchNotFoundError, StateConflictError
+from vidgen.services.provider_choice import ProviderChooser
 
 
 class BatchFlow:
@@ -45,6 +47,7 @@ class BatchFlow:
 
     def __init__(self, ctx: BatchContext) -> None:
         self._ctx = ctx
+        self._chooser = ProviderChooser(ctx)
 
     # ---- preview -----------------------------------------------------------------------
 
@@ -77,11 +80,18 @@ class BatchFlow:
             ctx.storage.delete(old_key)
         return view
 
-    def approve_preview(self, batch_id: UUID) -> BatchView:
-        """Approve the rendered preview for the current slot, template and mapping."""
+    def approve_preview(self, batch_id: UUID, provider_id: str | None = None) -> BatchView:
+        """Approve the rendered preview; with ``provider_id`` also choose the render provider.
+
+        A refused provider changes nothing (the check runs before any save).
+        """
         ctx = self._ctx
         with ctx.uow() as uow:
             batch = load_batch(uow, batch_id, lock=True)
+            if provider_id is not None:
+                if batch.status != BatchState.DRAFT.value:
+                    raise StateConflictError(StateConflictError.INVALID_STATE)
+                self._chooser.require_selectable(uow, batch, provider_id)
             current = fingerprint_for(load_template(uow, batch.template_id), batch.mapping)
             gate = preview_gate(batch)
             if not can_start(gate, current):
@@ -97,6 +107,8 @@ class BatchFlow:
                 uow.batches.save(batch)
                 audit(ctx, uow, "PREVIEW_APPROVED", batch_id=str(batch_id))
                 uow.commit()
+            if provider_id is not None:
+                batch = self._chooser.store_choice(uow, batch, provider_id)
             return describe_preview(ctx, uow, batch)
 
     def confirm_spelling(self, batch_id: UUID, spoken_name: str) -> BatchView:
@@ -174,13 +186,14 @@ class BatchFlow:
             live_rows = sum(counts.values()) - counts.get("SKIPPED", 0)
             if batch.status != BatchState.DRAFT.value:
                 transition(batch, BatchAction.START)  # raises for finished batches
-                return describe(uow, batch, queued_rows=live_rows)
+                return describe(ctx, uow, batch, queued_rows=live_rows)
             current = fingerprint_for(load_template(uow, batch.template_id), batch.mapping)
             if not can_start(preview_gate(batch), current):
                 raise StateConflictError(StateConflictError.PREVIEW_NOT_APPROVED)
+            self._chooser.require_runnable(uow, batch)  # provider still ready and allowed (C5)
             skipped = uow.batches.skip_unselected(batch_id, limit) if limit is not None else 0
             row_ids = uow.batches.queued_row_ids(batch_id)
-            folder = self._pick_folder(uow.batches.folders_in_use(), folder_name, len(row_ids))
+            folder = pick_folder(ctx, uow.batches.folders_in_use(), folder_name, len(row_ids))
             now = ctx.clock.now()
             batch = replace(
                 batch,
@@ -200,19 +213,9 @@ class BatchFlow:
                 skipped_rows=skipped,
             )
             uow.commit()
-            view = describe(uow, batch, queued_rows=len(row_ids))
-        ctx.queue.enqueue_rows(batch_id, row_ids)
+            view = describe(ctx, uow, batch, queued_rows=len(row_ids))
+        enqueue_rows(ctx, batch, row_ids)
         return view
-
-    def _pick_folder(self, used: set[str], custom: str | None, live_rows: int) -> str:
-        """A folder name no batch and no stored folder uses yet (R6.2)."""
-        base = resolve_folder_name(custom, self._ctx.clock.now().date(), live_rows)
-        taken = set(used)
-        while True:
-            candidate = unique_folder_name(base, taken)
-            if not self._ctx.storage.folder_exists(candidate):
-                return candidate
-            taken.add(candidate)
 
     # ---- control -----------------------------------------------------------------------
 
@@ -237,7 +240,7 @@ class BatchFlow:
                 uow.batches.save(batch)
                 audit(ctx, uow, "BATCH_CANCELLED", batch_id=str(batch_id), cancelled_rows=cancelled)
                 uow.commit()
-            return describe(uow, batch)
+            return describe(ctx, uow, batch)
 
     def retry_failed(self, batch_id: UUID) -> BatchView:
         """Queue the failed rows again; a finished batch runs again."""
@@ -255,9 +258,9 @@ class BatchFlow:
                 uow.batches.save(batch)
                 audit(ctx, uow, "BATCH_RETRIED", batch_id=str(batch_id), retried_rows=len(row_ids))
                 uow.commit()
-            view = describe(uow, batch, retried_rows=len(row_ids))
+            view = describe(ctx, uow, batch, retried_rows=len(row_ids))
         if row_ids:
-            ctx.queue.enqueue_rows(batch_id, row_ids)
+            enqueue_rows(ctx, batch, row_ids)
         return view
 
     def retry_row(self, batch_id: UUID, row_number: int) -> BatchView:
@@ -279,8 +282,8 @@ class BatchFlow:
             uow.batches.save(batch)
             audit(ctx, uow, "ROW_RETRY", batch_id=str(batch_id), row_number=row_number)
             uow.commit()
-            view = describe(uow, batch, retried_rows=1)
-        ctx.queue.enqueue_rows(batch_id, [row_id])
+            view = describe(ctx, uow, batch, retried_rows=1)
+        enqueue_rows(ctx, batch, [row_id])
         return view
 
     def _change(self, batch_id: UUID, action: BatchAction, event: str) -> BatchView:
@@ -294,4 +297,4 @@ class BatchFlow:
                 uow.batches.save(batch)
                 audit(ctx, uow, event, batch_id=str(batch_id))
                 uow.commit()
-            return describe(uow, batch)
+            return describe(ctx, uow, batch)

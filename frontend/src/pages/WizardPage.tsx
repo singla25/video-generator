@@ -10,6 +10,7 @@ import { StepMap } from './wizard/StepMap';
 import { StepOutput } from './wizard/StepOutput';
 import { StepSlot } from './wizard/StepSlot';
 import { StepUpload } from './wizard/StepUpload';
+import type { DataClassState } from './wizard/DataClassChoice';
 import { Stepper } from './wizard/Stepper';
 import { isClientError, resumeOf, type Resume } from './wizard/resume';
 
@@ -29,6 +30,10 @@ function Wizard({ initial }: { initial: Initial }) {
   const [batchId, setBatchId] = useState(initial.batchId);
   const [report, setReport] = useState(initial.report);
   const [templateId, setTemplateId] = useState(initial.templateId);
+  const [dataClass, setDataClass] = useState<DataClassState>({
+    dataClass: 'real',
+    confirmDemo: false,
+  });
   const [file, setFile] = useState<File | null>(null);
   const [inspection, setInspection] = useState<SheetInspection | null>(null);
 
@@ -40,6 +45,15 @@ function Wizard({ initial }: { initial: Initial }) {
     }
     setFile(nextFile);
     setTemplateId(nextTemplate);
+  }
+
+  // A different data class is a different batch, like a different sheet.
+  function changeDataClass(next: DataClassState) {
+    if (next.dataClass !== dataClass.dataClass) {
+      setBatchId(null);
+      setReport(null);
+    }
+    setDataClass(next);
   }
 
   function validated(batch: Batch) {
@@ -54,6 +68,8 @@ function Wizard({ initial }: { initial: Initial }) {
         <StepUpload
           file={file}
           templateId={templateId}
+          dataClass={dataClass}
+          onDataClass={changeDataClass}
           onChange={changeInputs}
           onInspected={(found) => {
             setInspection(found);
@@ -66,6 +82,7 @@ function Wizard({ initial }: { initial: Initial }) {
           inspection={inspection}
           file={file}
           templateId={templateId}
+          dataClass={dataClass}
           batchId={batchId}
           report={report}
           onValidated={validated}

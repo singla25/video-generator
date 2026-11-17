@@ -2,6 +2,13 @@
 
 Newest first. One entry per task.
 
+## 2026-11-17 - RP-FE-GREEN (render providers, phase a)
+- Step 1: radiogroup "Data class" (Real data default, Demo or learning data); demo needs the confirm checkbox, else Next is disabled with a hint. The batch create call sends data_class and, for demo only, confirm_demo=true. Changing the class forgets the draft batch.
+- "Approve preview" opens the dialog "Choose where to render" (radiogroup "Render provider"): kind, estimated time and cost or "not measured yet", remaining credit or "No cap". Not-ready and refused providers are disabled with their reason (aria-describedby); data-class-refused ones are hidden; nothing preselected. "Approve with this provider" posts {provider_id}; API refusals show in role=alert, the dialog stays open and reloads the list.
+- Batch page: PauseNotice shows pause-reason (role=status) and spend-summary ("$4.95 of $5.00") for a PAUSED batch with a reason.
+- Files: api/types.ts, api/queries.ts (useProviders), format.ts, pages/WizardPage.tsx, pages/BatchDetailPage.tsx, pages/wizard/{DataClassChoice,ProviderChooser,ProviderOption,PreviewPanel,StepUpload,StepMap}.tsx, pages/batch/PauseNotice.tsx.
+- Tests: Vitest 626/626; typecheck, lint, format:check, build green. No test edited, no dependency added.
+
 ## 2026-10-31 - DD-37 extension fallback
 - `templates/videoRules.ts`: `isVideoFile` accepts video/* or an empty type with .mp4/.mov/.m4v/.mkv/.webm (case-insensitive); other non-empty types refused. `accept` left as `video/*` because TT-DD37-D-P1 asserts it exactly; adding the extensions needs that test changed (Admin/CEO decision). Tests: 488/488.
 

@@ -9,11 +9,14 @@ import { useUpload } from '../../api/useUpload';
 import { ErrorState, Skeleton } from '../../components/states';
 import { UploadFeedback } from '../../components/UploadFeedback';
 import { hasDevanagari } from '../../format';
+import { DataClassChoice, dataClassReady, type DataClassState } from './DataClassChoice';
 import { sheetProblem } from './rules';
 
 interface Props {
   file: File | null;
   templateId: string;
+  dataClass: DataClassState;
+  onDataClass: (next: DataClassState) => void;
   onChange: (file: File | null, templateId: string) => void;
   onInspected: (inspection: SheetInspection) => void;
 }
@@ -21,7 +24,14 @@ interface Props {
 const BUTTON = 'rounded-full bg-lime px-5 py-2 font-semibold disabled:opacity-50';
 
 /** Step 1: choose a template and a sheet (click or drag and drop). */
-export function StepUpload({ file, templateId, onChange, onInspected }: Props) {
+export function StepUpload({
+  file,
+  templateId,
+  dataClass,
+  onDataClass,
+  onChange,
+  onInspected,
+}: Props) {
   const templates = useTemplates();
   const [problem, setProblem] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -48,6 +58,11 @@ export function StepUpload({ file, templateId, onChange, onInspected }: Props) {
     setDragging(false);
     choose(event.dataTransfer.files[0]);
   }
+
+  const confirmed = dataClassReady(dataClass);
+  let hint: string | null = null;
+  if (!templateId) hint = 'Choose a template to continue';
+  else if (!confirmed) hint = 'Confirm that this is demo or learning data to continue';
 
   if (templates.isError) {
     return <ErrorState title="Could not load templates" onRetry={() => void templates.refetch()} />;
@@ -110,6 +125,7 @@ export function StepUpload({ file, templateId, onChange, onInspected }: Props) {
           </p>
         )}
       </div>
+      <DataClassChoice value={dataClass} onChange={onDataClass} />
       {problem && (
         <p role="alert" className="text-sm text-status-failed">
           {problem}
@@ -123,16 +139,16 @@ export function StepUpload({ file, templateId, onChange, onInspected }: Props) {
         onRetry={inspect.retry}
       />
       <div className="flex items-center justify-end gap-3">
-        {!templateId && (
+        {hint && (
           <p id="next-hint" className="text-sm text-muted">
-            Choose a template to continue
+            {hint}
           </p>
         )}
         <button
           type="button"
           className={BUTTON}
-          aria-describedby={templateId ? undefined : 'next-hint'}
-          disabled={!file || !templateId || inspect.pending}
+          aria-describedby={hint ? 'next-hint' : undefined}
+          disabled={!file || !templateId || !confirmed || inspect.pending}
           onClick={() => file && send(file)}
         >
           Next

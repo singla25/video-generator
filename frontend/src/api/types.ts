@@ -76,6 +76,39 @@ export interface Batch {
   success_rate: number | null;
   preview?: Preview;
   report?: SheetReport | null;
+  data_class?: DataClass;
+  provider_id?: string | null;
+  spent_usd?: number;
+  /** Why the system paused the batch; null when paused by hand or not paused. */
+  pause_reason?: string | null;
+}
+
+/** What the sheet holds: real people's data or demo or learning data (C5). */
+export type DataClass = 'real' | 'demo';
+
+/** One render provider as listed by GET /batches/id/providers. */
+export interface RenderProvider {
+  id: string;
+  name: string;
+  kind: 'local' | 'remote_function' | 'remote_worker' | string;
+  data_rule: 'real_allowed' | 'demo_only' | string;
+  setup: { state: 'ready' | 'needs_setup' | string; reason: string | null };
+  /** Null while nothing has been measured for this provider. */
+  estimate: { seconds_per_video: number; batch_seconds: number; batch_cost_usd: number } | null;
+  estimate_label: string | null;
+  spend_cap_usd: number | null;
+  spent_usd: number;
+  remaining_usd: number | null;
+  selectable: boolean;
+  refusal: { code: string; reason: string } | null;
+}
+
+export interface ProvidersResponse {
+  data_class: DataClass;
+  selected_provider_id: string | null;
+  any_selectable: boolean;
+  message: string | null;
+  providers: RenderProvider[];
 }
 
 export interface BatchList {

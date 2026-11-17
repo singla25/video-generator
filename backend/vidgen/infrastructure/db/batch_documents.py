@@ -85,7 +85,6 @@ def to_record(row: Batch, cipher: AesGcmCipher) -> BatchRecord:
     """The batch record described by an ORM row and its JSON document."""
     document: dict[str, Any] = row.column_mapping or {}
     mapping = document.get("mapping")
-    preview = document.get("preview") or {}
     return BatchRecord(
         id=row.id,
         template_id=row.template_id,
@@ -98,16 +97,24 @@ def to_record(row: Batch, cipher: AesGcmCipher) -> BatchRecord:
         started_at=row.started_at,
         finished_at=row.finished_at,
         mapping=None if mapping is None else MappingRecord(**mapping),
-        preview=PreviewRecord(
-            status=preview.get("status", "NONE"),
-            key=preview.get("key"),
-            row_id=UUID(preview["row_id"]) if preview.get("row_id") else None,
-            failure_code=preview.get("failure_code"),
-            requested_for=_fingerprint_from(preview.get("requested_for")),
-            rendered_for=_fingerprint_from(preview.get("rendered_for")),
-            approved_for=_fingerprint_from(preview.get("approved_for")),
-            spoken_name=_unseal(cipher, preview.get("spoken_name_enc")),
-        ),
+        provider_id=row.provider_id,
+        data_class=row.data_class,
+        preview=preview_from(document, cipher),
+    )
+
+
+def preview_from(document: dict[str, Any], cipher: AesGcmCipher) -> PreviewRecord:
+    """The preview state stored in a batch's JSON document."""
+    preview = document.get("preview") or {}
+    return PreviewRecord(
+        status=preview.get("status", "NONE"),
+        key=preview.get("key"),
+        row_id=UUID(preview["row_id"]) if preview.get("row_id") else None,
+        failure_code=preview.get("failure_code"),
+        requested_for=_fingerprint_from(preview.get("requested_for")),
+        rendered_for=_fingerprint_from(preview.get("rendered_for")),
+        approved_for=_fingerprint_from(preview.get("approved_for")),
+        spoken_name=_unseal(cipher, preview.get("spoken_name_enc")),
     )
 
 
@@ -121,4 +128,6 @@ def apply_to_row(row: Batch, batch: BatchRecord, cipher: AesGcmCipher) -> None:
     row.created_at = batch.created_at
     row.started_at = batch.started_at
     row.finished_at = batch.finished_at
+    row.provider_id = batch.provider_id
+    row.data_class = batch.data_class
     row.column_mapping = to_document(batch, cipher)

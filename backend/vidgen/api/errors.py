@@ -22,6 +22,7 @@ from vidgen.domain.codes import DomainError, FailureCode, plain_message
 from vidgen.services.errors import (
     InvalidInputError,
     PreconditionError,
+    ProviderChoiceError,
     StateConflictError,
     TemplateInUseError,
     TemplateNotFoundError,
@@ -57,6 +58,10 @@ API_MESSAGES: Mapping[str, str] = {
     PREVIEW_NOT_READY: "The preview is not ready for the current settings yet.",
     PREVIEW_NOT_APPROVED: "Approve a preview of the current settings before starting.",
     SPELLING_NOT_CONFIRMED: "Confirm the spelling of the spoken name before approving the preview.",
+    ProviderChoiceError.UNKNOWN_PROVIDER: "That render provider does not exist.",
+    ProviderChoiceError.PROVIDER_NOT_READY: "That render provider is not ready. Check its setup.",
+    ProviderChoiceError.PROVIDER_NOT_ALLOWED: "That provider cannot take this batch's data class.",
+    ProviderChoiceError.PROVIDER_OVER_CREDIT: "The estimated cost is above the remaining credit.",
     DB_UNAVAILABLE: "The database is not reachable right now. Please try again in a moment.",
     QUEUE_UNAVAILABLE: "The job queue is not reachable right now. Please try again in a moment.",
 }
@@ -116,6 +121,12 @@ def _state_conflict(_: Request, exc: Exception) -> JSONResponse:
     return error_response(409, error.code, API_MESSAGES[error.code])
 
 
+def _provider_choice(_: Request, exc: Exception) -> JSONResponse:
+    error = cast(ProviderChoiceError, exc)
+    status = HTTP_UNPROCESSABLE if error.code == ProviderChoiceError.UNKNOWN_PROVIDER else 409
+    return error_response(status, error.code, API_MESSAGES[error.code])
+
+
 def _template_in_use(_: Request, exc: Exception) -> JSONResponse:
     error = cast(TemplateInUseError, exc)
     return error_response(409, error.code, error.message)
@@ -164,6 +175,7 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ApiError, _api_error)
     app.add_exception_handler(DomainError, _domain_error)
     app.add_exception_handler(StateConflictError, _state_conflict)
+    app.add_exception_handler(ProviderChoiceError, _provider_choice)
     app.add_exception_handler(TemplateNotFoundError, _not_found)
     app.add_exception_handler(TemplateInUseError, _template_in_use)
     app.add_exception_handler(InvalidInputError, _invalid_input)

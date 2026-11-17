@@ -36,6 +36,19 @@ class BatchNotFoundError(TemplateNotFoundError):
     """The requested batch (or row, or file) does not exist."""
 
 
+class ProviderChoiceError(Exception):
+    """A render provider cannot be chosen or used (maps to HTTP 422 or 409)."""
+
+    UNKNOWN_PROVIDER = "UNKNOWN_PROVIDER"
+    PROVIDER_NOT_READY = "PROVIDER_NOT_READY"
+    PROVIDER_NOT_ALLOWED = "PROVIDER_NOT_ALLOWED"
+    PROVIDER_OVER_CREDIT = "PROVIDER_OVER_CREDIT"
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
 class StateConflictError(Exception):
     """The action does not fit the batch's current state (maps to HTTP 409)."""
 

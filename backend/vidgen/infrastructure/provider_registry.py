@@ -83,7 +83,9 @@ def _provider(position: int, raw: Any) -> Provider:
         raise InvalidProviderError(f"{label}: unknown key '{unknown[0]}' (not allowed)")
     if not isinstance(provider_id, str) or not provider_id.strip():
         raise InvalidProviderError(f"{label}: id is required")
-    text = {k: _typed(raw, k, str, label) for k in ("name", "kind", "queue", "ai_mode", "data_rule")}
+    text = {
+        k: _typed(raw, k, str, label) for k in ("name", "kind", "queue", "ai_mode", "data_rule")
+    }
     cap = _typed(raw, "spend_cap_usd", (int, float), label)
     per_second = _typed(raw, "rate_per_second", (int, float), label)
     per_hour = _typed(raw, "rate_per_hour", (int, float), label)
@@ -101,7 +103,7 @@ def _provider(position: int, raw: Any) -> Provider:
         kind=kind,  # type: ignore[arg-type]  # coerced and validated by Provider
         queue=text["queue"] or f"{QUEUE_PREFIX}{provider_id}",
         ai_mode=text["ai_mode"] or "fake",
-        data_rule=text["data_rule"] or default_rule,  # type: ignore[arg-type]
+        data_rule=text["data_rule"] or default_rule,
         spend_cap_usd=None if cap is None else float(cap),
         rate_per_second=0.0 if rate is None else float(rate),
         requires_env=tuple(needs),

@@ -283,3 +283,9 @@ Newest first. One entry per task.
 
 ## 2026-11-16 - C5 Modal demo-only gate
 - `scripts/setup.py`: `collect_modal_tokens` first shows the "demo and learning data only, never real voter data" notice, then asks once ("demo data" prompt); only "yes" continues, anything else raises `InstallerError` (nothing opened, asked or written). File trimmed to 300 lines. Tests: `tests/unit/meta` 679 passed.
+
+## 2026-11-17 - P2 render providers, phase (a) green
+- New: `domain/providers.py` (records, registry, estimate/setup/selectable/cap rules, pure), `infrastructure/provider_registry.py` (TOML via tomllib; missing file = one default provider), `services/provider_choice.py` (chooser, change provider), `services/provider_guard.py` (worker C5 + spend cap), `ports/providers.py` (QueueHeartbeats), `infrastructure/db/provider_queries.py`, `api/routes_providers.py`, `api/schemas_providers.py`, migration `0003_render_providers.py` (created, NOT run).
+- Changed: JobQueue port and Dramatiq adapter route by queue name; per-queue heartbeat (`RedisQueueHeartbeats`; the worker beats the legacy key and its queue key); requeue routes by provider; batch JSON gains provider_id, data_class, spent_usd, pause_reason; preview approve takes an optional provider body; start re-checks the provider; new provider change route; batch create takes data_class and confirm_demo; claim() takes an optional provider gate; rows store cost_usd.
+- Tests: all new red tests green except 4 that look wrong (three obsolete 0002 head/drift tests, and RP-WRK-E1, a one-row world completes).
+- Open: concurrent rows near the cap can overshoot slightly (the check is per claim, not serialised); P5 to verify with real workers.

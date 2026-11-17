@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -20,6 +21,7 @@ from sqlalchemy import (
     Integer,
     LargeBinary,
     MetaData,
+    Numeric,
     String,
     UniqueConstraint,
     Uuid,
@@ -139,6 +141,9 @@ class Batch(Base):
     created_at: Mapped[datetime] = _created_at()
     started_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     finished_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
+    # Render provider (None = the default provider) and the C5 data class: "real" or "demo".
+    provider_id: Mapped[str | None] = mapped_column(String(64))
+    data_class: Mapped[str] = mapped_column(String(16), default="real", server_default="real")
 
 
 class BatchRow(Base):
@@ -174,6 +179,7 @@ class BatchRow(Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     output_key: Mapped[str | None] = mapped_column(String(500))
     render_seconds: Mapped[float | None] = mapped_column(Float)
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))  # measured cost of the row
     started_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
     finished_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
 

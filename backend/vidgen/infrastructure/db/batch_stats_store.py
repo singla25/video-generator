@@ -78,32 +78,38 @@ class BatchStatsMixin:
         Row age comes from the batch's ``started_at`` (no migration). Previews live in the batch's
         JSON document, so their few candidates are filtered in Python. Keyset-paged by row id.
         """
-        rows = select(BatchRow.batch_id, BatchRow.id).where(
-            BatchRow.status == "QUEUED",
-            BatchRow.batch_id.in_(
-                select(Batch.id).where(Batch.status == "RUNNING", Batch.started_at < cutoff)
-            ),
+        rows = (
+            select(BatchRow.batch_id, BatchRow.id, Batch.provider_id)
+            .join(Batch, Batch.id == BatchRow.batch_id)
+            .where(
+                BatchRow.status == "QUEUED",
+                BatchRow.batch_id.in_(
+                    select(Batch.id).where(Batch.status == "RUNNING", Batch.started_at < cutoff)
+                ),
+            )
         )
         if after is not None:
             rows = rows.where(BatchRow.id > after)
         found = [
-            StuckRow(batch_id, row_id, "row")
-            for batch_id, row_id in self._session.execute(rows.order_by(BatchRow.id).limit(limit))
+            StuckRow(batch_id, row_id, "row", provider_id)
+            for batch_id, row_id, provider_id in self._session.execute(
+                rows.order_by(BatchRow.id).limit(limit)
+            )
         ]
         found += self._pending_previews(cutoff, after)
         found.sort(key=lambda item: item.row_id)
         return found[:limit]
 
     def _pending_previews(self, cutoff: datetime, after: UUID | None) -> list[StuckRow]:
-        query = select(Batch.id, Batch.column_mapping).where(
+        query = select(Batch.id, Batch.column_mapping, Batch.provider_id).where(
             Batch.status == "DRAFT", Batch.created_at < cutoff
         )
         found: list[StuckRow] = []
-        for batch_id, document in self._session.execute(query):
+        for batch_id, document, provider_id in self._session.execute(query):
             preview = (document or {}).get("preview") or {}
             if preview.get("status") != PREVIEW_PENDING or not preview.get("row_id"):
                 continue
             row_id = UUID(preview["row_id"])
             if after is None or row_id > after:
-                found.append(StuckRow(batch_id, row_id, "preview"))
+                found.append(StuckRow(batch_id, row_id, "preview", provider_id))
         return found

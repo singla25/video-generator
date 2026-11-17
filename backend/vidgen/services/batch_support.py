@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, replace
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 from typing import Any
 from uuid import UUID
 
 from vidgen.domain.codes import FailureCode
+from vidgen.domain.naming import resolve_folder_name, unique_folder_name
 from vidgen.domain.progress import pending_stage_label
+from vidgen.domain.providers import (
+    DataClass,
+    ProviderRegistry,
+    UnknownProviderError,
+    pause_reason,
+)
 from vidgen.domain.stats import StatusCounts
 from vidgen.domain.status import (
     BatchAction,
@@ -21,6 +29,7 @@ from vidgen.domain.status import (
 from vidgen.ports import Clock, SheetReader, Storage, TemplateRecord, Transliterator, UnitOfWork
 from vidgen.ports.batches import PREVIEW_PENDING, PREVIEW_READY, BatchRecord, JobQueue
 from vidgen.ports.progress import StageReporter
+from vidgen.ports.providers import QueueHeartbeats
 from vidgen.services.audit import ACTOR_ADMIN, UowFactory
 from vidgen.services.batch_rules import counts_from, fingerprint_for
 from vidgen.services.batch_views import BatchReport, BatchView
@@ -51,6 +60,52 @@ class BatchContext:
     require_spelling: bool = False  # local mode: a human confirms the spelling before approval
     spoken_script: str = "devanagari"
     stage_reporter: StageReporter | None = None  # live preview stage; None = no progress shown
+    providers: ProviderRegistry | None = None  # render providers; None = legacy single queue
+    queue_heartbeats: QueueHeartbeats | None = None  # per-queue worker liveness
+    provider_env: Mapping[str, str] = field(default_factory=dict)  # for a provider's requires_env
+    row_timeout_seconds: int = 600  # worst case of one row, for the spend-cap pause reason
+
+
+def queue_name_for(ctx: BatchContext, batch: BatchRecord) -> str | None:
+    """The batch provider's queue; None (default queue, legacy call shape) without a provider."""
+    if batch.provider_id is None or ctx.providers is None:
+        return None
+    provider = ctx.providers.get(batch.provider_id)
+    return None if provider is None else provider.queue
+
+
+def enqueue_rows(ctx: BatchContext, batch: BatchRecord, row_ids: list[UUID]) -> None:
+    """Hand row jobs to the batch provider's queue (no queue name for old batches)."""
+    name = queue_name_for(ctx, batch)
+    if name is None:
+        ctx.queue.enqueue_rows(batch.id, row_ids)
+    else:
+        ctx.queue.enqueue_rows(batch.id, row_ids, queue_name=name)
+
+
+def provider_pause_reason(ctx: BatchContext, uow: UnitOfWork, batch: BatchRecord) -> str | None:
+    """Why a PAUSED batch is paused by its provider (data class or spend cap), else None."""
+    if batch.status != BatchState.PAUSED.value or ctx.providers is None:
+        return None
+    try:
+        provider = ctx.providers.for_batch(batch.provider_id)
+    except UnknownProviderError:
+        return None
+    spent = uow.batches.provider_spent(provider.id, ctx.providers.is_default(provider))
+    return pause_reason(
+        batch.status, provider, DataClass(batch.data_class), spent, ctx.row_timeout_seconds
+    )
+
+
+def pick_folder(ctx: BatchContext, used: set[str], custom: str | None, live_rows: int) -> str:
+    """A folder name no batch and no stored folder uses yet (R6.2)."""
+    base = resolve_folder_name(custom, ctx.clock.now().date(), live_rows)
+    taken = set(used)
+    while True:
+        candidate = unique_folder_name(base, taken)
+        if not ctx.storage.folder_exists(candidate):
+            return candidate
+        taken.add(candidate)
 
 
 def load_batch(uow: UnitOfWork, batch_id: UUID, *, lock: bool = False) -> BatchRecord:
@@ -106,6 +161,7 @@ def audit(
 
 
 def describe(
+    ctx: BatchContext,
     uow: UnitOfWork,
     batch: BatchRecord,
     *,
@@ -135,15 +191,18 @@ def describe(
         retried_rows=retried_rows,
         suggested_spoken_name=suggested_spoken_name,
         spelling_required=spelling_required,
+        spent_usd=uow.batches.batch_spent(batch.id),
+        pause_reason=provider_pause_reason(ctx, uow, batch),
     )
 
 
 def describe_preview(ctx: BatchContext, uow: UnitOfWork, batch: BatchRecord) -> BatchView:
     """A batch view with the spoken-name suggestion (local mode) and the live preview stage."""
     if not ctx.require_spelling:
-        view = describe(uow, batch)  # fake mode: the preview keeps its original shape
+        view = describe(ctx, uow, batch)  # fake mode: the preview keeps its original shape
     else:
         view = describe(
+            ctx,
             uow,
             batch,
             suggested_spoken_name=suggest_spoken_name(ctx, uow, batch),

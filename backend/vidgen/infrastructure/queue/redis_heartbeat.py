@@ -41,6 +41,30 @@ class RedisWorkerHeartbeat:
         return bool(self._client.exists(self._key))
 
 
+def queue_heartbeat_key(queue: str) -> str:
+    """The Redis key that tells whether a worker serves ``queue``."""
+    return f"{DEFAULT_KEY}:{queue}"
+
+
+class RedisQueueHeartbeats:
+    """Per-queue worker heartbeats: one expiring key per queue, shared by that queue's workers."""
+
+    def __init__(self, client: Any, *, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> None:
+        self._client = client
+        self._ttl = ttl_seconds
+
+    def beat(self, queue: str) -> None:
+        """Renew the queue's key. A Redis error is logged (type only, no DSN), not raised."""
+        try:
+            self._client.set(queue_heartbeat_key(queue), _MARKER, ex=self._ttl)
+        except RedisError as exc:
+            logger.error("queue heartbeat failed", extra={"error_type": type(exc).__name__})
+
+    def is_alive(self, queue: str) -> bool:
+        """True while a worker keeps the queue's key alive. Redis errors propagate."""
+        return bool(self._client.exists(queue_heartbeat_key(queue)))
+
+
 class HeartbeatLoop:
     """Calls ``beat`` every ``interval`` seconds on a daemon thread until stopped."""
 

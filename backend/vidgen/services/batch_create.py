@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.domain.headers import resolve_mapping
+from vidgen.domain.providers import DataClass
 from vidgen.domain.status import BatchState
 from vidgen.domain.validation import RowInput, RowRules, RowValidator, RowVerdict
 from vidgen.ports.batches import BatchRecord, MappingRecord, NewBatchRow
@@ -131,8 +132,14 @@ class BatchCreator:
     def __init__(self, ctx: BatchContext) -> None:
         self._ctx = ctx
 
-    def create(self, sheet: Path, template_id: UUID, request: MappingRequest) -> BatchView:
-        """Validate a sheet and create a draft batch from it."""
+    def create(
+        self,
+        sheet: Path,
+        template_id: UUID,
+        request: MappingRequest,
+        data_class: DataClass = DataClass.REAL,
+    ) -> BatchView:
+        """Validate a sheet and create a draft batch of the declared data class (C5)."""
         ctx = self._ctx
         with ctx.uow() as uow:
             template = load_template(uow, template_id)
@@ -152,6 +159,7 @@ class BatchCreator:
                     sheet_key=sheet_key,
                     sheet_name=ingest.sheet_name,
                     mapping=ingest.mapping,
+                    data_class=data_class.value,
                 )
                 uow.batches.add(uow.campaign_id, record)
                 uow.batches.replace_rows(uow.campaign_id, batch_id, ingest.rows())
@@ -164,12 +172,13 @@ class BatchCreator:
                     template_id=str(template_id),
                     total_rows=report.total_rows,
                     valid_rows=report.valid_rows,
+                    data_class=data_class.value,
                 )
                 uow.commit()
             except BaseException:
                 ctx.storage.delete(sheet_key)  # no orphan sheet (it holds personal data)
                 raise
-            return describe(uow, record, report=report)
+            return describe(ctx, uow, record, report=report)
 
     def change_mapping(self, batch_id: UUID, request: MappingRequest) -> BatchView:
         """Re-read the stored sheet with other columns; the old approval stops applying (A5)."""
@@ -185,7 +194,7 @@ class BatchCreator:
             uow.batches.save(batch)
             audit(ctx, uow, "BATCH_MAPPING_CHANGED", batch_id=str(batch_id))
             uow.commit()
-            return describe(uow, batch, report=report)
+            return describe(ctx, uow, batch, report=report)
 
     def change_template(self, batch_id: UUID, template_id: UUID) -> BatchView:
         """Use another (usable) template for a draft; the old approval stops applying (A5)."""
@@ -204,7 +213,7 @@ class BatchCreator:
                 template_id=str(template_id),
             )
             uow.commit()
-            return describe(uow, batch)
+            return describe(ctx, uow, batch)
 
     def report(self, batch_id: UUID) -> BatchReport:
         """Rebuild the validation report from the stored rows."""

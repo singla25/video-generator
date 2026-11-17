@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import timedelta
@@ -51,9 +51,12 @@ def requeue_stuck_rows(
     *,
     stuck_after_seconds: int = DEFAULT_STUCK_AFTER_SECONDS,
     page_size: int = DEFAULT_PAGE_SIZE,
+    provider_queues: Mapping[str, str] | None = None,
 ) -> RequeueReport:
     """Re-enqueue QUEUED rows and pending previews that have no live job.
 
+    ``provider_queues`` maps provider id to queue name; a row of a batch with a mapped provider
+    goes to that queue, anything else to the default queue (legacy call shape).
     Reads candidates page by page. A queue outage is logged and ends the pass without raising.
     """
     if page_size <= 0:
@@ -68,7 +71,7 @@ def requeue_stuck_rows(
             if not page:
                 break
             after = page[-1].row_id
-            _requeue_page(queue, page, tally)
+            _requeue_page(queue, page, tally, provider_queues or {})
     except Exception as exc:
         if not _is_queue_error(exc):
             raise
@@ -88,17 +91,28 @@ def _is_queue_error(exc: Exception) -> bool:
     return isinstance(exc, OSError) or type(exc).__module__.startswith(("redis", "dramatiq"))
 
 
-def _requeue_page(queue: JobQueue, page: list[StuckRow], tally: _Tally) -> None:
+def _requeue_page(
+    queue: JobQueue, page: list[StuckRow], tally: _Tally, queues: Mapping[str, str]
+) -> None:
     """Enqueue the page's rows without a live job, counting as it goes (kept on error)."""
-    by_batch: dict[UUID, list[UUID]] = defaultdict(list)
+    by_batch: dict[tuple[UUID, str | None], list[UUID]] = defaultdict(list)
     for item in page:
+        name = queues.get(item.provider_id) if item.provider_id is not None else None
         if queue.has_live_job(item.row_id):
             tally.skipped += 1
         elif item.kind == "preview":
-            queue.enqueue_preview(item.batch_id, item.row_id)
+            _send(queue.enqueue_preview, name, item.batch_id, item.row_id)
             tally.requeued += 1
         else:
-            by_batch[item.batch_id].append(item.row_id)
-    for batch_id, row_ids in by_batch.items():
-        queue.enqueue_rows(batch_id, row_ids)
+            by_batch[(item.batch_id, name)].append(item.row_id)
+    for (batch_id, name), row_ids in by_batch.items():
+        _send(queue.enqueue_rows, name, batch_id, row_ids)
         tally.requeued += len(row_ids)
+
+
+def _send(enqueue: Callable[..., None], queue_name: str | None, *args: object) -> None:
+    """Call ``enqueue``; the queue name is passed only when there is one (old batches)."""
+    if queue_name is None:
+        enqueue(*args)
+    else:
+        enqueue(*args, queue_name=queue_name)

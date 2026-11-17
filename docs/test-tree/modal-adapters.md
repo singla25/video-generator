@@ -48,3 +48,18 @@ Feature: Dependency and import safety
 ├── ❌ modal not in base dependencies
 └── ⚠️ adapters import with `modal` blocked
 ```
+
+Feature: ModalRemoteClient (stubbed `modal` module via sys.modules; no network)
+├── ✅ each of 4 methods looks up the right function name in the app and passes the right args
+├── ✅ synthesize returns bytes (bytearray coerced); has_sample returns bool
+├── ❌ AuthError -> RemoteAuthError, fixed message, no __cause__, token absent from traceback
+├── ❌ FunctionTimeoutError -> RemoteTimeoutError; other modal Error -> RemoteCrashError (no details)
+├── ❌ failure inside Function.from_name is translated the same way
+├── ❌ non-modal exception (ValueError) is not swallowed
+└── ⚠️ empty bytes / unicode text pass through unchanged
+
+Feature: ModalVoiceCloner extras
+├── ⚠️ bytes_sent counts UTF-8 bytes (Devanagari + emoji), not characters
+├── ⚠️ second cloner on the same remote re-checks has_sample but does not re-upload or recount the sample
+├── ⚠️ failed synthesis (bad wav) books no per-row bytes
+└── ⚠️ empty text sent with the hash only

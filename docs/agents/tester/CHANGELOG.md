@@ -189,3 +189,7 @@ Newest first. One entry per task.
 ## 2026-11-18 - CHOOSER PRESELECT RED (PR 24 e2e)
 - provider-chooser.test.tsx: E1 changed (single selectable is preselected), N1 adjusted, new PS1-PS8; e2e full-flow.spec.ts TT-UI-E2E-P2c goes through the chooser. No other e2e spec approves a preview.
 - Result: 5 new/changed red (E1, PS2, PS4, PS6, PS8), rest green; scroll-region.test.tsx still red from the earlier A11Y-SCROLL step.
+
+## 2026-11-17 - Modal adapters VERIFY (phase b)
+- Added tests/unit/modal_ai/test_modal_client.py (stub `modal` module; 4 methods, error translation, from_name failure) and test_modal_tts_extra.py (UTF-8 byte accounting, two cloner instances, failed row bytes, empty text).
+- modal_ai coverage 100 % (stmts + branches). No backend defects.

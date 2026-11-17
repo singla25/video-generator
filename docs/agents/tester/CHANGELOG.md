@@ -166,3 +166,8 @@ Newest first. One entry per task.
 
 ## 2026-11-16 - C5 RED (Modal demo-data-only confirmation)
 - tests/unit/meta/test_setup_c5_demo_only.py (notice, "demo data" confirmation via seams.ask, only "yes" continues, EOF, fake/local untouched); conftest default answer "demo data": yes; modal rerun test answers it; tree scenario 10.
+
+## 2026-11-17 - P1 RED (render providers, backend)
+- Tree docs/test-tree/render-providers.md with the pinned API contract (providers list per batch, provider_id on preview approve, change-provider PUT, data_class + confirm_demo at creation, provider_id / data_class / spent_usd / pause_reason on the batch JSON). Worker C5: row not rendered, batch PAUSED, outcome DEFERRED.
+- Red tests: tests/unit/domain/test_provider_records.py, test_provider_rules.py; tests/unit/infra/test_provider_registry_file.py, test_queue_heartbeats.py, test_dramatiq_routing.py; tests/unit/services/test_requeue_routing.py; tests/integration/api/test_providers_chooser.py, test_providers_routing.py, test_batch_data_class.py (+ provider_helpers.py); tests/integration/worker/test_provider_guard.py; tests/integration/db/test_migration_0003_providers.py. Fixtures: tests/fixtures/providers.py; FakeJobQueue gained optional queue_name and `routed` (additive).
+- Open: AC9 (two real local workers) and concurrent rows near the cap are for P5.

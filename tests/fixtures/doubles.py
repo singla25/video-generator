@@ -99,16 +99,26 @@ class FakeJobQueue:
         self.previews: list[tuple[UUID, UUID]] = []
         self.rows: list[tuple[UUID, UUID]] = []
         self.live: set[UUID] = set()  # rows with a queued job until mark_done()
+        # (kind, batch id, row id, queue name or None) for the render-providers routing tests
+        self.routed: list[tuple[str, UUID, UUID, str | None]] = []
 
-    def enqueue_preview(self, batch_id: UUID, row_id: UUID) -> None:
+    def enqueue_preview(self, batch_id: UUID, row_id: UUID, queue_name: str | None = None) -> None:
         """Record a preview render request for one row."""
         self.previews.append((batch_id, row_id))
+        self.routed.append(("preview", batch_id, row_id, queue_name))
         self.live.add(row_id)
 
-    def enqueue_rows(self, batch_id: UUID, row_ids: list[UUID]) -> None:
+    def enqueue_rows(
+        self, batch_id: UUID, row_ids: list[UUID], queue_name: str | None = None
+    ) -> None:
         """Record row render jobs, one entry per row."""
         self.rows.extend((batch_id, row_id) for row_id in row_ids)
+        self.routed.extend(("row", batch_id, row_id, queue_name) for row_id in row_ids)
         self.live.update(row_ids)
+
+    def queues_used(self, kind: str = "row") -> set[str | None]:
+        """Queue names that received jobs of ``kind`` ("row" or "preview")."""
+        return {q for k, _b, _r, q in self.routed if k == kind}
 
     def depth(self) -> int:
         """Jobs waiting (everything enqueued; the double never consumes)."""

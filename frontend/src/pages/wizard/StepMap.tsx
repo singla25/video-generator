@@ -5,6 +5,7 @@ import type { Batch, SheetInspection, SheetReport } from '../../api/types';
 import { useUpload } from '../../api/useUpload';
 import { UploadFeedback } from '../../components/UploadFeedback';
 import { hasDevanagari } from '../../format';
+import type { DataClassState } from './DataClassChoice';
 
 const MAX_LISTED_PROBLEMS = 100;
 const BUTTON = 'rounded-full bg-lime px-5 py-2 font-semibold disabled:opacity-50';
@@ -15,6 +16,7 @@ interface Props {
   inspection: SheetInspection | null;
   file: File | null;
   templateId: string;
+  dataClass: DataClassState;
   batchId: string | null;
   report: SheetReport | null;
   onValidated: (batch: Batch) => void;
@@ -61,6 +63,7 @@ export function StepMap({
   inspection,
   file,
   templateId,
+  dataClass,
   batchId,
   report,
   onValidated,
@@ -91,6 +94,8 @@ export function StepMap({
     form.append('name_column', nameColumn);
     form.append('id_column', idColumn);
     form.append('template_id', templateId);
+    form.append('data_class', dataClass.dataClass);
+    if (dataClass.dataClass === 'demo') form.append('confirm_demo', 'true');
     if (spoken) form.append('spoken_name_column', spoken);
     void validate.start((options) => apiUpload<Batch>('/batches', form, options));
   }

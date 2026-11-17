@@ -7,6 +7,7 @@ import type { Batch, SystemStatus } from '../../api/types';
 import { SLOW_PREVIEW_MS_FAKE, SLOW_PREVIEW_MS_LOCAL } from '../../config';
 import { PreviewProgress } from './PreviewProgress';
 import { FakeAiNote, FirstRunNote } from './PreviewNotes';
+import { ProviderChooser } from './ProviderChooser';
 
 const FIELD_ID = 'spoken-name';
 const HINT_ID = 'spoken-name-hint';
@@ -107,11 +108,8 @@ export function PreviewPanel({ batch }: { batch: Batch }) {
     mutationFn: () => apiFetch(`/batches/${batch.id}/preview`, { method: 'POST' }),
     onSuccess: refresh,
   });
-  const approve = useMutation({
-    mutationFn: () => apiFetch(`/batches/${batch.id}/preview/approve`, { method: 'POST' }),
-    onSuccess: refresh,
-  });
-  const error = generate.error ?? approve.error;
+  const [choosing, setChoosing] = useState(false);
+  const error = generate.error;
   const slow = useSlowPending(state === 'PENDING', generate.submittedAt, slowPreviewMs(aiMode));
   // Only a successful status read may blame the worker; a failing call stays silent.
   const workerDown = status?.worker_alive === false;
@@ -185,12 +183,13 @@ export function PreviewPanel({ batch }: { batch: Batch }) {
         <button
           type="button"
           className={BUTTON}
-          disabled={state !== 'READY' || approved || approve.isPending || !spellingOk}
-          onClick={() => approve.mutate()}
+          disabled={state !== 'READY' || approved || !spellingOk}
+          onClick={() => setChoosing(true)}
         >
           Approve preview
         </button>
       </div>
+      {choosing && <ProviderChooser batchId={batch.id} onClose={() => setChoosing(false)} />}
     </div>
   );
 }

@@ -179,3 +179,6 @@ Newest first. One entry per task.
 ## 2026-11-17 - P5 VERIFY (render providers)
 - Fixed two test defects (migration 0002 head assumptions; RP-WRK-E1 world). Added tests/integration/worker/test_two_workers_two_queues.py, RP-WRK-E6 (cap overshoot, pinned), RP-WRK-E7, RP-REG-N4.
 - Results: pytest 2987 passed + new ones green; Vitest 626 passed; ruff, mypy --strict, tsc, eslint, prettier clean; new-module coverage 97 %. COVERAGE.md updated.
+
+## 2026-11-17 - A11Y-SCROLL RED (PR 24 axe)
+- tests/frontend/unit/scroll-region.test.tsx + tree section in render-providers.md. Needs shared ScrollRegion component and five labelled usages.

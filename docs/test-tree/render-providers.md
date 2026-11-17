@@ -126,3 +126,9 @@ Feature: Render providers (UI)
     └── ⚠️ reason announced with role=status
 ```
 Existing wizard test TT-UI-AC5-P8 now goes through the chooser (updated; red until the dialog exists).
+
+## A11y: keyboard-accessible scroll regions (axe scrollable-region-focusable, PR 24)
+- TT-A11Y-SCROLL-P1 ScrollRegion renders role=region, tabindex=0, aria-label, overflow-x-auto
+- TT-A11Y-SCROLL-P2 DraftsSection, BatchListTable, RowsTable, HistoryPage, StepMap use ScrollRegion with labels "Drafts table", "Batches table", "Rows table", "History table", "Sheet preview table"
+- TT-A11Y-SCROLL-E1 extra className kept; no raw overflow-x-auto left outside ScrollRegion.tsx
+- Test: tests/frontend/unit/scroll-region.test.tsx. Dev creates frontend/src/components/ScrollRegion.tsx (label, children, className?).

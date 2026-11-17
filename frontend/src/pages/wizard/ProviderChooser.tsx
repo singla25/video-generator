@@ -38,7 +38,11 @@ export function ProviderChooser({ batchId, onClose }: Props) {
   const data = providers.data;
   // Providers refused only by the data class are not offered at all.
   const listed = (data?.providers ?? []).filter((p) => p.refusal?.code !== 'data_class');
-  const picked = listed.find((p) => p.id === chosen);
+  // With exactly one usable provider there is nothing to compare, so it is preselected;
+  // derived (not stored) so an explicit user choice always wins.
+  const selectable = listed.filter((p) => p.selectable);
+  const effective = chosen ?? (selectable.length === 1 ? selectable[0].id : null);
+  const picked = listed.find((p) => p.id === effective);
   const canApprove = Boolean(picked?.selectable) && !approve.isPending;
 
   return (
@@ -64,7 +68,7 @@ export function ProviderChooser({ batchId, onClose }: Props) {
                 key={p.id}
                 provider={p}
                 name={groupName}
-                selected={chosen === p.id}
+                selected={effective === p.id}
                 onSelect={() => setChosen(p.id)}
               />
             ))}

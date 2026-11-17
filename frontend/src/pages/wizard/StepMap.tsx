@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { apiFetch, apiUpload } from '../../api/client';
 import type { Batch, SheetInspection, SheetReport } from '../../api/types';
+import { ScrollRegion } from '../../components/ScrollRegion';
 import { useUpload } from '../../api/useUpload';
 import { UploadFeedback } from '../../components/UploadFeedback';
 import { hasDevanagari } from '../../format';
@@ -148,7 +149,7 @@ export function StepMap({
         {picker('ID column', idColumn, setId)}
         {picker('Spoken name column (optional)', spoken, setSpoken, true)}
       </div>
-      <div className="overflow-x-auto rounded-tile border">
+      <ScrollRegion label="Sheet preview table" className="rounded-tile border">
         <table className="w-full text-left text-sm">
           <thead className="bg-page text-muted">
             <tr>
@@ -171,7 +172,7 @@ export function StepMap({
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollRegion>
       <UploadFeedback
         pending={validate.pending}
         percent={validate.percent}

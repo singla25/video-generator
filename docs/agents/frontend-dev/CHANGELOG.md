@@ -108,3 +108,9 @@ Newest first. One entry per task.
 - Dockerfile.frontend: node:22-alpine build (npm ci, npm run build); final stage nginx-unprivileged on 8080, USER 101.
 - frontend/docker/nginx.conf: API prefix proxied to the api service on port 8000 (prefix kept); SPA fallback to index.html.
 - Tests: frontend tests in tests/unit/meta/test_docker_stack.py green. No image built, no dependency added.
+
+## 2026-11-18 - PR #24 CI fixes (scroll regions, chooser preselection)
+- Added `ScrollRegion` (focusable, labelled, overflow-x-auto, focus ring); used in Drafts, Batches, Rows, History and Sheet preview tables (axe scrollable-region-focusable).
+- `ProviderChooser`: the only selectable provider is preselected, derived as `chosen ?? onlySelectable` (a user choice always wins).
+- Files: frontend/src/components/{ScrollRegion,BatchListTable,RowsTable,DraftsSection}.tsx, pages/HistoryPage.tsx, pages/wizard/{StepMap,ProviderChooser}.tsx.
+- Tests: none added (red tests from tester); Vitest 646/646.

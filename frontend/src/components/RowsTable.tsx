@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { ApiError, apiFetch, apiUrl } from '../api/client';
 import type { BatchRow, RowsPage, Snapshot } from '../api/types';
+import { ScrollRegion } from './ScrollRegion';
 import { formatRenderTime, hasDevanagari } from '../format';
 import { StatusChip, type RowStatus } from './StatusChip';
 import { EmptyState, ErrorState, Skeleton } from './states';
@@ -193,7 +194,7 @@ export function RowsTable({
       ) : (
         data && (
           <>
-            <div className="overflow-x-auto">
+            <ScrollRegion label="Rows table">
               <table className="w-full text-left text-sm">
                 <thead className="text-muted">
                   <tr>
@@ -235,7 +236,7 @@ export function RowsTable({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
             <div className="mt-4 flex items-center justify-end gap-3 text-sm">
               <button
                 type="button"

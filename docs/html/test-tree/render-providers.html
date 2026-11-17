@@ -81,10 +81,15 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 │   ├── ✅ side by side: name, kind, time, cost, remaining credit · &quot;not measured yet&quot; still pickable · confirm sends {provider_id}
 │   ├── ❌ needs-setup and over-credit greyed with reason, cannot be picked · data_class refusals hidden ·
 │   │      409 PROVIDER_NOT_READY / NOT_ALLOWED / OVER_CREDIT and 422 UNKNOWN_PROVIDER → message, dialog stays open
-│   └── ⚠️ single provider still shows the chooser, nothing preselected · unicode name · nothing selectable → API message,
+│   └── ⚠️ single selectable provider is preselected (E1) · unicode name · nothing selectable → API message,
 │          approval blocked · focus in dialog, Escape/Cancel send nothing · full keyboard path
 └── Scenario: Spend-cap pause on the batch page (RP-UI-CAP)
     ├── ✅ &quot;spend cap reached&quot; + &quot;$4.95 of $5.00&quot; · data-class pause reason
     ├── ❌ paused by hand (no reason) or running → no reason box
     └── ⚠️ reason announced with role=status</code></pre>
-<p>Existing wizard test TT-UI-AC5-P8 now goes through the chooser (updated; red until the dialog exists).</p></div></body></html>
+<p>Existing wizard test TT-UI-AC5-P8 now goes through the chooser (updated; red until the dialog exists).</p>
+<h2>A11y: keyboard-accessible scroll regions (axe scrollable-region-focusable, PR 24)</h2>
+<ul><li>TT-A11Y-SCROLL-P1 ScrollRegion renders role=region, tabindex=0, aria-label, overflow-x-auto</li><li>TT-A11Y-SCROLL-P2 DraftsSection, BatchListTable, RowsTable, HistoryPage, StepMap use ScrollRegion with labels "Drafts table", "Batches table", "Rows table", "History table", "Sheet preview table"</li><li>TT-A11Y-SCROLL-E1 extra className kept; no raw overflow-x-auto left outside ScrollRegion.tsx</li><li>Test: tests/frontend/unit/scroll-region.test.tsx. Dev creates frontend/src/components/ScrollRegion.tsx (label, children, className?).</li></ul>
+<h2>Chooser preselection (Admin decision, PR 24 e2e TT-UI-E2E-P2c)</h2>
+<p>The chooser always opens; exactly one selectable listed provider is preselected, otherwise nothing.</p>
+<ul><li>RP-UI-CH-PS1 two selectable: none checked, approve disabled</li><li>RP-UI-CH-PS2 one selectable + not-ready others: the selectable is checked, approve enabled</li><li>RP-UI-CH-PS3 zero selectable: none checked, disabled</li><li>RP-UI-CH-PS4/PS5 data_class-hidden providers do not count</li><li>RP-UI-CH-PS6 Cancel after preselection sends nothing; PS8 preselected id is what is approved</li><li>RP-UI-CH-PS7 a reload never overrides the user's own choice</li><li>RP-UI-CH-E1 (changed) single selectable preselected; RP-UI-CH-N1 now uses two selectable + one not-ready</li><li>e2e TT-UI-E2E-P2c: Approve preview, dialog, default radio checked, Approve with this provider, Next enabled. No other e2e spec approves a preview.</li></ul></div></body></html>

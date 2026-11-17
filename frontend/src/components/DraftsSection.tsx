@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { ApiError } from '../api/client';
 import { useDeleteDraft } from '../api/queries';
+import { ScrollRegion } from './ScrollRegion';
 import type { Batch } from '../api/types';
 import { formatDate, formatNumber } from '../format';
 import { DeleteDraftDialog } from './DeleteDraftDialog';
@@ -78,7 +79,7 @@ export function DraftsSection({ drafts, templateNames }: Props) {
       <h2 id={headingId} className="mb-2 font-semibold">
         Not started
       </h2>
-      <div className="overflow-x-auto">
+      <ScrollRegion label="Drafts table">
         <table className="w-full text-left text-sm">
           <thead className="text-muted">
             <tr>
@@ -99,7 +100,7 @@ export function DraftsSection({ drafts, templateNames }: Props) {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollRegion>
     </section>
   );
 }

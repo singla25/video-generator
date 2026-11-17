@@ -10,7 +10,8 @@ pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}p
 table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Plan — Pluggable render providers and the render plan chooser</h1>
-<p><strong>Status:</strong> DRAFT for Admin approval · <strong>Date:</strong> 2026-11-17 · <strong>Backlog item:</strong> 2 (after the spike review, item 1) <strong>Decision record:</strong> ADR-013 amendment A1 (proposed, same branch). <strong>Starts only after</strong> the spike review and the Admin's approval of this plan, the ADR amendment, the task assignment and migration 0003.</p>
+<p><strong>Status:</strong> APPROVED by the Admin on 2026-11-17 (Q1 = 3, Q2 = yes, Q3 = no) · <strong>Date:</strong> 2026-11-17 · <strong>Backlog item:</strong> 2 <strong>Decision record:</strong> ADR-013 amendment A1 (accepted as "Proposed until the spike runs"). Build today with fake providers (phase a); Modal adapter against a fake Modal client (phase b). Migration 0003 is created, <strong>not run</strong>.</p>
+<p><strong>Admin answers (2026-11-17):</strong> Q1: an estimate needs <strong>3</strong> measured runs. Q2: <strong>yes</strong>, an unmeasured provider with a cap can be picked, labelled "not measured yet". Q3: <strong>no</strong>, remote providers never take real data, enforced by <strong>both the API and the worker</strong>.</p>
 <h2>Goal</h2>
 <p>Rendering is no longer fixed to three modes. Any number of <strong>render providers</strong> can be registered. Each one says what it is, where its estimates come from, what data it may receive, whether it is ready, and how much it may spend. When the Admin approves the preview, a <strong>chooser</strong> shows the ready providers side by side (time, cost, remaining credit) and the batch is rendered by the one the Admin picks, through that provider's own queue.</p>
 <h2>What exists today (verified 2026-11-17)</h2>
@@ -87,10 +88,7 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 │   remote_worker · shared storage for remote_worker
 ├── Out of scope: the Modal adapters themselves (T4) · the CUDA image (G6) · S3 storage adapter · VPN setup ·
 │   automatic provider choice
-└── Open questions (must be answered before approval)
-    ├── Q1 Minimum measured rows N for an estimate (proposal 3)
-    ├── Q2 Should a &quot;not measured yet&quot; provider with a cap be choosable? (proposal yes, the cap protects)
-    └── Q3 May a rented machine ever count as &quot;our server&quot; for real data (C5)? (proposal no: demo_only)</code></pre>
+└── Open questions: none (answered by the Admin 2026-11-17: Q1 = 3 runs, Q2 = yes, Q3 = no)</code></pre>
 <h2>Test tree outline (tester writes <code>docs/test-tree/render-providers.md</code> first)</h2>
 <pre><code>Registry
 ├── Positive: valid file → providers; missing file → one provider equal to today
@@ -127,4 +125,4 @@ Spend cap
 <p>  default provider), <code>batches.data_class</code> (<code>real</code> | <code>demo</code>, default <code>real</code>), <code>batch_rows.cost_usd</code> (numeric,   nullable; measured cost of the row).</p>
 <ul><li><strong>Dependencies:</strong> none (TOML is read with the standard library).</li><li><strong>ADR:</strong> ADR-013 amendment A1 (proposed with this plan).</li></ul>
 <h2>Admin approval</h2>
-<ul><li>[ ] Spike review done (backlog item 1)</li><li>[ ] Open questions Q1–Q3 answered</li><li>[ ] Plan approved</li><li>[ ] ADR-013 amendment A1 approved</li><li>[ ] Task assignment approved</li><li>[ ] Migration 0003: running it approved (later, separately)</li><li>[ ] Merge approved</li></ul></div></body></html>
+<ul><li>[ ] Spike review done (backlog item 1). Spike blocked on Modal billing; the Admin approved building with fakes meanwhile</li><li>[x] Open questions Q1–Q3 answered (2026-11-17)</li><li>[x] Plan approved (2026-11-17)</li><li>[x] ADR-013 + amendment A1 accepted as "Proposed until the spike runs" (2026-11-17)</li><li>[x] Task assignment approved: tester first, then backend-dev and frontend-dev, all sonnet (2026-11-17)</li><li>[x] <code>modal</code> as optional <code>cloud</code> extra, pinned (2026-11-17), for phase b</li><li>[ ] Migration 0003: running it (later, separately; created only)</li><li>[ ] Merge approved</li></ul></div></body></html>

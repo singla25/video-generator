@@ -1,6 +1,8 @@
 # ADR-013 Cloud GPU mode on Modal
 
-**Status:** Proposed (2026-11-12). Accepted only after spike P2-S answers Q1 and Q2 and the Admin signs off.
+**Status:** Proposed (2026-11-12). **Admin, 2026-11-17: accepted as "Proposed until the spike runs"**: building with
+fakes may proceed and the `cloud` extra (pinned `modal`) is approved; Q1 (GPU type) and Q2 (call size) stay open until
+P2-S runs on a workspace with an active payment method.
 **Plan:** `docs/plans/docker-and-cloud-setup.md`
 
 ## Context
@@ -51,9 +53,10 @@ Mac until (a) or (b) is decided, so Q1 (GPU type) is answered for those two mode
   *Superseded in part by amendment A1 (proposed): any provider can be registered; a self-hosted or rented CUDA
   machine joins as a `remote_worker` once G6 exists.*
 
-## Amendment A1 — pluggable render providers (PROPOSED 2026-11-17, not accepted)
-**Plan:** `docs/plans/render-providers.md`. Accepted only with the Admin's approval of that plan, after the spike
-review.
+## Amendment A1 — pluggable render providers (accepted as "Proposed until the spike runs", 2026-11-17)
+**Plan:** `docs/plans/render-providers.md` (approved 2026-11-17). The Admin accepted ADR-013 and this amendment as
+"Proposed until the spike runs": building may proceed with fakes; the GPU type (Q1) and call size (Q2) stay open
+until P2-S runs. Q3 (rented machines and real data): **no**, enforced by the API and the worker.
 
 **Context.** The Admin asked that rendering not be fixed to three modes (fake, local, modal). Batches should go to
 whichever registered provider the Admin picks at preview approval, with honest estimates and a spend limit.

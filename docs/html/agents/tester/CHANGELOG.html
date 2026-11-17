@@ -11,6 +11,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Tester — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-11-17 — Modal adapters (RED, phase b)</h2>
+<ul><li>Added tests/unit/modal_ai/ (test_modal_stt, test_modal_tts, test_cloud_extra_and_import_safety, conftest), tests/fixtures/modal_fake.py, docs/test-tree/modal-adapters.md. Contract: vidgen.infrastructure.modal_ai.{client,errors,stt,tts}; pyproject extra cloud = modal==X.Y.Z. Fails on missing modules and missing extra. No wiring or lip sync tests.</li></ul>
 <h2>2026-10-30 — RM-G3 (remove redundant red set)</h2>
 <ul><li>Removed: the redundant G3 adapter test set (tests/unit/infra/ai/, docs/test-tree/m2-real-ai.md). The adapters were built as vidgen.infrastructure.local_ai and are covered by tests/unit/ai_local/. The Admin approved the deletion. Those tests failed at collection with ModuleNotFoundError.</li></ul>
 <h2>2026-10-20 - W-4 tests</h2>

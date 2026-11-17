@@ -22,6 +22,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Cloud GPU AI via Modal (ADR-013). Optional: imported lazily, never needed for tests.
+cloud = ["modal==1.6.4"]
 # Pilot only, Apple silicon (DD-31, ADR-012). Not needed for AI_MODE=fake or CI.
 local-ai = [
     "torch==2.14.1",
@@ -112,3 +114,8 @@ override-dependencies = [
     "virtualenv; sys_platform == 'never'",
     "pre-commit; sys_platform == 'never'",
 ]
+
+# `modal` is an optional extra (not installed in CI); it is only imported lazily.
+[[tool.mypy.overrides]]
+module = ["modal", "modal.*"]
+ignore_missing_imports = true

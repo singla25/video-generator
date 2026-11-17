@@ -15,4 +15,5 @@ def call_remote(fn: Callable[[], T]) -> T:
     try:
         return fn()
     except RemoteAuthError:
-        raise RemoteAuthError() from None
+        pass  # re-raised below, outside the except block, so no cause/context is kept
+    raise RemoteAuthError() from None

@@ -295,3 +295,7 @@ Newest first. One entry per task.
 - Dependency (Admin-approved): optional extra `cloud = ["modal==1.6.4"]` in pyproject.toml, uv.lock updated; base dependencies unchanged. mypy override `modal.*` (ignore_missing_imports) because the extra is not installed.
 - Not done (out of scope): ai_mode "modal" wiring, container, installer, settings. The deployed Modal function names/signatures in `modal_client.py` are assumptions until the spike (ADR-013 Q1/Q2).
 - Tests: tests/unit/modal_ai all green (38).
+
+## 2026-11-17 - BL-3 modal_ai: no exception link on translated errors
+- `_guard.call_remote` and `modal_client._translate` no longer raise inside the except block: the fixed-message error is chosen in the handler and raised after it with `from None`, so `__cause__` and `__context__` are both None (the original exception, with its possible token text, is not reachable). Non-modal exceptions still propagate untouched; `modal` import stays lazy.
+- Files: backend/vidgen/infrastructure/modal_ai/_guard.py, modal_client.py. Tests: tests/unit/modal_ai/test_no_exception_link.py (6) now green.

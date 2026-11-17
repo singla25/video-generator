@@ -26,14 +26,17 @@ def _translate(call: Callable[[], T]) -> T:
     """Run a Modal call and map Modal's exceptions to ours (messages are fixed, no details)."""
     import modal.exception as modal_exc  # lazy: optional `cloud` extra
 
+    failure: Exception
     try:
         return call()
     except modal_exc.AuthError:
-        raise RemoteAuthError() from None
+        failure = RemoteAuthError()
     except modal_exc.FunctionTimeoutError:
-        raise RemoteTimeoutError("The cloud AI call timed out.") from None
+        failure = RemoteTimeoutError("The cloud AI call timed out.")
     except modal_exc.Error:
-        raise RemoteCrashError("The cloud AI call failed.") from None
+        failure = RemoteCrashError("The cloud AI call failed.")
+    # raised outside the except blocks so __cause__ and __context__ stay None
+    raise failure from None
 
 
 class ModalRemoteClient:

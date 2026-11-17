@@ -193,3 +193,7 @@ Newest first. One entry per task.
 ## 2026-11-17 - Modal adapters VERIFY (phase b)
 - Added tests/unit/modal_ai/test_modal_client.py (stub `modal` module; 4 methods, error translation, from_name failure) and test_modal_tts_extra.py (UTF-8 byte accounting, two cloner instances, failed row bytes, empty text).
 - modal_ai coverage 100 % (stmts + branches). No backend defects.
+
+## 2026-11-17 - Modal adapters RED (no exception link)
+- Added tests/unit/modal_ai/test_no_exception_link.py: RemoteAuthError must have `__cause__` and `__context__` None (call_remote via STT/TTS synthesize/upload; _translate via stub modal) and no token in chain or traceback. Extra-scope tests for RemoteTimeoutError/RemoteCrashError from _translate.
+- Result: 6 fail (context still set because the raise is inside the except block), 65 pass. Backend fix: raise outside the except block.

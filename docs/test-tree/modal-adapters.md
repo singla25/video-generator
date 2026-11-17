@@ -63,3 +63,8 @@ Feature: ModalVoiceCloner extras
 ├── ⚠️ second cloner on the same remote re-checks has_sample but does not re-upload or recount the sample
 ├── ⚠️ failed synthesis (bad wav) books no per-row bytes
 └── ⚠️ empty text sent with the hash only
+
+Feature: RemoteAuthError carries no link to the original exception (tests/unit/modal_ai/test_no_exception_link.py)
+├── ❌ _guard.call_remote: auth error with token via STT transcribe, TTS synthesize, TTS upload -> __cause__ None AND __context__ None, token absent from whole chain and traceback
+├── ❌ modal_client._translate: stub modal AuthError -> same assertions
+└── ⚠️ EXTRA SCOPE (tester proposal): _translate Timeout/Crash errors -> same "no context" (tests named *_extra_scope)

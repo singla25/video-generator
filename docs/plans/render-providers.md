@@ -172,7 +172,7 @@ review → Admin approves merge. Migration 0003 is **created** in P2 and **run o
 |---|------|-----------|
 | R1 | Real data reaches a remote provider by mistake | data class declared at upload; API and worker both check (AC8); remote kinds demo_only by default |
 | R2 | Estimates are misleading with few runs | measured runs only, N minimum, "not measured yet" otherwise |
-| R3 | Spend overshoot (one row runs past the cap) | check before each row with the row's worst case; provider-side limit (for Modal: the workspace spending limit) as the hard stop |
+| R3 | Spend overshoot (one row runs past the cap) | check before each row with the row's worst case; provider-side limit (for Modal: the workspace spending limit) as the hard stop. **Accepted limit (Admin, 2026-11-17):** the cap is checked when a row starts and its cost is booked when it finishes, so with N rows rendering at once the cap can be passed by up to N−1 rows' cost (pinned by test RP-WRK-E6). With one worker thread there is no overshoot. The provider's own spending limit stays the hard stop; README and the chooser help text must say so. |
 | R4 | Remote worker exposes Redis/PostgreSQL or keys | private network only; demo_only (Q3); out of scope until G6 and S3 storage exist |
 | R5 | Old batches and the requeue job break | provider column nullable, null = default provider; tests for old rows |
 

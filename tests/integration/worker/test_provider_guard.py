@@ -134,13 +134,11 @@ def test_a_real_batch_on_a_local_provider_renders_with_zero_cost(make_world: Wor
     assert cost_of(world, 2) == 0.0
 
 
-def test_an_old_batch_without_a_provider_uses_the_default_provider(
-    make_world: WorldFactory,
-) -> None:
-    """RP-WRK-E1 (R5): null provider, real data -> default (local) -> renders."""
-    world = make_world()
-    assert render(guarded(world), world, 2).kind is RowOutcomeKind.COMPLETED
-    assert world.batch()["status"] == "RUNNING"
+def test_an_old_batch_without_a_provider_uses_the_default_provider(four: World) -> None:
+    """RP-WRK-E1 (R5): null provider, real data -> default (local) -> renders, batch goes on."""
+    assert render(guarded(four), four, 2).kind is RowOutcomeKind.COMPLETED
+    assert cost_of(four, 2) == 0.0
+    assert four.batch()["status"] == "RUNNING"
 
 
 def test_without_a_guard_the_worker_behaves_exactly_as_before(make_world: WorldFactory) -> None:
@@ -208,3 +206,55 @@ def test_a_paused_batch_keeps_deferring_without_spending(four: World) -> None:
     for _ in range(3):
         assert render(renderer, four, 4).kind is RowOutcomeKind.DEFERRED
     assert spent(four) == before
+
+
+# ---- two rows near the cap (known limit) ---------------------------------------------
+
+
+class ReentrantVoice(SlowVoice):
+    """While row 2 'renders', a second thread of the worker starts row 3 (concurrent rows)."""
+
+    def __init__(self, world: World, other: object) -> None:
+        super().__init__(world)
+        self.other = other
+        self.inner = None
+
+    def synthesize(self, text: str, voice_sample: Path, out: Path) -> float:
+        if self.inner is None and callable(self.other):
+            self.inner = True  # set first: the peer row's own voice step must not start another
+            self.other()
+        return super().synthesize(text, voice_sample, out)
+
+
+def test_two_concurrent_rows_near_the_cap_can_overshoot_it_by_one_row(four: World) -> None:
+    """RP-WRK-E6: PINNED KNOWN LIMIT (risk R3). The cap is checked when a row STARTS, and the
+    cost is booked when it FINISHES, so a second row that starts meanwhile sees the same spent
+    amount. With cap 1.0 (a row costs 1.0, worst case 0.5) both rows start and at
+    least 2.0 is spent. The row after them is held. The provider-side limit (the Modal workspace
+    limit) is the hard stop.
+    """
+    four.set_batch(provider_id="modal-demo", data_class="demo")
+    renderer = guarded(four, cap=1.0)
+    second: list[RowOutcomeKind] = []
+
+    def start_row_3() -> bool:
+        second.append(render(renderer, four, 3).kind)  # runs inside row 2's voice step
+        return True
+
+    voice = ReentrantVoice(four, start_row_3)
+    renderer._voice = voice  # the same renderer, with a voice that starts a peer row
+    assert render(renderer, four, 2).kind is RowOutcomeKind.COMPLETED
+    assert second == [RowOutcomeKind.COMPLETED]  # started while spent was still 0.0
+    # the shared fake clock also counts row 3's time inside row 2, so only 'above the cap' is pinned
+    assert spent(four) >= 2.0 > 1.0  # the documented overshoot
+    assert render(renderer, four, 4).kind is RowOutcomeKind.DEFERRED  # nothing further starts
+    assert four.batch()["status"] == "PAUSED"
+
+
+def test_a_batch_whose_provider_was_retired_falls_back_to_the_default_provider(
+    four: World,
+) -> None:
+    """RP-WRK-E7: the registry changed after the batch was created; the worker does not crash."""
+    four.set_batch(provider_id="retired-provider", data_class="real")
+    assert render(guarded(four), four, 2).kind is RowOutcomeKind.COMPLETED
+    assert cost_of(four, 2) == 0.0

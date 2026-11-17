@@ -175,3 +175,7 @@ Newest first. One entry per task.
 ## 2026-11-17 - P3 RED (render providers, UI)
 - Vitest: data-class-step, provider-chooser and spend-cap-pause tests under tests/frontend/unit; mocks/providers.ts and a default providers handler; wizard.test.tsx TT-UI-AC5-P8 goes through the chooser. Tree: UI section of docs/test-tree/render-providers.md.
 - Result: 25 failing (24 new + P8), 601 passing; 2 new negative guards pass today.
+
+## 2026-11-17 - P5 VERIFY (render providers)
+- Fixed two test defects (migration 0002 head assumptions; RP-WRK-E1 world). Added tests/integration/worker/test_two_workers_two_queues.py, RP-WRK-E6 (cap overshoot, pinned), RP-WRK-E7, RP-REG-N4.
+- Results: pytest 2987 passed + new ones green; Vitest 626 passed; ruff, mypy --strict, tsc, eslint, prettier clean; new-module coverage 97 %. COVERAGE.md updated.

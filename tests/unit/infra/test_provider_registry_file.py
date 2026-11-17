@@ -169,3 +169,26 @@ def test_requires_env_holds_names_only(tmp_path: Path) -> None:
     remote = registry.get("modal-demo")
     assert remote is not None
     assert all(name.isupper() and "=" not in name for name in remote.requires_env)
+
+
+# ---- more refusals found while verifying (P5) ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "fragment"),
+    [
+        ('provider = "oops"\n', "tables"),  # [provider] is not a list of tables
+        ('[[other]]\nid = "x"\n', "tables"),  # unknown top-level table
+        (entry('requires_env = "MODAL_TOKEN_ID"', id_="env-str"), "env-str"),  # not a list
+        (entry("requires_env = [1, 2]", id_="env-num"), "env-num"),  # names must be strings
+        (entry('queue = "  "', id_="blank-q"), "blank-q"),
+        (entry("", id_="bad-ai").replace('"fake"', '"quantum"'), "bad-ai"),
+    ],
+)
+def test_more_malformed_files_are_refused_with_a_clear_error(
+    tmp_path: Path, text: str, fragment: str
+) -> None:
+    """RP-REG-N4."""
+    with pytest.raises(InvalidProviderError) as raised:
+        load_registry(write(tmp_path, text), **LOAD)
+    assert fragment in str(raised.value)

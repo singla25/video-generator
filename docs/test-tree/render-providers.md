@@ -101,3 +101,28 @@ Feature: Render providers
 
 Acceptance mapping: AC1 REG/REC · AC2 SET/HB · AC3 EST · AC4 API list · AC5 SEL/API over credit ·
 AC6 RTE · AC7 WRK cap · AC8 API + WRK C5 · AC9 e2e with two workers (P5) · AC10 whole suite.
+
+## UI section (phase P3, Vitest + MSW, fake API)
+
+Files: `tests/frontend/unit/data-class-step.test.tsx`, `provider-chooser.test.tsx`, `spend-cap-pause.test.tsx`;
+fixtures `tests/frontend/mocks/providers.ts` (plus a default MSW handler for the providers list).
+Each file's header comment pins the UI contract (roles, names, test ids).
+
+```
+Feature: Render providers (UI)
+├── Scenario: Data class at upload (RP-UI-DC)
+│   ├── ✅ "Real data" default · demo + confirmation sends data_class=demo, confirm_demo=true
+│   ├── ❌ demo without the confirmation box → Next disabled, reason announced
+│   └── ⚠️ back to Real data forgets the confirmation · arrow keys move between radios
+├── Scenario: Chooser at "Approve preview" (RP-UI-CH)
+│   ├── ✅ side by side: name, kind, time, cost, remaining credit · "not measured yet" still pickable · confirm sends {provider_id}
+│   ├── ❌ needs-setup and over-credit greyed with reason, cannot be picked · data_class refusals hidden ·
+│   │      409 PROVIDER_NOT_READY / NOT_ALLOWED / OVER_CREDIT and 422 UNKNOWN_PROVIDER → message, dialog stays open
+│   └── ⚠️ single provider still shows the chooser, nothing preselected · unicode name · nothing selectable → API message,
+│          approval blocked · focus in dialog, Escape/Cancel send nothing · full keyboard path
+└── Scenario: Spend-cap pause on the batch page (RP-UI-CAP)
+    ├── ✅ "spend cap reached" + "$4.95 of $5.00" · data-class pause reason
+    ├── ❌ paused by hand (no reason) or running → no reason box
+    └── ⚠️ reason announced with role=status
+```
+Existing wizard test TT-UI-AC5-P8 now goes through the chooser (updated; red until the dialog exists).

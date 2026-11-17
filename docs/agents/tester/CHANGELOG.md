@@ -171,3 +171,7 @@ Newest first. One entry per task.
 - Tree docs/test-tree/render-providers.md with the pinned API contract (providers list per batch, provider_id on preview approve, change-provider PUT, data_class + confirm_demo at creation, provider_id / data_class / spent_usd / pause_reason on the batch JSON). Worker C5: row not rendered, batch PAUSED, outcome DEFERRED.
 - Red tests: tests/unit/domain/test_provider_records.py, test_provider_rules.py; tests/unit/infra/test_provider_registry_file.py, test_queue_heartbeats.py, test_dramatiq_routing.py; tests/unit/services/test_requeue_routing.py; tests/integration/api/test_providers_chooser.py, test_providers_routing.py, test_batch_data_class.py (+ provider_helpers.py); tests/integration/worker/test_provider_guard.py; tests/integration/db/test_migration_0003_providers.py. Fixtures: tests/fixtures/providers.py; FakeJobQueue gained optional queue_name and `routed` (additive).
 - Open: AC9 (two real local workers) and concurrent rows near the cap are for P5.
+
+## 2026-11-17 - P3 RED (render providers, UI)
+- Vitest: data-class-step, provider-chooser and spend-cap-pause tests under tests/frontend/unit; mocks/providers.ts and a default providers handler; wizard.test.tsx TT-UI-AC5-P8 goes through the chooser. Tree: UI section of docs/test-tree/render-providers.md.
+- Result: 25 failing (24 new + P8), 601 passing; 2 new negative guards pass today.

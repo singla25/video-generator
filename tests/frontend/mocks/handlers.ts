@@ -12,6 +12,7 @@ import {
   status,
   template,
 } from "./data";
+import { providersBody } from "./providers";
 
 /** An API error body exactly like backend/vidgen/api/errors.py: {code, message}. */
 export function apiError(
@@ -88,6 +89,7 @@ export const handlers = [
   http.get("*/batches/:id/rows", () =>
     HttpResponse.json(rowsPage(ROWS_BY_STATUS)),
   ),
+  http.get("*/batches/:id/providers", () => HttpResponse.json(providersBody())),
   http.get("*/batches/:id/report", () => HttpResponse.json(report())),
   http.post("*/batches/:id/start", () => HttpResponse.json(batch())),
   http.get("*/batches/:id", () => HttpResponse.json(batch())),

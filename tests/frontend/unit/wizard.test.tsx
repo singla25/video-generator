@@ -387,6 +387,12 @@ describe('step 3 slot and preview gate', () => {
     const approve = await screen.findByRole('button', { name: 'Approve preview' });
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
     await userEvent.click(approve);
+    // Render providers: Approve opens the chooser; the one local provider is picked and confirmed.
+    const dialog = await screen.findByRole('dialog', { name: 'Choose where to render' });
+    await userEvent.click(within(dialog).getByRole('radio', { name: /This Mac/ }));
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Approve with this provider' }),
+    );
     await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled());
   });
 

@@ -118,7 +118,7 @@ Feature: Render providers (UI)
 │   ├── ✅ side by side: name, kind, time, cost, remaining credit · "not measured yet" still pickable · confirm sends {provider_id}
 │   ├── ❌ needs-setup and over-credit greyed with reason, cannot be picked · data_class refusals hidden ·
 │   │      409 PROVIDER_NOT_READY / NOT_ALLOWED / OVER_CREDIT and 422 UNKNOWN_PROVIDER → message, dialog stays open
-│   └── ⚠️ single provider still shows the chooser, nothing preselected · unicode name · nothing selectable → API message,
+│   └── ⚠️ single selectable provider is preselected (E1) · unicode name · nothing selectable → API message,
 │          approval blocked · focus in dialog, Escape/Cancel send nothing · full keyboard path
 └── Scenario: Spend-cap pause on the batch page (RP-UI-CAP)
     ├── ✅ "spend cap reached" + "$4.95 of $5.00" · data-class pause reason
@@ -132,3 +132,14 @@ Existing wizard test TT-UI-AC5-P8 now goes through the chooser (updated; red unt
 - TT-A11Y-SCROLL-P2 DraftsSection, BatchListTable, RowsTable, HistoryPage, StepMap use ScrollRegion with labels "Drafts table", "Batches table", "Rows table", "History table", "Sheet preview table"
 - TT-A11Y-SCROLL-E1 extra className kept; no raw overflow-x-auto left outside ScrollRegion.tsx
 - Test: tests/frontend/unit/scroll-region.test.tsx. Dev creates frontend/src/components/ScrollRegion.tsx (label, children, className?).
+
+## Chooser preselection (Admin decision, PR 24 e2e TT-UI-E2E-P2c)
+The chooser always opens; exactly one selectable listed provider is preselected, otherwise nothing.
+- RP-UI-CH-PS1 two selectable: none checked, approve disabled
+- RP-UI-CH-PS2 one selectable + not-ready others: the selectable is checked, approve enabled
+- RP-UI-CH-PS3 zero selectable: none checked, disabled
+- RP-UI-CH-PS4/PS5 data_class-hidden providers do not count
+- RP-UI-CH-PS6 Cancel after preselection sends nothing; PS8 preselected id is what is approved
+- RP-UI-CH-PS7 a reload never overrides the user's own choice
+- RP-UI-CH-E1 (changed) single selectable preselected; RP-UI-CH-N1 now uses two selectable + one not-ready
+- e2e TT-UI-E2E-P2c: Approve preview, dialog, default radio checked, Approve with this provider, Next enabled. No other e2e spec approves a preview.

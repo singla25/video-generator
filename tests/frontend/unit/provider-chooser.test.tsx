@@ -11,7 +11,10 @@
 //   Not ready (setup.state needs_setup) and refused (selectable false) options have a DISABLED radio,
 //   data-selectable="false", and show their reason text (setup.reason or refusal.reason), linked to
 //   the radio by aria-describedby. Providers refused by data_class are hidden (not listed).
-//   Nothing is preselected. Button "Approve with this provider" is disabled until a selectable radio
+//   Preselection (Admin decision): when EXACTLY ONE listed provider is selectable its radio is
+//   checked on open (the dialog still always opens); with 0 or 2+ selectable nothing is checked.
+//   A non-selectable provider is never preselected; data_class-hidden ones do not count; a choice
+//   the user already made is never overridden (e.g. after a refetch). Button "Approve with this provider" is disabled until a selectable radio
 //   is chosen; it POSTs /batches/<id>/preview/approve with JSON {provider_id}. On success the dialog
 //   closes and the batch refreshes. On an API refusal the dialog STAYS OPEN and shows the API message
 //   in role="alert" (409 PROVIDER_NOT_READY / PROVIDER_NOT_ALLOWED / PROVIDER_OVER_CREDIT, 422
@@ -144,19 +147,20 @@ describe("chooser content", () => {
     );
   });
 
-  it("RP-UI-CH-E1 a single provider still shows the chooser (nothing is chosen silently)", async () => {
+  it("RP-UI-CH-E1 a single selectable provider is preselected and can be approved without a click", async () => {
     const calls = setup([provider()]);
     const dialog = await openChooser();
     const radio = await within(dialog).findByRole("radio", {
       name: /This Mac/,
     });
-    expect(radio).not.toBeChecked();
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Approve with this provider",
-      }),
-    ).toBeDisabled();
+    await waitFor(() => expect(radio).toBeChecked());
+    const confirm = within(dialog).getByRole("button", {
+      name: "Approve with this provider",
+    });
+    expect(confirm).toBeEnabled();
     expect(calls).toEqual([]);
+    await userEvent.click(confirm);
+    await waitFor(() => expect(calls).toEqual([{ provider_id: "local-mac" }]));
   });
 
   it("RP-UI-CH-E2 unicode provider names are shown and labelled correctly", async () => {
@@ -172,6 +176,7 @@ describe("chooser refusals", () => {
   it("RP-UI-CH-N1 a provider that needs setup is greyed with its reason and cannot be picked", async () => {
     const calls = setup([
       provider(),
+      provider({ id: "local-2", name: "Other Mac" }),
       modal({
         setup: { state: "needs_setup", reason: "MODAL_TOKEN_ID missing" },
         selectable: false,
@@ -340,6 +345,137 @@ describe("chooser accessibility", () => {
     await waitFor(() => expect(confirm).toBeEnabled());
     confirm.focus();
     await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(calls).toEqual([{ provider_id: "local-mac" }]));
+  });
+});
+
+const CONFIRM = { name: "Approve with this provider" };
+const notReady = {
+  selectable: false,
+  setup: { state: "needs_setup", reason: "worker not running" },
+  refusal: { code: "not_ready", reason: "worker not running" },
+};
+
+describe("chooser preselection", () => {
+  it("RP-UI-CH-PS1 two selectable providers: nothing is checked and approve is disabled", async () => {
+    setup([provider(), modal()]);
+    const dialog = await openChooser();
+    const radios = await within(dialog).findAllByRole("radio");
+    expect(radios).toHaveLength(2);
+    radios.forEach((r) => expect(r).not.toBeChecked());
+    expect(within(dialog).getByRole("button", CONFIRM)).toBeDisabled();
+  });
+
+  it("RP-UI-CH-PS2 one selectable among not-ready ones: the selectable one is checked", async () => {
+    setup([modal(notReady), provider()]);
+    const dialog = await openChooser();
+    const mac = await within(dialog).findByRole("radio", { name: /This Mac/ });
+    await waitFor(() => expect(mac).toBeChecked());
+    expect(
+      within(dialog).getByRole("radio", { name: /Modal/ }),
+    ).not.toBeChecked();
+    expect(within(dialog).getByRole("button", CONFIRM)).toBeEnabled();
+  });
+
+  it("RP-UI-CH-PS3 zero selectable: nothing is checked, approve is disabled", async () => {
+    setup([provider(notReady)], { any_selectable: false, message: "None." });
+    const dialog = await openChooser();
+    const radio = await within(dialog).findByRole("radio", {
+      name: /This Mac/,
+    });
+    expect(radio).not.toBeChecked();
+    expect(within(dialog).getByRole("button", CONFIRM)).toBeDisabled();
+  });
+
+  it("RP-UI-CH-PS4 a provider hidden by data class does not count: the one visible selectable is checked", async () => {
+    setup([
+      provider(),
+      modal({
+        selectable: false,
+        refusal: { code: "data_class", reason: "Demo data only." },
+      }),
+    ]);
+    const dialog = await openChooser();
+    const mac = await within(dialog).findByRole("radio", { name: /This Mac/ });
+    await waitFor(() => expect(mac).toBeChecked());
+    expect(within(dialog).queryByRole("radio", { name: /Modal/ })).toBeNull();
+  });
+
+  it("RP-UI-CH-PS5 a data-class-hidden provider never counts, so no visible selectable means nothing is checked", async () => {
+    setup([
+      provider(notReady),
+      modal({
+        selectable: true,
+        refusal: { code: "data_class", reason: "Demo data only." },
+      }),
+    ]);
+    const dialog = await openChooser();
+    const mac = await within(dialog).findByRole("radio", { name: /This Mac/ });
+    expect(mac).not.toBeChecked();
+    expect(within(dialog).getByRole("button", CONFIRM)).toBeDisabled();
+  });
+
+  it("RP-UI-CH-PS6 the Admin can cancel a preselected choice without sending anything", async () => {
+    const calls = setup([provider()]);
+    const dialog = await openChooser();
+    await waitFor(() =>
+      expect(within(dialog).getByRole("radio")).toBeChecked(),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(calls).toEqual([]);
+  });
+
+  it("RP-UI-CH-PS7 a reload that leaves one selectable does not override the user's own choice", async () => {
+    // Two selectable at first; the user picks Modal; a failed approve reloads the list and now
+    // only This Mac is selectable. This Mac must not be silently checked over the user's choice.
+    setup([provider(), modal()]);
+    let reloaded = false;
+    server.use(
+      http.get("*/batches/:id/providers", () =>
+        HttpResponse.json(
+          providersBody(
+            reloaded ? [provider(), modal(notReady)] : [provider(), modal()],
+            { data_class: "demo" },
+          ),
+        ),
+      ),
+      http.post("*/batches/:id/preview/approve", () => {
+        reloaded = true;
+        return apiError(409, "PROVIDER_NOT_READY", "Not ready.");
+      }),
+    );
+    const dialog = await openChooser();
+    await userEvent.click(
+      await within(dialog).findByRole("radio", { name: /Modal/ }),
+    );
+    await userEvent.click(within(dialog).getByRole("button", CONFIRM));
+    await within(dialog).findByRole("alert");
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("radio", { name: /Modal/ }),
+      ).toBeDisabled(),
+    );
+    expect(
+      within(dialog).getByRole("radio", { name: /This Mac/ }),
+    ).not.toBeChecked();
+    expect(within(dialog).getByRole("button", CONFIRM)).toBeDisabled();
+  });
+
+  it("RP-UI-CH-PS8 the preselected provider is what gets approved", async () => {
+    const calls = setup([provider(), modal(notReady)]);
+    const dialog = await openChooser();
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("radio", { name: /This Mac/ }),
+      ).toBeChecked(),
+    );
+    expect(within(dialog).getByRole("radio", { name: /Modal/ })).toBeDisabled();
+    await userEvent.click(within(dialog).getByRole("button", CONFIRM));
     await waitFor(() => expect(calls).toEqual([{ provider_id: "local-mac" }]));
   });
 });

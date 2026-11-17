@@ -128,6 +128,12 @@ test('TT-UI-E2E-P2c wizard: sheet, mapping with invalid rows, preview, approval,
   await expect(page.getByTestId('preview-video')).toBeVisible({ timeout: 90_000 });
   await shot(page, 'wizard-step3');
   await page.getByRole('button', { name: 'Approve preview' }).click();
+  // The chooser always opens; the one ready provider (the default) is preselected.
+  const chooser = page.getByRole('dialog', { name: 'Choose where to render' });
+  await expect(chooser).toBeVisible();
+  await expect(chooser.getByRole('radio', { checked: true })).toHaveCount(1);
+  await chooser.getByRole('button', { name: 'Approve with this provider' }).click();
+  await expect(chooser).toBeHidden();
   await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled();
   await page.getByRole('button', { name: 'Next' }).click();
 

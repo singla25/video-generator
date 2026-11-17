@@ -182,3 +182,7 @@ Newest first. One entry per task.
 
 ## 2026-11-17 - A11Y-SCROLL RED (PR 24 axe)
 - tests/frontend/unit/scroll-region.test.tsx + tree section in render-providers.md. Needs shared ScrollRegion component and five labelled usages.
+
+## 2026-11-18 - CHOOSER PRESELECT RED (PR 24 e2e)
+- provider-chooser.test.tsx: E1 changed (single selectable is preselected), N1 adjusted, new PS1-PS8; e2e full-flow.spec.ts TT-UI-E2E-P2c goes through the chooser. No other e2e spec approves a preview.
+- Result: 5 new/changed red (E1, PS2, PS4, PS6, PS8), rest green; scroll-region.test.tsx still red from the earlier A11Y-SCROLL step.

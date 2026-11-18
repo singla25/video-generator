@@ -43,6 +43,8 @@ class BatchView:
     suggested_spoken_name: str | None = None
     spelling_required: bool = False  # local mode: the spoken-name fields are part of the preview
     preview_stage: str | None = None  # label of a pending preview's stage; None otherwise
+    spent_usd: float = 0.0  # measured cost of this batch's rows
+    pause_reason: str | None = None  # why a PAUSED batch is paused by its provider
 
 
 @dataclass(frozen=True)

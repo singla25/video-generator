@@ -1,0 +1,95 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree — Render providers (phase a, backend)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree — Render providers (phase a, backend)</h1>
+<p>Plan: <code>docs/plans/render-providers.md</code> (approved 2026-11-17: Q1 = 3 measured runs, Q2 = yes, Q3 = no enforced by API and worker). ADR-013 amendment A1. Everything runs with FAKE providers: no Modal, no network, no paid call. Migration 0003 is tested only on a throwaway <code>vidgen_mig_*_test</code> database.</p>
+<h2>API contract (frontend tests rely on this; pinned by the backend tests)</h2>
+<p>Money values are JSON numbers (USD, float). Errors use the existing body <code>{code, message}</code>.</p>
+<p><strong>Batch creation</strong> <code>POST /batches</code> (multipart) gains <code>data_class</code> (<code>"real"</code> default | <code>"demo"</code>) and <code>confirm_demo</code> (<code>"true"</code>). <code>demo</code> without <code>confirm_demo=true</code> is 422 <code>VALIDATION_ERROR</code>; any other <code>data_class</code> value is 422.</p>
+<p><strong>Batch JSON</strong> (all batch responses) gains: <code>provider_id</code> (string | null), <code>data_class</code> (<code>"real"</code> | <code>"demo"</code>), <code>spent_usd</code> (number, this batch's measured cost, 0 when none), <code>pause_reason</code> (null, <code>"spend cap reached"</code> or <code>"provider not allowed for this data class"</code>; only set while PAUSED).</p>
+<p><strong>List providers</strong> <code>GET /batches/{id}/providers</code> →</p>
+<pre><code>{ &quot;data_class&quot;: &quot;real&quot;|&quot;demo&quot;, &quot;selected_provider_id&quot;: str|null,
+  &quot;any_selectable&quot;: bool, &quot;message&quot;: str|null,            # message set when nothing is selectable
+  &quot;providers&quot;: [ { &quot;id&quot;, &quot;name&quot;, &quot;kind&quot;, &quot;data_rule&quot;,
+      &quot;setup&quot;: {&quot;state&quot;: &quot;ready&quot;|&quot;needs_setup&quot;, &quot;reason&quot;: str|null},
+      &quot;estimate&quot;: null | {&quot;seconds_per_video&quot;,&quot;batch_seconds&quot;,&quot;batch_cost_usd&quot;},
+      &quot;estimate_label&quot;: &quot;not measured yet&quot; | null,        # label exactly this text when estimate is null
+      &quot;spend_cap_usd&quot;: number|null, &quot;spent_usd&quot;: number, &quot;remaining_usd&quot;: number|null,
+      &quot;selectable&quot;: bool,
+      &quot;refusal&quot;: null | {&quot;code&quot;: &quot;not_ready&quot;|&quot;data_class&quot;|&quot;over_credit&quot;, &quot;reason&quot;: str} } ] }</code></pre>
+<p>Every registered provider is listed (the UI hides <code>data_class</code> refusals and greys <code>not_ready</code>).</p>
+<p><strong>Choose</strong> <code>POST /batches/{id}/preview/approve</code> accepts an optional JSON body <code>{"provider_id": "&lt;id&gt;"}</code>. Without a body the call behaves as today (batch keeps provider null = default provider). With an id the provider is checked and stored on the batch. Refusals leave the batch unchanged: <code>422 UNKNOWN_PROVIDER</code>, <code>409 PROVIDER_NOT_READY</code>, <code>409 PROVIDER_NOT_ALLOWED</code> (C5), <code>409 PROVIDER_OVER_CREDIT</code>. <code>POST /batches/{id}/start</code> re-checks a stored provider (ready, data class): <code>409 PROVIDER_NOT_READY</code> / <code>PROVIDER_NOT_ALLOWED</code>; the batch stays DRAFT and no job is queued.</p>
+<p><strong>Change provider</strong> <code>PUT /batches/{id}/provider</code> <code>{"provider_id"}</code>: only DRAFT or PAUSED (else <code>409 INVALID_STATE</code>), same refusals as above; QUEUED rows are enqueued again on the new queue.</p>
+<p><strong>Worker C5 behaviour (pinned):</strong> a demo-only provider with a real batch (API bypassed): the row is NOT rendered (still QUEUED, attempts 0, no TTS call), the batch goes PAUSED, outcome <code>DEFERRED</code>; <code>pause_reason</code> = <code>"provider not allowed for this data class"</code>. <strong>Spend cap (pinned):</strong> worst case of one row = <code>row_timeout_seconds × rate_per_second</code>; the worker pauses (PAUSED, row stays QUEUED, outcome <code>DEFERRED</code>, reason <code>"spend cap reached"</code>) when <code>spent + worst &gt; cap</code> (equal is allowed). A completed row stores <code>cost_usd = render_seconds × rate_per_second</code>.</p>
+<p><strong>Code shape pinned by tests:</strong> <code>vidgen.domain.providers</code> (pure), <code>vidgen.infrastructure.provider_registry</code> (TOML), <code>vidgen.infrastructure.queue.redis_heartbeat.RedisQueueHeartbeats</code>, <code>vidgen.services.provider_guard.ProviderGuard</code> (<code>RowRenderer(provider_guard=...)</code>), <code>Settings.providers_file</code>, <code>AppDeps.queue_heartbeats</code>, <code>JobQueue.enqueue_*(..., queue_name=None)</code> and <code>depth(queue_name=None)</code> (queue_name passed only when the batch has a provider), <code>StuckRow.provider_id</code> with <code>requeue_stuck_rows(..., provider_queues=)</code>. Registry TOML: <code>[[provider]]</code> tables with keys <code>id name kind queue ai_mode data_rule spend_cap_usd rate_per_second|rate_per_hour requires_env</code>; unknown keys are refused (so no <code>token</code>/<code>secret</code> keys).</p>
+<h2>Tree</h2>
+<pre><code>Feature: Render providers
+├── Scenario: Provider record (RP-REC)            unit/domain/test_provider_records.py
+│   ├── ✅ local provider valid; remote_function demo_only with cap valid; queue defaults to vidgen.&lt;id&gt;
+│   ├── ❌ unknown kind · remote kind real_allowed · remote kind without cap · negative rate/cap · blank id
+│   └── ⚠️ duplicate id · duplicate queue · empty registry · unknown provider id lookup · null id = default
+├── Scenario: Registry file (RP-REG)              unit/infra/test_provider_registry_file.py
+│   ├── ✅ valid TOML → providers; missing file → one provider from ai_mode + queue_name
+│   ├── ❌ bad TOML · invalid entry names the entry · secret-looking or unknown key refused
+│   └── ⚠️ empty file · unicode name · requires_env names only · rate_per_hour converted
+├── Scenario: Estimates (RP-EST)                  unit/domain/test_provider_rules.py
+│   ├── ✅ 3 runs → median seconds, cost = seconds × rate, batch totals
+│   ├── ❌ &lt; 3 runs → None (&quot;not measured yet&quot;)
+│   └── ⚠️ failed/cancelled excluded · rate 0 · even count median · exactly N
+├── Scenario: Setup state (RP-SET, RP-HB)         unit/domain/test_provider_rules.py, unit/infra/test_queue_heartbeats.py
+│   ├── ✅ env + live heartbeat on own queue → ready
+│   ├── ❌ missing env → reason names variable · no heartbeat → &quot;worker not running&quot;
+│   └── ⚠️ env present but empty · heartbeat expires · two workers one queue · per-queue keys · redis down
+├── Scenario: Selectable / chooser rules (RP-SEL) unit/domain/test_provider_rules.py
+│   ├── ✅ ready + fits data class + within credit
+│   ├── ❌ not ready · demo_only for real · estimate &gt; remaining credit (each with a code)
+│   └── ⚠️ estimate == remaining · unmeasured + capped selectable (Q2) · uncapped never over credit
+├── Scenario: Chooser API (RP-API)                integration/api/test_providers_chooser.py, test_batch_data_class.py
+│   ├── ✅ list shape · choose at approval stores provider · batch JSON fields · legacy approve without body
+│   ├── ❌ unknown · not ready · demo_only for real · over credit → 4xx, batch unchanged
+│   └── ⚠️ nothing ready → message · provider not ready at start → 409, no jobs · demo needs confirmation
+├── Scenario: Routing (RP-RTE)                    unit/infra/test_dramatiq_routing.py, unit/services/test_requeue_routing.py, integration/api/test_providers_routing.py
+│   ├── ✅ start, retry-failed, per-row retry, requeue → chosen queue only; depth per queue
+│   ├── ❌ other queue receives nothing; unrouted batch passes no queue name (legacy shape)
+│   └── ⚠️ change provider while paused moves rows · running refused · old batch → default
+├── Scenario: Worker C5 and spend cap (RP-WRK)    integration/worker/test_provider_guard.py
+│   ├── ✅ cost_usd stored · spent accumulates · pause before the row that passes the cap
+│   ├── ❌ demo_only + real batch bypassing API → not rendered, PAUSED, reason shown
+│   └── ⚠️ cap exactly reached allowed · cap raised → renders again · no guard = legacy behaviour
+│       (concurrent rows near the cap: needs real workers, deferred to P5 verify)
+└── Scenario: Migration 0003 (RP-MIG)             integration/db/test_migration_0003_providers.py
+    ├── ✅ upgrade adds provider_id (nullable), data_class (default real), cost_usd (nullable); downgrade removes
+    ├── ❌ at 0002 the columns do not exist
+    └── ⚠️ old batch survives with data_class real · round trip no drift · throwaway DB only</code></pre>
+<p>Acceptance mapping: AC1 REG/REC · AC2 SET/HB · AC3 EST · AC4 API list · AC5 SEL/API over credit · AC6 RTE · AC7 WRK cap · AC8 API + WRK C5 · AC9 e2e with two workers (P5) · AC10 whole suite.</p>
+<h2>UI section (phase P3, Vitest + MSW, fake API)</h2>
+<p>Files: <code>tests/frontend/unit/data-class-step.test.tsx</code>, <code>provider-chooser.test.tsx</code>, <code>spend-cap-pause.test.tsx</code>; fixtures <code>tests/frontend/mocks/providers.ts</code> (plus a default MSW handler for the providers list). Each file's header comment pins the UI contract (roles, names, test ids).</p>
+<pre><code>Feature: Render providers (UI)
+├── Scenario: Data class at upload (RP-UI-DC)
+│   ├── ✅ &quot;Real data&quot; default · demo + confirmation sends data_class=demo, confirm_demo=true
+│   ├── ❌ demo without the confirmation box → Next disabled, reason announced
+│   └── ⚠️ back to Real data forgets the confirmation · arrow keys move between radios
+├── Scenario: Chooser at &quot;Approve preview&quot; (RP-UI-CH)
+│   ├── ✅ side by side: name, kind, time, cost, remaining credit · &quot;not measured yet&quot; still pickable · confirm sends {provider_id}
+│   ├── ❌ needs-setup and over-credit greyed with reason, cannot be picked · data_class refusals hidden ·
+│   │      409 PROVIDER_NOT_READY / NOT_ALLOWED / OVER_CREDIT and 422 UNKNOWN_PROVIDER → message, dialog stays open
+│   └── ⚠️ single selectable provider is preselected (E1) · unicode name · nothing selectable → API message,
+│          approval blocked · focus in dialog, Escape/Cancel send nothing · full keyboard path
+└── Scenario: Spend-cap pause on the batch page (RP-UI-CAP)
+    ├── ✅ &quot;spend cap reached&quot; + &quot;$4.95 of $5.00&quot; · data-class pause reason
+    ├── ❌ paused by hand (no reason) or running → no reason box
+    └── ⚠️ reason announced with role=status</code></pre>
+<p>Existing wizard test TT-UI-AC5-P8 now goes through the chooser (updated; red until the dialog exists).</p>
+<h2>A11y: keyboard-accessible scroll regions (axe scrollable-region-focusable, PR 24)</h2>
+<ul><li>TT-A11Y-SCROLL-P1 ScrollRegion renders role=region, tabindex=0, aria-label, overflow-x-auto</li><li>TT-A11Y-SCROLL-P2 DraftsSection, BatchListTable, RowsTable, HistoryPage, StepMap use ScrollRegion with labels "Drafts table", "Batches table", "Rows table", "History table", "Sheet preview table"</li><li>TT-A11Y-SCROLL-E1 extra className kept; no raw overflow-x-auto left outside ScrollRegion.tsx</li><li>Test: tests/frontend/unit/scroll-region.test.tsx. Dev creates frontend/src/components/ScrollRegion.tsx (label, children, className?).</li></ul>
+<h2>Chooser preselection (Admin decision, PR 24 e2e TT-UI-E2E-P2c)</h2>
+<p>The chooser always opens; exactly one selectable listed provider is preselected, otherwise nothing.</p>
+<ul><li>RP-UI-CH-PS1 two selectable: none checked, approve disabled</li><li>RP-UI-CH-PS2 one selectable + not-ready others: the selectable is checked, approve enabled</li><li>RP-UI-CH-PS3 zero selectable: none checked, disabled</li><li>RP-UI-CH-PS4/PS5 data_class-hidden providers do not count</li><li>RP-UI-CH-PS6 Cancel after preselection sends nothing; PS8 preselected id is what is approved</li><li>RP-UI-CH-PS7 a reload never overrides the user's own choice</li><li>RP-UI-CH-E1 (changed) single selectable preselected; RP-UI-CH-N1 now uses two selectable + one not-ready</li><li>e2e TT-UI-E2E-P2c: Approve preview, dialog, default radio checked, Approve with this provider, Next enabled. No other e2e spec approves a preview.</li></ul></div></body></html>

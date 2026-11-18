@@ -12,6 +12,7 @@ import { ErrorState, Skeleton } from '../components/states';
 import { etaLabel, formatNumber } from '../format';
 import { BatchActions } from './batch/BatchActions';
 import { FailureReasons } from './batch/FailureReasons';
+import { PauseNotice } from './batch/PauseNotice';
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Draft',
@@ -121,6 +122,7 @@ export function BatchDetailPage() {
           </dl>
         </div>
       </section>
+      <PauseNotice batch={batch.data} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <BatchActions batch={batch.data} />
         <div className="flex gap-2">

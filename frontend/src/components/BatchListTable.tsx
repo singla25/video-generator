@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import type { Batch } from '../api/types';
 import { formatDate, formatNumber, formatProgress } from '../format';
+import { ScrollRegion } from './ScrollRegion';
 
 const HEADERS = ['Batch', 'Template', 'Progress', 'Rows', 'Created'];
 
@@ -20,7 +21,7 @@ interface Props {
 /** Batches of one dashboard list: name link, template, progress, row counts and creation date. */
 export function BatchListTable({ batches, templateNames }: Props) {
   return (
-    <div className="overflow-x-auto">
+    <ScrollRegion label="Batches table">
       <table className="w-full text-left text-sm">
         <thead className="text-muted">
           <tr>
@@ -47,6 +48,6 @@ export function BatchListTable({ batches, templateNames }: Props) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }

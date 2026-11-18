@@ -50,6 +50,16 @@ export function formatEta(seconds: number | null | undefined): string {
   return minutes ? `ETA ${hours} h ${minutes} min` : `ETA ${hours} h`;
 }
 
+/** A duration such as "5 min" or "1 min 30 s" (the ETA text without its prefix). */
+export function formatDuration(seconds: number): string {
+  return formatEta(seconds).replace(/^ETA /, '');
+}
+
+/** Dollars with cents, such as "$4.70". */
+export function formatUsd(amount: number): string {
+  return `$${amount.toFixed(2)}`;
+}
+
 /** Render time such as "12.5 s", or "-" when there is none. */
 export function formatRenderTime(seconds: number | null): string {
   return seconds === null ? '-' : `${seconds.toFixed(1)} s`;

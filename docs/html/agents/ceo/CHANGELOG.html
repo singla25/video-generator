@@ -11,6 +11,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>CEO agent — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-11-17 — Render providers plan drafted; backlog recorded</h2>
+<ul><li>Drafted <code>docs/plans/render-providers.md</code> and ADR-013 amendment A1 (both proposed, not accepted): provider registry (name, kind local / remote function / remote worker, measured-only estimates, C5 data rule, derived setup state, spend cap), chooser at preview approval, one queue per provider, pause at the cap. Remote worker needs G6 (CUDA image), shared storage and a private network. Open questions Q1–Q3 for the Admin.</li><li>TASK-LOG: Admin's backlog order BL-1 … BL-7 recorded, including BL-6 (name detection, last) and BL-7 (lip sync on Modal blocked on licence (a)/(b)).</li><li>Spike P2-S: harness built, GPU runs blocked by Modal ("Please add a payment method to use L4/T4 GPU functions"). Waiting for the Admin's choice A or B.</li></ul>
 <h2>2026-11-16 — TASK-LOG clean-up (done items only)</h2>
 <ul><li>Marked 15 stale rows done, each with its evidence (merged PR #10, #11, #12, #14, #17; gate 3; migration 0002 run on 2026-11-12 after the Admin's yes). DD39-B checked against the code and tests first; T15–T16 was a duplicate of the done T15/T16 rows.</li><li>Left open on purpose: F7 (Admin visual sign-off) and G8 (licence gate plan waiting for the Admin).</li></ul>
 <h2>2026-11-13 — Docker and cloud setup, Stage 1 (T1–T3, T6)</h2>

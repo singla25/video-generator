@@ -13,15 +13,12 @@ from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
-from alembic.autogenerate import compare_metadata
 from alembic.config import Config
-from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
-from vidgen.infrastructure.db.models import Base
 from vidgen.infrastructure.db.repositories import SqlTemplateRepository
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -106,11 +103,12 @@ def insert_template_at_0001(eng: Engine) -> UUID:
 # ---- revision chain -------------------------------------------------------------------
 
 
-def test_head_is_0002_and_it_follows_0001(migration_url: str) -> None:
-    """MS-MG-P1."""
+def test_revision_0002_follows_0001(migration_url: str) -> None:
+    """MS-MG-P1: 0002 sits right after 0001 (the head is asserted once, in the 0003 test file)."""
     script = ScriptDirectory.from_config(alembic_config(migration_url))
-    assert script.get_current_head() == TARGET
-    assert script.get_revision(TARGET).down_revision == PREVIOUS
+    revision = script.get_revision(TARGET)
+    assert revision is not None
+    assert revision.down_revision == PREVIOUS
 
 
 # ---- upgrade --------------------------------------------------------------------------
@@ -132,16 +130,6 @@ def test_upgrade_to_0002_adds_a_nullable_extra_slots_column(
     columns = template_columns(engine)
     assert "extra_slots" in columns
     assert columns["extra_slots"]["nullable"] is True
-
-
-def test_migrated_schema_matches_the_models_exactly_at_0002(
-    engine: Engine, migration_url: str
-) -> None:
-    """MS-MG-P3: no drift between migrations and models."""
-    command.upgrade(alembic_config(migration_url), TARGET)
-    with engine.connect() as connection:
-        context = MigrationContext.configure(connection)
-        assert compare_metadata(context, Base.metadata) == []
 
 
 def test_rows_written_at_0001_stay_readable_after_the_upgrade(
@@ -180,7 +168,7 @@ def test_downgrade_to_0001_drops_only_the_extra_slots_column(
     assert kept == "Krishan"
 
 
-def test_upgrade_downgrade_upgrade_round_trip_matches_the_models(
+def test_upgrade_downgrade_upgrade_round_trip_keeps_the_column(
     engine: Engine, migration_url: str
 ) -> None:
     """MS-MG-E2."""
@@ -189,9 +177,6 @@ def test_upgrade_downgrade_upgrade_round_trip_matches_the_models(
     command.downgrade(config, PREVIOUS)
     command.upgrade(config, TARGET)
     assert "extra_slots" in template_columns(engine)
-    with engine.connect() as connection:
-        context = MigrationContext.configure(connection)
-        assert compare_metadata(context, Base.metadata) == []
 
 
 def test_the_migration_only_runs_against_a_throwaway_test_database(migration_url: str) -> None:

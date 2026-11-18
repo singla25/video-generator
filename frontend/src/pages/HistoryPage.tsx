@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { apiFetch } from '../api/client';
 import { useTemplateNames } from '../api/queries';
+import { ScrollRegion } from '../components/ScrollRegion';
 import type { BatchList } from '../api/types';
 import { Pager } from '../components/Pager';
 import { EmptyState, ErrorState, Skeleton } from '../components/states';
@@ -34,7 +35,7 @@ export function HistoryPage() {
 
   return (
     <section className="rounded-card border bg-card p-5">
-      <div className="overflow-x-auto">
+      <ScrollRegion label="History table">
         <table className="w-full text-left text-sm">
           <thead className="text-muted">
             <tr>
@@ -61,7 +62,7 @@ export function HistoryPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollRegion>
       <Pager page={query.data.page} pages={pages} onPage={setPage} />
     </section>
   );

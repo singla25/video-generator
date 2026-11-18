@@ -1,0 +1,128 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Plan — Pluggable render providers and the render plan chooser</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Plan — Pluggable render providers and the render plan chooser</h1>
+<p><strong>Status:</strong> APPROVED by the Admin on 2026-11-17 (Q1 = 3, Q2 = yes, Q3 = no) · <strong>Date:</strong> 2026-11-17 · <strong>Backlog item:</strong> 2 <strong>Decision record:</strong> ADR-013 amendment A1 (accepted as "Proposed until the spike runs"). Build today with fake providers (phase a); Modal adapter against a fake Modal client (phase b). Migration 0003 is created, <strong>not run</strong>.</p>
+<p><strong>Admin answers (2026-11-17):</strong> Q1: an estimate needs <strong>3</strong> measured runs. Q2: <strong>yes</strong>, an unmeasured provider with a cap can be picked, labelled "not measured yet". Q3: <strong>no</strong>, remote providers never take real data, enforced by <strong>both the API and the worker</strong>.</p>
+<h2>Goal</h2>
+<p>Rendering is no longer fixed to three modes. Any number of <strong>render providers</strong> can be registered. Each one says what it is, where its estimates come from, what data it may receive, whether it is ready, and how much it may spend. When the Admin approves the preview, a <strong>chooser</strong> shows the ready providers side by side (time, cost, remaining credit) and the batch is rendered by the one the Admin picks, through that provider's own queue.</p>
+<h2>What exists today (verified 2026-11-17)</h2>
+<ul><li>The worker already listens on one configurable queue: <code>settings.queue_name</code> (default <code>vidgen</code>), used by</li></ul>
+<p>  <code>worker/actors.py</code> and <code>DramatiqJobQueue(queue_name=...)</code>. A second worker started with another   <code>VIDGEN_QUEUE_NAME</code> already serves a separate queue.</p>
+<ul><li>The worker heartbeat is <strong>one shared Redis key</strong> (<code>vidgen:worker:heartbeat</code>, <code>redis_heartbeat.py</code>). It takes a</li></ul>
+<p>  <code>key</code> argument but is not per queue yet.</p>
+<ul><li><code>settings.ai_mode</code> is <code>Literal["fake", "local"]</code>; it picks the AI adapters for the whole process.</li><li>Template speech-to-text runs <strong>inside the API</strong> (<code>routes_templates.analyse</code> → <code>services/templates.py</code>), not on a</li></ul>
+<p>  queue. Templates never pass through a provider, so C5 is safe for templates without extra work.</p>
+<ul><li>Batches already have <code>PAUSED</code> and the pause/resume transitions (<code>domain/status.py</code>).</li><li>The batch table has no provider or data-class column. Migrations 0001 and 0002 exist.</li></ul>
+<h2>Provider registry</h2>
+<p>Each provider is one entry in a registry file (TOML, read with the standard library <code>tomllib</code>; path from the setting <code>VIDGEN_PROVIDERS_FILE</code>). No secrets in the file: credentials stay in environment variables, and the entry only names which variables it needs. If the file is missing, the app behaves exactly as today: one provider built from <code>ai_mode</code> and <code>queue_name</code>.</p>
+<table><tr><th>Field</th><th>Meaning</th><th>Values</th></tr><tr><td><code>id</code> / <code>name</code></td><td>stable id (also the queue suffix) and the label shown in the chooser</td><td><code>local-mac</code>, "This Mac"</td></tr><tr><td><code>kind</code></td><td>how jobs reach the hardware</td><td><code>local</code> · <code>remote_function</code> · <code>remote_worker</code></td></tr><tr><td><code>queue</code></td><td>the provider's own queue name</td><td>default <code>vidgen.&lt;id&gt;</code></td></tr><tr><td><code>ai_mode</code></td><td>adapters the provider's worker loads</td><td><code>fake</code> · <code>local</code> · <code>modal</code> (after T4)</td></tr><tr><td><code>data_rule</code></td><td>C5</td><td><code>real_allowed</code> · <code>demo_only</code></td></tr><tr><td><code>spend_cap_usd</code></td><td>most it may spend; <code>none</code> for no cap (only allowed for <code>local</code>)</td><td>e.g. <code>5.00</code></td></tr><tr><td><code>rate</code></td><td>how cost is counted (for the estimate and the cap)</td><td>per GPU-second (remote function) or per hour (remote worker); <code>0</code> for local</td></tr><tr><td><code>requires_env</code></td><td>environment variables that must be set for "ready"</td><td>e.g. <code>MODAL_TOKEN_ID</code>, <code>MODAL_TOKEN_SECRET</code></td></tr></table>
+<p>Derived at run time, never written by hand:</p>
+<ul><li><strong>Setup state</strong>: <code>ready</code> when every <code>requires_env</code> is present <strong>and</strong> a worker heartbeat exists on the provider's</li></ul>
+<p>  queue (per-queue heartbeat key); otherwise <code>needs setup</code> with the reason ("worker not running",   "MODAL_TOKEN_ID missing").</p>
+<ul><li><strong>Estimate</strong> (time and cost per video, and for the batch): <strong>from measured runs only</strong>, i.e. completed rows that</li></ul>
+<p>  this provider rendered in this app. Median render seconds over at least <code>N</code> measured rows (proposal <code>N = 3</code>);   cost = seconds × rate. With fewer rows the chooser shows <strong>"not measured yet"</strong>. Spike numbers and design figures   are never used as estimates.</p>
+<ul><li><strong>Spent / remaining credit</strong>: the sum of the measured cost of rows this provider rendered (stored per row), and</li></ul>
+<p>  <code>spend_cap − spent</code>.</p>
+<h3>The three kinds</h3>
+<ol><li><strong>local</strong>: a worker on this machine (native or in the Docker app) with its own queue. Real data allowed. Cost 0.</li><li><strong>remote_function</strong>: a worker on this machine whose AI adapters call remote functions (Modal, ADR-013 and T4).</li></ol>
+<p>   Media for the model calls leaves the machine, so it is <code>demo_only</code> (C5). Cost = measured GPU seconds × rate.</p>
+<ol><li><strong>remote_worker</strong>: any machine (for example a rented GPU server) that runs the <strong>same worker</strong></li></ol>
+<p>   (<code>python -m vidgen.worker</code>) with <code>VIDGEN_QUEUE_NAME</code> set to the provider's queue. It needs:</p>
+<ul><li>the <strong>CUDA worker image</strong> (plan item <strong>G6</strong>, m2-real-ai). Today's local adapters are tuned for Apple MPS, and</li></ul>
+<p>     the Docker backend image has no AI extras;</p>
+<ul><li>network access to Redis and PostgreSQL, and shared media storage. Local disk is not shared, so this needs the</li></ul>
+<p>     S3-compatible storage adapter (architecture rule "storage behind an interface"), plus a private network      (VPN or tunnel), never an open port;</p>
+<ul><li>the encryption keys, because the worker decrypts names. <strong>The keys leave our machine</strong>, so a rented machine</li></ul>
+<p>     counts as <code>demo_only</code> under C5 unless the Admin decides it is "our server" (open question Q3).</p>
+<h2>Chooser and routing</h2>
+<ul><li><strong>Where:</strong> at preview approval (wizard step 3). The preview is rendered as today; when the Admin clicks</li></ul>
+<p>  "Approve preview", the chooser opens before the batch can start.</p>
+<ul><li><strong>What it shows:</strong> only <strong>ready</strong> providers whose <code>data_rule</code> fits the batch, side by side: name, kind,</li></ul>
+<p>  estimated time for the batch, estimated cost, remaining credit, or "not measured yet". Providers that are not   ready are listed underneath, greyed, with their reason, and cannot be picked.</p>
+<ul><li><strong>Data class of a batch:</strong> the Admin declares it at upload (step 1): "real data" (default) or "demo / learning</li></ul>
+<p>  data", with a confirmation. <code>demo_only</code> providers are offered only for demo batches (C5).</p>
+<ul><li><strong>Refusal:</strong> an option whose batch estimate is <strong>greater than its remaining credit</strong> cannot be picked, and the</li></ul>
+<p>  chooser says why. "Not measured yet" with a cap: the Admin may pick it, and the cap still stops it (next point).</p>
+<ul><li><strong>Pause at the cap:</strong> before each row the worker checks <code>spent + this row's worst case</code> against the cap. If it</li></ul>
+<p>  would pass the cap, the batch moves to <strong>PAUSED</strong> with the reason "spend cap reached" (no row fails), and the   dashboard shows it. Raising the cap or choosing another provider resumes it.</p>
+<ul><li><strong>Routing:</strong> the chosen provider id is stored on the batch. <code>enqueue_rows</code>, retry, requeue of stuck rows and</li></ul>
+<p>  per-row retry all use that provider's queue. One queue per provider; queue depth and heartbeat per queue.</p>
+<ul><li><strong>Change of provider:</strong> allowed only while the batch is paused or not started; queued rows move to the new</li></ul>
+<p>  queue.</p>
+<h2>Acceptance criteria</h2>
+<ol><li><strong>AC1 Registry:</strong> providers load from the registry file. A missing file gives exactly today's behaviour. An</li></ol>
+<p>   invalid entry (unknown kind, <code>real_allowed</code> on a remote kind without an Admin override, no cap on a paid kind,    duplicate id or queue) is refused at start with a clear error naming the entry.</p>
+<ol><li><strong>AC2 Setup state:</strong> <code>ready</code> only with all <code>requires_env</code> present and a live heartbeat on the provider's queue;</li></ol>
+<p>   otherwise <code>needs setup</code> with a reason. Heartbeats are per queue.</p>
+<ol><li><strong>AC3 Estimates:</strong> time and cost come only from this provider's measured rows (≥ N). Otherwise the API and the</li></ol>
+<p>   dashboard say "not measured yet". No other source is used.</p>
+<ol><li><strong>AC4 Chooser:</strong> at preview approval, ready providers that fit the batch's data class are shown side by side</li></ol>
+<p>   with time, cost and remaining credit; not-ready ones are greyed with a reason.</p>
+<ol><li><strong>AC5 Refusal:</strong> an estimate above remaining credit cannot be chosen (API refuses too, not only the UI).</li><li><strong>AC6 Routing:</strong> every job of the batch (rows, retries, requeue) goes to the chosen provider's queue; other</li></ol>
+<p>   queues never receive it.</p>
+<ol><li><strong>AC7 Spend cap:</strong> the batch pauses before a row would pass the cap; spent and remaining credit are shown.</li><li><strong>AC8 C5:</strong> a <code>demo_only</code> provider can never receive a batch declared as real data (API and worker both check).</li><li><strong>AC9 Remote worker:</strong> a worker started elsewhere with <code>VIDGEN_QUEUE_NAME=&lt;queue&gt;</code> makes that provider ready</li></ol>
+<p>   and renders its jobs (verified with a second local worker process in tests; a real rented machine needs G6).</p>
+<ol><li><strong>AC10 Quality:</strong> ruff, mypy <code>--strict</code>, pytest, Vitest green; coverage of new code ≥ 85 %; no network or</li></ol>
+<p>    paid call in automated tests.</p>
+<h2>Requirement tree</h2>
+<pre><code>Render providers
+├── Functional
+│   ├── Registry file (TOML, stdlib) → Provider records; fallback = one provider from ai_mode
+│   ├── Per-queue heartbeat and queue depth; setup state with reason
+│   ├── Measured estimates per provider; spent / remaining credit
+│   ├── Batch data class (real | demo) declared at upload
+│   ├── Chooser at preview approval (API + dashboard); refusal over credit
+│   ├── Routing of rows, retries and requeue by the batch&#x27;s provider
+│   └── Pause at spend cap
+├── Non-functional: no secrets in the registry · domain rules pure (no I/O) · old batches keep working
+├── Constraints: C5 (demo-only for remote kinds) · ADR-012 (lip sync only on the Mac until (a)/(b)) · G6 for
+│   remote_worker · shared storage for remote_worker
+├── Out of scope: the Modal adapters themselves (T4) · the CUDA image (G6) · S3 storage adapter · VPN setup ·
+│   automatic provider choice
+└── Open questions: none (answered by the Admin 2026-11-17: Q1 = 3 runs, Q2 = yes, Q3 = no)</code></pre>
+<h2>Test tree outline (tester writes <code>docs/test-tree/render-providers.md</code> first)</h2>
+<pre><code>Registry
+├── Positive: valid file → providers; missing file → one provider equal to today
+├── Negative: unknown kind · duplicate id/queue · paid kind without cap · remote kind with real_allowed · bad TOML
+└── Edge: empty file · unicode name · env var present but empty
+Setup state
+├── Positive: env + heartbeat → ready
+├── Negative: missing env → needs setup (reason) · no heartbeat → needs setup
+└── Edge: heartbeat expires during a batch · two workers on one queue
+Estimates
+├── Positive: ≥ N measured rows → median time, cost = time × rate
+├── Negative: &lt; N rows → &quot;not measured yet&quot; · rows from another provider never counted
+└── Edge: failed and cancelled rows excluded · rate 0
+Chooser / API
+├── Positive: lists ready providers that fit the data class, side by side
+├── Negative: estimate &gt; remaining credit → 4xx with a reason · demo_only for a real batch → 4xx · not-ready → 4xx
+└── Edge: no ready provider → clear message, cannot start · provider becomes not ready between list and start
+Routing
+├── Positive: rows, per-row retry, retry-failed and requeue go to the chosen queue only
+├── Negative: a worker on another queue never takes the job
+└── Edge: change of provider while paused moves queued rows · old batches without provider use the default
+Spend cap
+├── Positive: batch pauses before the row that would pass the cap; reason shown
+├── Negative: the worker refuses a demo_only provider for a real batch even if the API was bypassed
+└── Edge: cap exactly reached · cap raised → resume · concurrent rows near the cap</code></pre>
+<h2>Tasks</h2>
+<table><tr><th>ID</th><th>Task</th><th>Agent</th><th>Why this agent</th><th>Depends on</th><th>Model</th><th>Worktree?</th><th>Done when</th></tr><tr><td>P1</td><td>Test tree + failing tests (domain, registry, API, worker routing)</td><td>tester</td><td>owns tests and test trees</td><td>plan + ADR A1 approved</td><td>sonnet</td><td>yes <code>feat/tester/providers</code></td><td>AC1–AC9 covered pos/neg/edge</td></tr><tr><td>P2</td><td>Domain + registry + per-queue heartbeat + estimates + migration 0003 (created, not run) + routing + cap pause</td><td>backend-dev</td><td>backend/</td><td>P1</td><td>sonnet</td><td>yes <code>feat/backend/providers</code></td><td>P1 backend tests green</td></tr><tr><td>P3</td><td>Failing UI tests for the chooser and the data-class step</td><td>tester</td><td>owns tests</td><td>P1</td><td>sonnet</td><td>yes</td><td>UI cases red</td></tr><tr><td>P4</td><td>Chooser at preview approval, data class at upload, pause reason</td><td>frontend-dev</td><td>frontend/</td><td>P2, P3</td><td>sonnet</td><td>yes <code>feat/frontend/providers</code></td><td>P3 green</td></tr><tr><td>P5</td><td>Verify, coverage, e2e with two local workers on two queues</td><td>tester</td><td>verify step</td><td>P2, P4</td><td>sonnet</td><td>no</td><td>AC10</td></tr><tr><td>P6</td><td>Docs: README chooser section, registry example (no secrets)</td><td>CEO</td><td>owns docs</td><td>P5</td><td>haiku</td><td>no</td><td>backlog item 5</td></tr></table>
+<h2>Order (TDD)</h2>
+<p>tester (red) → backend-dev (green + refactor) → tester (UI red) → frontend-dev (green) → tester (verify) → CEO review → Admin approves merge. Migration 0003 is <strong>created</strong> in P2 and <strong>run only with the Admin's yes</strong>.</p>
+<h2>Risks</h2>
+<table><tr><th>#</th><th>Risk</th><th>Mitigation</th></tr><tr><td>R1</td><td>Real data reaches a remote provider by mistake</td><td>data class declared at upload; API and worker both check (AC8); remote kinds demo_only by default</td></tr><tr><td>R2</td><td>Estimates are misleading with few runs</td><td>measured runs only, N minimum, "not measured yet" otherwise</td></tr><tr><td>R3</td><td>Spend overshoot (one row runs past the cap)</td><td>check before each row with the row's worst case; provider-side limit (for Modal: the workspace spending limit) as the hard stop. <strong>Accepted limit (Admin, 2026-11-17):</strong> the cap is checked when a row starts and its cost is booked when it finishes, so with N rows rendering at once the cap can be passed by up to N−1 rows' cost (pinned by test RP-WRK-E6). With one worker thread there is no overshoot. The provider's own spending limit stays the hard stop; README and the chooser help text must say so.</td></tr><tr><td>R4</td><td>Remote worker exposes Redis/PostgreSQL or keys</td><td>private network only; demo_only (Q3); out of scope until G6 and S3 storage exist</td></tr><tr><td>R5</td><td>Old batches and the requeue job break</td><td>provider column nullable, null = default provider; tests for old rows</td></tr></table>
+<h2>Migrations / dependencies (need separate approval)</h2>
+<ul><li><strong>Migration 0003 (created in P2, run only with the Admin's yes):</strong> <code>batches.provider_id</code> (text, nullable; null =</li></ul>
+<p>  default provider), <code>batches.data_class</code> (<code>real</code> | <code>demo</code>, default <code>real</code>), <code>batch_rows.cost_usd</code> (numeric,   nullable; measured cost of the row).</p>
+<ul><li><strong>Dependencies:</strong> none (TOML is read with the standard library).</li><li><strong>ADR:</strong> ADR-013 amendment A1 (proposed with this plan).</li></ul>
+<h2>Admin approval</h2>
+<ul><li>[ ] Spike review done (backlog item 1). Spike blocked on Modal billing; the Admin approved building with fakes meanwhile</li><li>[x] Open questions Q1–Q3 answered (2026-11-17)</li><li>[x] Plan approved (2026-11-17)</li><li>[x] ADR-013 + amendment A1 accepted as "Proposed until the spike runs" (2026-11-17)</li><li>[x] Task assignment approved: tester first, then backend-dev and frontend-dev, all sonnet (2026-11-17)</li><li>[x] <code>modal</code> as optional <code>cloud</code> extra, pinned (2026-11-17), for phase b</li><li>[ ] Migration 0003: running it (later, separately; created only)</li><li>[ ] Merge approved</li></ul></div></body></html>

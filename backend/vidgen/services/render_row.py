@@ -45,6 +45,7 @@ from vidgen.ports.rows import (
 )
 from vidgen.services.claim_rules import decide_claim, decide_completion
 from vidgen.services.manifest import build_manifest_csv, manifest_row
+from vidgen.services.provider_guard import ProviderGuard
 from vidgen.services.render_support import (
     MANIFEST_NAME,
     PREVIEW_KEY,
@@ -82,6 +83,7 @@ class RowRenderer:
         config: RenderConfig,
         preview_sink: PreviewSink,
         stage_reporter: StageReporter | None = None,
+        provider_guard: ProviderGuard | None = None,
     ) -> None:
         self._store = row_store_factory()
         self._storage = storage
@@ -94,6 +96,7 @@ class RowRenderer:
         self._config = config
         self._preview_sink = preview_sink
         self._stage_reporter = stage_reporter
+        self._guard = provider_guard
 
     # ---- rows --------------------------------------------------------------------------
 
@@ -104,7 +107,10 @@ class RowRenderer:
         def decide(snapshot: ClaimSnapshot) -> ClaimDecision:
             return decide_claim(snapshot, started, config.stale_after)
 
-        claim = self._store.claim(batch_id, row_id, decide, started)
+        if self._guard is None:  # today's behaviour: the store is called exactly as before
+            claim = self._store.claim(batch_id, row_id, decide, started)
+        else:
+            claim = self._store.claim(batch_id, row_id, decide, started, gate=self._guard)
         if claim.job is None:
             return RowOutcome(claim.outcome)
         run = Run(claim.job)
@@ -122,14 +128,20 @@ class RowRenderer:
                 attempt=run.job.attempts,
             )
             retry = config.retry.should_retry(kind, run.job.attempts)
-            update = RowUpdate("QUEUED") if retry else self._failed(code, started)
+            update = RowUpdate("QUEUED") if retry else self._failed(code, started, run.job)
             outcome = (
                 RowOutcome(RowOutcomeKind.RETRY, code, config.retry.delay_seconds)
                 if retry
                 else RowOutcome(RowOutcomeKind.FAILED, code)
             )
         else:
-            update = RowUpdate("COMPLETED", output_key=key, render_seconds=self._elapsed(started))
+            seconds = self._elapsed(started)
+            update = RowUpdate(
+                "COMPLETED",
+                output_key=key,
+                render_seconds=seconds,
+                cost_usd=self._cost(run.job, seconds),
+            )
             outcome = RowOutcome(RowOutcomeKind.COMPLETED)
         manifest = self._store.finish(
             batch_id, row_id, update, self._clock.now(), decide_completion
@@ -138,8 +150,18 @@ class RowRenderer:
             self._write_manifest(manifest)
         return outcome
 
-    def _failed(self, code: FailureCode, started: datetime) -> RowUpdate:
-        return RowUpdate("FAILED", failure_code=code.value, render_seconds=self._elapsed(started))
+    def _failed(self, code: FailureCode, started: datetime, job: RowJob) -> RowUpdate:
+        seconds = self._elapsed(started)
+        return RowUpdate(
+            "FAILED",
+            failure_code=code.value,
+            render_seconds=seconds,
+            cost_usd=self._cost(job, seconds),
+        )
+
+    def _cost(self, job: RowJob, seconds: float) -> float | None:
+        """Measured cost of the row; None when no provider guard is wired (legacy)."""
+        return None if self._guard is None else self._guard.cost_usd(job.provider_id, seconds)
 
     def _elapsed(self, started: datetime) -> float:
         return (self._clock.now() - started).total_seconds()

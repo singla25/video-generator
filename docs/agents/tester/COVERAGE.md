@@ -235,3 +235,37 @@ Defects: none open. Notes: tests/unit/infra/ai (G3 set, other module layout) is 
 - Lint: ruff check and format clean; mypy --strict backend/vidgen + scripts/setup.py clean.
 - Defects found in verify: none. Earlier (T1c/T3 reviews): key loss on overwrite, Ctrl-D traceback, token message, null Modal vars in compose, unpinned uv; all fixed.
 - Not covered yet: Modal adapters (T4, held), port-in-use, multi-arch build, restart-keeps-data.
+
+---
+
+# Render providers verification (P5, 2026-11-17)
+
+Branch `feat/tester/providers` after merging backend (6f0cbf8) and frontend (e0ad90d).
+- Python: `uv run pytest -q -m "not slow and not e2e"` -> **2987 passed, 2 skipped** (before 8 later tests, which pass).
+- Vitest: **626 passed (30 files)**; `tsc` (src + tests), `eslint`, `prettier --check` clean.
+- `ruff check`, `ruff format --check`, `mypy --strict` on the 7 new backend modules: clean.
+
+| New module | Coverage |
+|------------|----------|
+| api/routes_providers.py, schemas_providers.py, db/provider_queries.py | 100 % |
+| infrastructure/queue/* (dramatiq_queue, redis_heartbeat) | 100 % |
+| domain/providers.py | 98 % (before the extra registry tests) |
+| services/provider_choice.py | 97 % |
+| infrastructure/provider_registry.py | 88 % -> higher after RP-REG-N4 |
+| services/provider_guard.py | 88 % -> 100 % after RP-WRK-E7 (retired provider fallback) |
+| Total of the new modules | **97 %** (target 85 %) |
+
+New tests: about 125 in 12 files (see docs/test-tree/render-providers.md) plus 25 Vitest cases.
+Verify additions: RP-E2E-P1/N1 (two workers, two queues on one StubBroker), RP-WRK-E6 (concurrent rows near the cap), RP-WRK-E7, RP-REG-N4.
+
+## Known limit pinned by a test (not a defect to fix now)
+- **RP-WRK-E6, spend cap overshoot (risk R3):** the cap is checked when a row starts and its cost is booked when it
+  finishes. With several worker threads, rows that start together see the same "spent" and can pass the cap by up to
+  (threads - 1) rows. Single-thread workers never overshoot. The provider-side limit is the hard stop.
+
+## Test defects fixed in this round
+- The 0002 migration tests assumed head == 0002; they now target revision 0002, and exactly one file (0003) asserts head and model equality.
+- RP-WRK-E1 used a one-row world; it now uses four rows.
+
+## Defects in backend/frontend found
+None blocking. Open for AC9: a real second OS process worker is not exercised (the broker is in memory).

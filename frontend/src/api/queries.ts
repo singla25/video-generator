@@ -9,6 +9,7 @@ import type {
   BatchStatus,
   BatchView,
   DailyStat,
+  ProvidersResponse,
   StartBody,
   SystemStatus,
   Template,
@@ -22,6 +23,15 @@ export function useBatch(batchId: string | undefined) {
     enabled: Boolean(batchId),
     refetchInterval: (query) =>
       query.state.data?.preview?.status === 'PENDING' ? POLL_INTERVAL_MS : false,
+  });
+}
+
+/** The render providers for a batch, with estimates and which may be picked. */
+export function useProviders(batchId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['batches', 'providers', batchId],
+    queryFn: () => apiFetch<ProvidersResponse>(`/batches/${batchId}/providers`),
+    enabled: Boolean(batchId) && enabled,
   });
 }
 

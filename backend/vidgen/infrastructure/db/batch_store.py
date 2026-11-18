@@ -25,6 +25,7 @@ from vidgen.infrastructure.db.batch_limit_store import BatchLimitMixin
 from vidgen.infrastructure.db.batch_list_filter import view_condition
 from vidgen.infrastructure.db.batch_stats_store import BatchStatsMixin
 from vidgen.infrastructure.db.models import Batch, BatchRow
+from vidgen.infrastructure.db.provider_queries import BatchProviderMixin
 from vidgen.ports.batches import (
     BatchRecord,
     NewBatchRow,
@@ -40,7 +41,7 @@ FINISHED_STATUSES = ("COMPLETED", "CANCELLED")
 FALLBACK_FAILURE_CODE = FailureCode.INTERNAL_ERROR.value
 
 
-class SqlBatchStore(BatchStatsMixin, BatchLimitMixin):
+class SqlBatchStore(BatchStatsMixin, BatchLimitMixin, BatchProviderMixin):
     """Batches and rows in Postgres."""
 
     def __init__(self, session: Session, cipher: AesGcmCipher) -> None:

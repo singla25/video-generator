@@ -56,7 +56,7 @@ class BatchQueries:
             counts = uow.batches.counts([b.id for b in batches])
             views = [
                 replace(
-                    describe(uow, b, counts=counts_from(counts[b.id])),
+                    describe(self._ctx, uow, b, counts=counts_from(counts[b.id])),
                     preview_stage=read_preview_stage(self._ctx, b),
                 )
                 for b in batches

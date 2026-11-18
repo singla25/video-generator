@@ -7,8 +7,10 @@ twice. ``finish`` locks the batch row, so only one worker can complete a batch.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -16,10 +18,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from vidgen.domain.outcomes import RowOutcomeKind
-from vidgen.infrastructure.db.batch_documents import to_record
+from vidgen.infrastructure.db.batch_documents import preview_from
 from vidgen.infrastructure.db.batch_store import SqlBatchStore
 from vidgen.infrastructure.db.models import Batch, BatchRow, Template
+from vidgen.infrastructure.db.provider_queries import provider_spent
 from vidgen.infrastructure.db.slot_json import slots_from_json
+from vidgen.logging import log_event
 from vidgen.ports.rows import (
     ClaimAction,
     ClaimDecision,
@@ -27,6 +31,7 @@ from vidgen.ports.rows import (
     ClaimSnapshot,
     Completion,
     ManifestInput,
+    ProviderGate,
     RowJob,
     RowUpdate,
     TemplateInfo,
@@ -35,6 +40,7 @@ from vidgen.ports.rows import (
 if TYPE_CHECKING:
     from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 
+logger = logging.getLogger(__name__)
 PENDING_STATUSES = ("QUEUED", "PROCESSING")
 TERMINAL_STATUSES = frozenset({"COMPLETED", "FAILED"})
 
@@ -52,6 +58,7 @@ class SqlRowStore:
         row_id: UUID,
         decide: Callable[[ClaimSnapshot], ClaimDecision],
         now: datetime,
+        gate: ProviderGate | None = None,
     ) -> ClaimResult:
         """Lock the row, apply the decision and return a job when the row was claimed."""
         with self._factory() as session:
@@ -60,6 +67,9 @@ class SqlRowStore:
                 return ClaimResult(row, None)
             batch = session.get(Batch, batch_id)
             assert batch is not None  # noqa: S101 - the row's foreign key guarantees it
+            if gate is not None and self._refused(session, gate, batch, row):
+                session.commit()
+                return ClaimResult(RowOutcomeKind.DEFERRED, None)
             decision = decide(ClaimSnapshot(batch.status, row.status, row.started_at))
             if decision.action is ClaimAction.CANCEL_ROW:
                 row.status, row.finished_at = "CANCELLED", now
@@ -103,6 +113,7 @@ class SqlRowStore:
             row.failure_code = update.failure_code
             row.output_key = update.output_key
             row.render_seconds = update.render_seconds
+            row.cost_usd = None if update.cost_usd is None else Decimal(str(update.cost_usd))
             row.finished_at = now if update.status in TERMINAL_STATUSES else None
             session.flush()
             manifest = None
@@ -112,6 +123,22 @@ class SqlRowStore:
             return manifest
 
     # ---- helpers -----------------------------------------------------------------------
+
+    @staticmethod
+    def _refused(session: Session, gate: ProviderGate, batch: Batch, row: BatchRow) -> bool:
+        """Apply the provider rules to a row about to start; pauses the batch on a refusal."""
+        if batch.status != "RUNNING" or row.status != "QUEUED":
+            return False
+
+        def spent(provider_id: str, include_unrouted: bool) -> float:
+            return provider_spent(session, provider_id, include_unrouted)
+
+        reason = gate.pause_reason(batch.provider_id, batch.data_class, spent)
+        if reason is None:
+            return False
+        batch.status = "PAUSED"
+        log_event(logger, "batch paused by provider rules", batch_id=batch.id, code=reason)
+        return True
 
     @staticmethod
     def _locked_row(session: Session, batch_id: UUID, row_id: UUID) -> BatchRow | RowOutcomeKind:
@@ -137,6 +164,7 @@ class SqlRowStore:
             spoken_name=self._spoken_name(batch, row),
             voter_id=self._cipher.decrypt(bytes(row.voter_id_enc)),
             attempts=row.attempts,
+            provider_id=batch.provider_id,
             folder_name=batch.folder_name or "",
             template=TemplateInfo(
                 video_key=template.video_key,
@@ -154,7 +182,7 @@ class SqlRowStore:
 
         ``None`` means "use the name". Never logged.
         """
-        preview = to_record(batch, self._cipher).preview
+        preview = preview_from(batch.column_mapping or {}, self._cipher)
         if preview.row_id == row.id and (preview.spoken_name or "").strip():
             return preview.spoken_name
         sealed = row.spoken_name_enc

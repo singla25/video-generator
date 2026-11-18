@@ -21,6 +21,7 @@ from vidgen.api.container import (
     AppDeps,
     build_container,
     default_heartbeat,
+    default_queue_heartbeats,
     default_stage_reporter,
 )
 from vidgen.domain.retry import RetryPolicy
@@ -38,12 +39,18 @@ from vidgen.infrastructure.local_ai.factory import (
     log_startup_warning,
     warmable_adapters,
 )
+from vidgen.infrastructure.provider_registry import load_registry
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
-from vidgen.infrastructure.queue.redis_heartbeat import HeartbeatLoop
+from vidgen.infrastructure.queue.redis_heartbeat import (
+    HeartbeatLoop,
+    RedisQueueHeartbeats,
+    RedisWorkerHeartbeat,
+)
 from vidgen.infrastructure.storage.local import LocalStorage
 from vidgen.logging import configure_logging
 from vidgen.ports.progress import StageReporter
 from vidgen.ports.rows import PreviewSink
+from vidgen.services.provider_guard import ProviderGuard
 from vidgen.services.render_row import RenderConfig, RowRenderer
 from vidgen.services.requeue import requeue_stuck_rows
 from vidgen.settings import Settings, get_settings
@@ -112,6 +119,12 @@ def build_renderer(
         config=render_config(settings),
         preview_sink=sink,
         stage_reporter=stage_reporter,
+        provider_guard=ProviderGuard(
+            load_registry(
+                settings.providers_file, ai_mode=settings.ai_mode, queue_name=settings.queue_name
+            ),
+            row_timeout_seconds=settings.row_timeout_seconds,
+        ),
     )
 
 
@@ -127,6 +140,9 @@ def build_requeue_job(
     factory = uow_factory(settings.database_url)
     queue = DramatiqJobQueue(broker, queue_name=settings.queue_name)
     clock = SystemClock()
+    registry = load_registry(
+        settings.providers_file, ai_mode=settings.ai_mode, queue_name=settings.queue_name
+    )
 
     def job() -> object:
         return requeue_stuck_rows(
@@ -134,9 +150,24 @@ def build_requeue_job(
             queue,
             clock,
             stuck_after_seconds=settings.stuck_after_seconds,
+            provider_queues={p.id: p.queue for p in registry.providers},
         )
 
     return job
+
+
+class QueueBeat:
+    """One beat renews the legacy shared key and this worker's own queue key (AC2)."""
+
+    def __init__(
+        self, legacy: RedisWorkerHeartbeat, queues: RedisQueueHeartbeats, queue: str
+    ) -> None:
+        self._legacy, self._queues, self._queue = legacy, queues, queue
+
+    def beat(self) -> None:
+        """Renew both keys."""
+        self._legacy.beat()
+        self._queues.beat(self._queue)
 
 
 def run() -> None:  # pragma: no cover
@@ -151,11 +182,15 @@ def run() -> None:  # pragma: no cover
     sink = build_container(settings, AppDeps()).batches
     renderer = build_renderer(settings, sink, default_stage_reporter(settings))
     register_actors(broker, renderer, WorkerConfig.from_settings(settings))
+    queue = settings.queue_name
     worker = Worker(broker, worker_threads=effective_worker_threads(settings))
     stop = threading.Event()
     for signum in (signal.SIGINT, signal.SIGTERM):
         signal.signal(signum, lambda *_: stop.set())
-    beat = HeartbeatLoop(default_heartbeat(settings), settings.heartbeat_interval_seconds)
+    beat = HeartbeatLoop(
+        QueueBeat(default_heartbeat(settings), default_queue_heartbeats(settings), queue),
+        settings.heartbeat_interval_seconds,
+    )
     worker.start()
     beat.start()
     recovery = PeriodicTask(build_requeue_job(settings, broker), settings.requeue_interval_seconds)

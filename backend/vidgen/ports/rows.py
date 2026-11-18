@@ -82,6 +82,7 @@ class RowJob:
     attempts: int
     folder_name: str
     template: TemplateInfo
+    provider_id: str | None = None  # the batch's provider; None = the default provider
 
 
 @dataclass(frozen=True)
@@ -100,6 +101,7 @@ class RowUpdate:
     failure_code: str | None = None
     output_key: str | None = None
     render_seconds: float | None = None
+    cost_usd: float | None = None  # measured cost of the row; None = not measured
 
 
 @dataclass(frozen=True)
@@ -108,6 +110,20 @@ class ManifestInput:
 
     folder_name: str
     rows: list[RowView]
+
+
+SpendLookup = Callable[[str, bool], float]
+"""``(provider_id, include_unrouted) -> USD spent`` by that provider so far."""
+
+
+class ProviderGate(Protocol):
+    """Worker-side provider rules (C5 and the spend cap), asked inside the claim transaction."""
+
+    def pause_reason(
+        self, provider_id: str | None, data_class: str, spent: SpendLookup
+    ) -> str | None:
+        """Why the batch must pause before this row starts, or None to go ahead."""
+        ...
 
 
 class RowStore(Protocol):
@@ -119,8 +135,13 @@ class RowStore(Protocol):
         row_id: UUID,
         decide: Callable[[ClaimSnapshot], ClaimDecision],
         now: datetime,
+        gate: ProviderGate | None = None,
     ) -> ClaimResult:
-        """Lock the row (skipping locked ones), apply ``decide`` and return the result."""
+        """Lock the row (skipping locked ones), apply ``decide`` and return the result.
+
+        With a ``gate``, a QUEUED row of a RUNNING batch is first checked against the provider
+        rules; on a refusal the batch is PAUSED, the row is left untouched and DEFERRED returned.
+        """
         ...
 
     def preview_job(self, batch_id: UUID, row_id: UUID) -> RowJob | None:

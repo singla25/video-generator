@@ -113,6 +113,10 @@ def batch_json(view: BatchView) -> dict[str, Any]:
         "preview": _preview_json(view),
         "counts": counts_json(view.counts),
         "success_rate": view.success_rate,
+        "provider_id": record.provider_id,
+        "data_class": record.data_class,
+        "spent_usd": view.spent_usd,
+        "pause_reason": view.pause_reason,
     }
     if view.report is not None:
         body["report"] = report_json(view.report)

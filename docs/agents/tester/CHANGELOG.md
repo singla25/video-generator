@@ -166,3 +166,23 @@ Newest first. One entry per task.
 
 ## 2026-11-16 - C5 RED (Modal demo-data-only confirmation)
 - tests/unit/meta/test_setup_c5_demo_only.py (notice, "demo data" confirmation via seams.ask, only "yes" continues, EOF, fake/local untouched); conftest default answer "demo data": yes; modal rerun test answers it; tree scenario 10.
+
+## 2026-11-17 - P1 RED (render providers, backend)
+- Tree docs/test-tree/render-providers.md with the pinned API contract (providers list per batch, provider_id on preview approve, change-provider PUT, data_class + confirm_demo at creation, provider_id / data_class / spent_usd / pause_reason on the batch JSON). Worker C5: row not rendered, batch PAUSED, outcome DEFERRED.
+- Red tests: tests/unit/domain/test_provider_records.py, test_provider_rules.py; tests/unit/infra/test_provider_registry_file.py, test_queue_heartbeats.py, test_dramatiq_routing.py; tests/unit/services/test_requeue_routing.py; tests/integration/api/test_providers_chooser.py, test_providers_routing.py, test_batch_data_class.py (+ provider_helpers.py); tests/integration/worker/test_provider_guard.py; tests/integration/db/test_migration_0003_providers.py. Fixtures: tests/fixtures/providers.py; FakeJobQueue gained optional queue_name and `routed` (additive).
+- Open: AC9 (two real local workers) and concurrent rows near the cap are for P5.
+
+## 2026-11-17 - P3 RED (render providers, UI)
+- Vitest: data-class-step, provider-chooser and spend-cap-pause tests under tests/frontend/unit; mocks/providers.ts and a default providers handler; wizard.test.tsx TT-UI-AC5-P8 goes through the chooser. Tree: UI section of docs/test-tree/render-providers.md.
+- Result: 25 failing (24 new + P8), 601 passing; 2 new negative guards pass today.
+
+## 2026-11-17 - P5 VERIFY (render providers)
+- Fixed two test defects (migration 0002 head assumptions; RP-WRK-E1 world). Added tests/integration/worker/test_two_workers_two_queues.py, RP-WRK-E6 (cap overshoot, pinned), RP-WRK-E7, RP-REG-N4.
+- Results: pytest 2987 passed + new ones green; Vitest 626 passed; ruff, mypy --strict, tsc, eslint, prettier clean; new-module coverage 97 %. COVERAGE.md updated.
+
+## 2026-11-17 - A11Y-SCROLL RED (PR 24 axe)
+- tests/frontend/unit/scroll-region.test.tsx + tree section in render-providers.md. Needs shared ScrollRegion component and five labelled usages.
+
+## 2026-11-18 - CHOOSER PRESELECT RED (PR 24 e2e)
+- provider-chooser.test.tsx: E1 changed (single selectable is preselected), N1 adjusted, new PS1-PS8; e2e full-flow.spec.ts TT-UI-E2E-P2c goes through the chooser. No other e2e spec approves a preview.
+- Result: 5 new/changed red (E1, PS2, PS4, PS6, PS8), rest green; scroll-region.test.tsx still red from the earlier A11Y-SCROLL step.

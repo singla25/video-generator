@@ -195,7 +195,7 @@ Open **http://localhost:5173**. The API answers at `http://127.0.0.1:8000/api/he
 - **Run it again** at any time. It asks before overwriting `.env`, and it keeps your encryption keys, so data that is already stored stays readable.
 - **Ports:** set `VIDGEN_API_PORT`, `VIDGEN_DASHBOARD_PORT`, `VIDGEN_DB_PORT` or `VIDGEN_REDIS_PORT` before `docker compose` to use other ones.
 - **Media** (templates and outputs) is kept in the host folder `./media` (change it with `VIDGEN_MEDIA_DIR`), not inside a container.
-- **Local mode:** the installer sets `VIDGEN_DOCKER_WORKERS=0`, so no worker container starts and the worker runs on your Mac. Running that native worker next to the Docker app has not been tested end to end yet. Until it has, use `scripts/dev_up.sh` for local mode (steps below).
+- **Local mode:** the installer sets `VIDGEN_DOCKER_WORKERS=0`, so no worker container starts and the worker runs on your Mac. Start it with `python3 scripts/setup.py native-worker` (add `--print` to preview the settings with secrets hidden). So far this is covered by static checks only; the first real run is pending, so `scripts/dev_up.sh` (steps below) remains the tested route for local mode.
 - **Stop:** `docker compose --profile app down`. Your data stays in Docker volumes and `./media`.
 
 ## Install on macOS

@@ -56,12 +56,14 @@ _DEVANAGARI_CONSONANTS = (
     "प=p फ=f ब=b भ=b म=m य=y र=r ल=l ळ=l व=v श=s ष=s स=s ह=h "
     "क़=k ख़=k ग़=g ज़=j ड़=d ढ़=d फ़=f य़=y"
 )
-DEVANAGARI_LETTERS: dict[str, str] = dict(pair.split("=") for pair in _DEVANAGARI_CONSONANTS.split())
+DEVANAGARI_LETTERS: dict[str, str] = dict(
+    pair.split("=") for pair in _DEVANAGARI_CONSONANTS.split()
+)
 # Vowel signs that sound like "ri" (ऋ, ृ): the r is part of the name's skeleton.
 DEVANAGARI_RI = frozenset("ऋॠृॄ")
 # Anusvara, chandrabindu and visarga: a nasal (n) or breath (h) that spellings write both ways.
 DEVANAGARI_NASALS = frozenset("ंँ")
-DEVANAGARI_VISARGA = "ः"
+DEVANAGARI_VISARGA = "\u0903"
 # Independent vowels (only the first one of a word matters) and dependent vowel signs (matras).
 DEVANAGARI_VOWELS = frozenset("अआइईउऊऌॡएऐओऔऍऑऎऒ")
 DEVANAGARI_MATRAS = frozenset("ािीुूेैोौॅॉॆॊॢॣ")

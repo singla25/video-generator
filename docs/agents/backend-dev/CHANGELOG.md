@@ -299,3 +299,4 @@ Newest first. One entry per task.
 ## 2026-11-17 - BL-3 modal_ai: no exception link on translated errors
 - `_guard.call_remote` and `modal_client._translate` no longer raise inside the except block: the fixed-message error is chosen in the handler and raised after it with `from None`, so `__cause__` and `__context__` are both None (the original exception, with its possible token text, is not reachable). Non-modal exceptions still propagate untouched; `modal` import stays lazy.
 - Files: backend/vidgen/infrastructure/modal_ai/_guard.py, modal_client.py. Tests: tests/unit/modal_ai/test_no_exception_link.py (6) now green.
+- 2026-11-22 A-B1: sound-alike name matching (domain/name_match.py), name_match_threshold setting, STT hint on the port and adapters, candidates in the analyse response, backend/scripts/whisper_size_test.py. No migration.

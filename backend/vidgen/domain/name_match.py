@@ -54,7 +54,9 @@ def _tokens(text: str) -> list[str]:
         elif char.isdigit():
             out.append(str(unicodedata.digit(char, 0)))
         else:
-            out.extend(c for c in unicodedata.normalize("NFKD", char) if c.isascii() and c.isalpha())
+            out.extend(
+                c for c in unicodedata.normalize("NFKD", char) if c.isascii() and c.isalpha()
+            )
     return out
 
 

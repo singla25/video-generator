@@ -11,6 +11,9 @@ interface Props {
   onClose: () => void;
 }
 
+const CAP_NOTE =
+  "With several rows rendering at once, the spend cap can be passed by up to N-1 rows' cost (N = rows rendering at once). The provider's own workspace limit is the hard stop.";
+
 const BUTTON = 'rounded-full border px-5 py-2 font-semibold hover:bg-mint';
 
 /** Modal that asks where to render and approves the preview with the chosen provider. */
@@ -43,6 +46,8 @@ export function ProviderChooser({ batchId, onClose }: Props) {
   const selectable = listed.filter((p) => p.selectable);
   const effective = chosen ?? (selectable.length === 1 ? selectable[0].id : null);
   const picked = listed.find((p) => p.id === effective);
+  // A cap of 0 is still a cap, so test for null rather than truthiness.
+  const hasCap = listed.some((p) => p.spend_cap_usd != null);
   const canApprove = Boolean(picked?.selectable) && !approve.isPending;
 
   return (
@@ -73,6 +78,11 @@ export function ProviderChooser({ batchId, onClose }: Props) {
               />
             ))}
           </div>
+        )}
+        {hasCap && (
+          <p role="note" className="text-sm opacity-70">
+            {CAP_NOTE}
+          </p>
         )}
         {data && !data.any_selectable && data.message && (
           <p className="text-sm font-semibold text-status-skipped">{data.message}</p>

@@ -198,3 +198,7 @@ Newest first. One entry per task.
 - Added tests/unit/modal_ai/test_no_exception_link.py: RemoteAuthError must have `__cause__` and `__context__` None (call_remote via STT/TTS synthesize/upload; _translate via stub modal) and no token in chain or traceback. Extra-scope tests for RemoteTimeoutError/RemoteCrashError from _translate.
 - Result: 6 fail (context still set because the raise is inside the except block), 65 pass. Backend fix: raise outside the except block.
 - 2026-11-22 E-T1: native worker red tests (tests/unit/meta/test_native_worker.py, docs/test-tree/native-worker.md).
+
+## 2026-11-22 - C-T1 startup schema check RED (BL-8)
+- Test tree docs/test-tree/schema-check.md; new tests for classify, reader, cached check, API gate, worker log, settings, no-runtime-migration, frontend banner. All fail until backend/frontend implement it.
+- 2026-11-22 C-V1: behind-schema tests moved to tests/integration/api/test_schema_gate_behind.py (database with tables); added throttle-still-active test.

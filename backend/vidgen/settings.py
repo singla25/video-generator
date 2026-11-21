@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     providers_file: Path | None = None  # TOML registry of render providers; none = one default
     pause_poll_seconds: int = Field(default=5, gt=0)
     worker_threads: int = Field(default=2, gt=0)
+    schema_check_ttl_seconds: int = Field(default=5, ge=1, le=300)  # BL-8: cache of the check
     heartbeat_key: str = Field(default="vidgen:worker:heartbeat", min_length=1)
     heartbeat_ttl_seconds: int = Field(default=15, gt=0)
     heartbeat_interval_seconds: float = Field(default=5.0, gt=0)

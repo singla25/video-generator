@@ -300,3 +300,4 @@ Newest first. One entry per task.
 - `_guard.call_remote` and `modal_client._translate` no longer raise inside the except block: the fixed-message error is chosen in the handler and raised after it with `from None`, so `__cause__` and `__context__` are both None (the original exception, with its possible token text, is not reachable). Non-modal exceptions still propagate untouched; `modal` import stays lazy.
 - Files: backend/vidgen/infrastructure/modal_ai/_guard.py, modal_client.py. Tests: tests/unit/modal_ai/test_no_exception_link.py (6) now green.
 - 2026-11-22 E-B1: scripts/setup.py native-worker subcommand, README local-mode status (static checks only).
+- 2026-11-22 C-B1 (BL-8): startup schema check — SchemaCheck (TTL cache), read-only SqlSchemaVersionReader, 503 DB_NEEDS_MIGRATION gate, status.schema, worker start ERROR, setting schema_check_ttl_seconds; login tolerates a behind DB. Open: existing API tests need an ok schema_reader double.

@@ -16,6 +16,7 @@ from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.consent import detect_consent_type
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.login_state import SqlLoginStateStore
+from vidgen.infrastructure.db.schema_reader import SqlSchemaVersionReader
 from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.fakes import FakeSpeechToText
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
@@ -38,10 +39,12 @@ from vidgen.ports import (
 from vidgen.ports.models import TemplateRecord
 from vidgen.ports.progress import StageReporter
 from vidgen.ports.providers import QueueHeartbeats
+from vidgen.ports.schema import SchemaVersionReader
 from vidgen.services.audit import AuditTrail
 from vidgen.services.batch_support import BatchContext
 from vidgen.services.batches import BatchService
 from vidgen.services.login_guard import LoginGuard, LoginRules
+from vidgen.services.schema_check import SchemaCheck
 from vidgen.services.templates import TemplateService
 from vidgen.settings import Settings
 
@@ -58,6 +61,7 @@ class AppDeps:
     worker_heartbeat: WorkerHeartbeat | None = None
     stage_reporter: StageReporter | None = None
     queue_heartbeats: QueueHeartbeats | None = None
+    schema_reader: SchemaVersionReader | None = None
 
 
 class _NotConfiguredSpeechToText:
@@ -83,6 +87,7 @@ class Container:
     storage: Storage
     queue: JobQueue
     heartbeat: WorkerHeartbeat
+    schema: SchemaCheck | None  # None = gate off (no reader supplied)
 
 
 def _default_stt(settings: Settings) -> SpeechToText:
@@ -119,6 +124,18 @@ def default_queue_heartbeats(settings: Settings) -> RedisQueueHeartbeats:
 def default_stage_reporter(settings: Settings) -> RedisStageReporter:
     """The preview stage store on the configured Redis (the connection opens on first use)."""
     return RedisStageReporter(redis.Redis.from_url(settings.redis_url))
+
+
+def default_schema_reader(settings: Settings) -> SqlSchemaVersionReader:
+    """The real read-only schema reader on the configured database (production wiring)."""
+    return SqlSchemaVersionReader(get_engine(settings.database_url))
+
+
+def _schema_check(settings: Settings, deps: AppDeps, clock: Clock) -> SchemaCheck | None:
+    """The cached schema check, or None (gate off) when no reader was supplied."""
+    if deps.schema_reader is None:
+        return None
+    return SchemaCheck(deps.schema_reader, clock, settings.schema_check_ttl_seconds)
 
 
 def build_container(settings: Settings, deps: AppDeps) -> Container:
@@ -200,7 +217,8 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         storage=storage,
         queue=queue,
         heartbeat=deps.worker_heartbeat or default_heartbeat(settings),
+        schema=_schema_check(settings, deps, clock),
     )
 
 
-__all__ = ["AppDeps", "Container", "TemplateRecord", "build_container"]
+__all__ = ["AppDeps", "Container", "TemplateRecord", "build_container", "default_schema_reader"]

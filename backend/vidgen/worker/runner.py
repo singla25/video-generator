@@ -22,6 +22,7 @@ from vidgen.api.container import (
     build_container,
     default_heartbeat,
     default_queue_heartbeats,
+    default_schema_reader,
     default_stage_reporter,
 )
 from vidgen.domain.retry import RetryPolicy
@@ -29,6 +30,7 @@ from vidgen.domain.timing import TimingRules
 from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.row_store import SqlRowStore
+from vidgen.infrastructure.db.schema_reader import SqlSchemaVersionReader
 from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.fakes import FakeQualityChecker
 from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
@@ -53,9 +55,11 @@ from vidgen.ports.rows import PreviewSink
 from vidgen.services.provider_guard import ProviderGuard
 from vidgen.services.render_row import RenderConfig, RowRenderer
 from vidgen.services.requeue import requeue_stuck_rows
+from vidgen.services.schema_check import SchemaCheck
 from vidgen.settings import Settings, get_settings
 from vidgen.worker.actors import WorkerConfig, register_actors
 from vidgen.worker.periodic import PeriodicTask
+from vidgen.worker.schema_log import report_schema_at_start
 from vidgen.worker.warm_up import warm_up_if_enabled
 
 FONT_DIR = Path(vidgen.__file__).parent / "assets" / "fonts"
@@ -174,12 +178,19 @@ def run() -> None:  # pragma: no cover
     """Start the worker threads and wait for SIGINT or SIGTERM."""
     settings = get_settings()
     configure_logging()
+    report_schema_at_start(
+        SchemaCheck(
+            SqlSchemaVersionReader(get_engine(settings.database_url)),
+            SystemClock(),
+            settings.schema_check_ttl_seconds,
+        )
+    )
     log_startup_warning(settings)
     if settings.ai_mode == "local":
         warm_up_if_enabled(settings, warmable_adapters(build_ai_adapters(settings)))
     broker = RedisBroker(url=settings.redis_url)  # type: ignore[no-untyped-call]
     dramatiq.set_broker(broker)
-    sink = build_container(settings, AppDeps()).batches
+    sink = build_container(settings, AppDeps(schema_reader=default_schema_reader(settings))).batches
     renderer = build_renderer(settings, sink, default_stage_reporter(settings))
     register_actors(broker, renderer, WorkerConfig.from_settings(settings))
     queue = settings.queue_name

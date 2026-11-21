@@ -10,6 +10,7 @@ from vidgen.api.client_address import resolve_client_address
 from vidgen.api.container import Container
 from vidgen.api.deps import container, require_csrf
 from vidgen.api.errors import INVALID_CREDENTIALS, RATE_LIMITED, ApiError
+from vidgen.api.login_tolerance import tolerant
 from vidgen.api.schemas import LoginRequest
 from vidgen.api.security import CSRF_COOKIE, SESSION_COOKIE
 from vidgen.services.audit import ACTOR_ADMIN, ACTOR_ANONYMOUS, ACTOR_SYSTEM
@@ -39,16 +40,16 @@ def login(body: LoginRequest, request: Request) -> JSONResponse:
     app = container(request)
     now = app.clock.now()
     client = _client_of(request, app)
-    wait = app.guard.begin_attempt(client, now)
+    wait = tolerant(app, lambda: app.guard.begin_attempt(client, now), None)
     if wait is not None:
         raise ApiError(429, RATE_LIMITED, headers={"Retry-After": str(wait)})
     if not _password_ok(app, body.password):
-        throttled = app.guard.record_failure(client, now)
-        app.audit.record(ACTOR_ANONYMOUS, "LOGIN_FAILED")
+        throttled = tolerant(app, lambda: app.guard.record_failure(client, now), False)
+        tolerant(app, lambda: app.audit.record(ACTOR_ANONYMOUS, "LOGIN_FAILED"), None)
         if throttled:
             app.audit.record(ACTOR_SYSTEM, "SECURITY_LOGIN_THROTTLED")
         raise ApiError(401, INVALID_CREDENTIALS)
-    app.guard.record_success(client, now)
+    tolerant(app, lambda: app.guard.record_success(client, now), None)
     cookie, session = app.codec.issue(now)
     response = JSONResponse({"csrf_token": session.csrf_token})
     max_age = app.settings.session_ttl_minutes * 60
@@ -64,7 +65,7 @@ def login(body: LoginRequest, request: Request) -> JSONResponse:
         samesite="strict",
         secure=secure,
     )
-    app.audit.record(ACTOR_ADMIN, "LOGIN_SUCCEEDED")
+    tolerant(app, lambda: app.audit.record(ACTOR_ADMIN, "LOGIN_SUCCEEDED"), None)
     return response
 
 
@@ -72,7 +73,7 @@ def login(body: LoginRequest, request: Request) -> JSONResponse:
 def logout(request: Request) -> JSONResponse:
     """Clear both cookies."""
     app = container(request)
-    app.audit.record(ACTOR_ADMIN, "LOGOUT")
+    tolerant(app, lambda: app.audit.record(ACTOR_ADMIN, "LOGOUT"), None)
     response = JSONResponse({"status": "logged_out"})
     response.delete_cookie(SESSION_COOKIE, httponly=True, samesite="strict")
     response.delete_cookie(CSRF_COOKIE, samesite="strict")

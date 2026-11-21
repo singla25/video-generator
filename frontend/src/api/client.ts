@@ -1,4 +1,5 @@
 import { API_PREFIX, CSRF_COOKIE, UPLOAD_TIMEOUT_MS } from '../config';
+import { DB_NEEDS_MIGRATION, setMigrationMessage } from './migrationState';
 
 /** An error returned by the API (or a network failure) in a uniform shape. */
 export class ApiError extends Error {
@@ -104,6 +105,7 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
   if (!response.ok) {
     const error = await toApiError(response);
     if (error.status === 401 && path !== LOGIN_API_PATH) onUnauthorized?.();
+    if (error.code === DB_NEEDS_MIGRATION) setMigrationMessage(error.message);
     throw error;
   }
   if (response.status === 204) return undefined as T;

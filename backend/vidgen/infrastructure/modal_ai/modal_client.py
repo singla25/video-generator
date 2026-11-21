@@ -13,13 +13,14 @@ from vidgen.infrastructure.modal_ai.errors import (
     RemoteCrashError,
     RemoteTimeoutError,
 )
+from vidgen.infrastructure.modal_ai.protocol import (
+    FN_HAS_SAMPLE,
+    FN_SYNTHESIZE,
+    FN_TRANSCRIBE,
+    FN_UPLOAD_SAMPLE,
+)
 
 T = TypeVar("T")
-
-FN_TRANSCRIBE = "transcribe"
-FN_HAS_SAMPLE = "has_sample"
-FN_UPLOAD_SAMPLE = "upload_sample"
-FN_SYNTHESIZE = "synthesize"
 
 
 def _translate(call: Callable[[], T]) -> T:
@@ -53,9 +54,9 @@ class ModalRemoteClient:
     def _remote(self, name: str, *args: Any) -> Any:
         return _translate(lambda: self._fn(name).remote(*args))
 
-    def transcribe(self, audio: bytes) -> Any:
-        """Run remote speech-to-text on the audio bytes."""
-        return self._remote(FN_TRANSCRIBE, audio)
+    def transcribe(self, audio: bytes, hint: str | None = None) -> Any:
+        """Run remote speech-to-text on the audio bytes; ``hint`` biases it towards a name."""
+        return self._remote(FN_TRANSCRIBE, audio, hint)
 
     def has_sample(self, sample_hash: str) -> bool:
         """True if the sample is already in the remote volume."""

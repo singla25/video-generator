@@ -8,7 +8,7 @@ from typing import Any, Protocol
 class RemoteModelClient(Protocol):
     """Remote calls the adapters need. Implementations raise the errors of ``errors.py``."""
 
-    def transcribe(self, audio: bytes) -> Any:
+    def transcribe(self, audio: bytes, hint: str | None = None) -> Any:
         """Return a list of ``{text, start_s, end_s, confidence}`` dicts (untrusted)."""
         ...
 

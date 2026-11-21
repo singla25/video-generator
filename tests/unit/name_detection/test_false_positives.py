@@ -68,4 +68,4 @@ def test_a_lone_digit_token_has_a_sound_key_of_its_own() -> None:
 
 
 def test_devanagari_visarga_sounds_like_h() -> None:
-    assert sound_key("ः") == "h"
+    assert sound_key("\u0903") == "h"

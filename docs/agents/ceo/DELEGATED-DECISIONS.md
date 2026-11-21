@@ -89,3 +89,15 @@ Admin asleep about 7 hours. Authority: decide design details inside approved pla
 
 ## DD-42 (2026-11-22) BL-6 plan approved with the four decisions
 Plan `docs/plans/better-name-detection.md`: candidates only in the response (no migration 0004); plain sound rules (no new library); `name_match_threshold` default 0.8 as a setting; Whisper small and medium weights may be downloaded into the git-ignored weights folder, not large-v3. Undo: revert the track merge.
+
+## DD-43 (2026-11-22) BL-6 design details
+Candidates are words with closeness at least 0.4 (`MIN_CANDIDATE_CLOSENESS`), at most 3, best first, shown only when no word is accepted. A target whose sound key is shorter than 3 characters needs an exact key match and gets no candidates (false-positive guard). The Whisper hint is the typed name, passed as `hotwords`. The slot is never auto-confirmed. Undo: revert the track A merge.
+
+## DD-44 (2026-11-22) BL-8 design: gate, cache, tolerant login
+`SchemaCheck` reads the database revision (read-only) and compares it with the newest shipped migration, cached 5 s (`schema_check_ttl_seconds`). While behind or empty, every API route except health, auth and system status answers 503 `DB_NEEDS_MIGRATION`; the status route carries a `schema` object; the dashboard shows a banner. The app never applies migrations. The schema reader is optional in test app builders (None = check off) so about 590 older tests stay unchanged; production wiring always passes the real reader. Login skips its throttle and audit writes ONLY when the state is "empty" (no tables at all); with tables present the login guard runs unchanged. Undo: revert the track C merge.
+
+## DD-45 (2026-11-22) Gap 2 as a `scripts/setup.py native-worker` subcommand
+The native local-AI worker next to the Docker app is started by `python3 scripts/setup.py native-worker` (`--print` shows the environment with secrets hidden). Checked by static and configuration tests only; the first real run needs about 20 GB of RAM and is NOT done overnight. Reason for the subcommand: setup.py is stdlib-only, testable, and inside the backend-dev write grants. The compose test uses PyYAML, which is available as a transitive dependency of the locked environment (no dependency change). Undo: revert the track E merge.
+
+## DD-46 (2026-11-22) Modal mode scope without live calls (track B)
+Plan `docs/plans/modal-mode-offline.md`. Lip sync on Modal stays unavailable (licence, BL-7) and fails with a clear message, never a silent fake. No Modal command, token or network call. Undo: revert the track B merge.

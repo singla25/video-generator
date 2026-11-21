@@ -186,10 +186,12 @@ class FakeSpeechToText:
         self.words = words if words is not None else []
         self.error: Exception | None = None
         self.calls = 0
+        self.hints: list[str | None] = []
 
-    def transcribe(self, audio: Path) -> list[Word]:
-        """Return the configured transcript."""
+    def transcribe(self, audio: Path, hint: str | None = None) -> list[Word]:
+        """Return the configured transcript; the hint is recorded."""
         self.calls += 1
+        self.hints.append(hint)
         if self.error is not None:
             raise self.error
         return list(self.words)

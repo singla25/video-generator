@@ -30,7 +30,8 @@ def install_schema_gate(app: FastAPI) -> None:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        warn_if_blocked(app.state.container.schema)
+        if app.state.container.schema is not None:
+            warn_if_blocked(app.state.container.schema)
         yield
 
     app.router.lifespan_context = lifespan
@@ -39,9 +40,9 @@ def install_schema_gate(app: FastAPI) -> None:
     async def gate(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        if _is_open(request.url.path):
+        check: SchemaCheck | None = request.app.state.container.schema
+        if check is None or _is_open(request.url.path):
             return await call_next(request)
-        check: SchemaCheck = request.app.state.container.schema
         try:
             status = check.status()
         except DB_ERRORS as exc:

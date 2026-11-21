@@ -27,8 +27,10 @@ def _queue_depth(queue: JobQueue) -> int | None:
         return None
 
 
-def _schema_block(check: SchemaCheck) -> dict[str, Any] | None:
-    """Schema state for the banner; None when the database cannot answer."""
+def _schema_block(check: SchemaCheck | None) -> dict[str, Any] | None:
+    """Schema state for the banner; None when there is no check or the database cannot answer."""
+    if check is None:
+        return None
     try:
         status = check.status()
     except SQLAlchemyError as exc:
@@ -53,10 +55,12 @@ def system_status(request: Request) -> dict[str, Any]:
         worker_alive, redis_ok = False, False
     depth = _queue_depth(app.queue)
     schema = _schema_block(app.schema)
-    return {
+    body: dict[str, Any] = {
         "worker_alive": worker_alive,
         "queue_depth": depth,
         "redis_ok": redis_ok,
         "ai_mode": app.settings.ai_mode,
-        "schema": schema,
     }
+    if app.schema is not None:  # no check configured: the key is left out
+        body["schema"] = schema
+    return body

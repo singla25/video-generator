@@ -22,6 +22,7 @@ from vidgen.api.container import (
     build_container,
     default_heartbeat,
     default_queue_heartbeats,
+    default_schema_reader,
     default_stage_reporter,
 )
 from vidgen.domain.retry import RetryPolicy
@@ -189,7 +190,7 @@ def run() -> None:  # pragma: no cover
         warm_up_if_enabled(settings, warmable_adapters(build_ai_adapters(settings)))
     broker = RedisBroker(url=settings.redis_url)  # type: ignore[no-untyped-call]
     dramatiq.set_broker(broker)
-    sink = build_container(settings, AppDeps()).batches
+    sink = build_container(settings, AppDeps(schema_reader=default_schema_reader(settings))).batches
     renderer = build_renderer(settings, sink, default_stage_reporter(settings))
     register_actors(broker, renderer, WorkerConfig.from_settings(settings))
     queue = settings.queue_name

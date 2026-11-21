@@ -87,7 +87,7 @@ class Container:
     storage: Storage
     queue: JobQueue
     heartbeat: WorkerHeartbeat
-    schema: SchemaCheck
+    schema: SchemaCheck | None  # None = gate off (no reader supplied)
 
 
 def _default_stt(settings: Settings) -> SpeechToText:
@@ -124,6 +124,18 @@ def default_queue_heartbeats(settings: Settings) -> RedisQueueHeartbeats:
 def default_stage_reporter(settings: Settings) -> RedisStageReporter:
     """The preview stage store on the configured Redis (the connection opens on first use)."""
     return RedisStageReporter(redis.Redis.from_url(settings.redis_url))
+
+
+def default_schema_reader(settings: Settings) -> SqlSchemaVersionReader:
+    """The real read-only schema reader on the configured database (production wiring)."""
+    return SqlSchemaVersionReader(get_engine(settings.database_url))
+
+
+def _schema_check(settings: Settings, deps: AppDeps, clock: Clock) -> SchemaCheck | None:
+    """The cached schema check, or None (gate off) when no reader was supplied."""
+    if deps.schema_reader is None:
+        return None
+    return SchemaCheck(deps.schema_reader, clock, settings.schema_check_ttl_seconds)
 
 
 def build_container(settings: Settings, deps: AppDeps) -> Container:
@@ -205,12 +217,8 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         storage=storage,
         queue=queue,
         heartbeat=deps.worker_heartbeat or default_heartbeat(settings),
-        schema=SchemaCheck(
-            deps.schema_reader or SqlSchemaVersionReader(get_engine(settings.database_url)),
-            clock,
-            settings.schema_check_ttl_seconds,
-        ),
+        schema=_schema_check(settings, deps, clock),
     )
 
 
-__all__ = ["AppDeps", "Container", "TemplateRecord", "build_container"]
+__all__ = ["AppDeps", "Container", "TemplateRecord", "build_container", "default_schema_reader"]

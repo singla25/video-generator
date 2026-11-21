@@ -1,0 +1,37 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Current plan (2026-11-22)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Current plan (2026-11-22)</h1>
+<p>Plain-language status. No code changed to write this.</p>
+<h2>1. What we are building and why</h2>
+<p><strong>VidGen Studio</strong> makes personalised campaign videos. You give it one template video and a sheet of names. It makes one video per row, where the spoken name (for example "Krishan") is replaced by the row's name, in the cloned voice, with the lips matching. Every video carries a small "AI" label, and the voter list is encrypted.</p>
+<p>Two ways to run it:</p>
+<ul><li><strong>Mac local (the main product).</strong> All the AI runs on your Mac's GPU. Nothing leaves the Mac. Slower: a 24 GB Mac</li></ul>
+<p>  works but swaps heavily.</p>
+<ul><li><strong>Cloud GPU (Modal, later).</strong> Faster, but the data goes to a cloud service.</li></ul>
+<p><strong>The C5 privacy rule:</strong> in cloud mode only demo data (a neutral demo template and made-up names) is allowed. Real voter data never goes to the cloud. The installer and the app enforce this.</p>
+<h2>2. Done and merged</h2>
+<p>#1 upload feedback · #2 Mac feasibility spike · #3 CI docs · #5 local real AI on the Mac · #6 test cleanup ·</p>
+<p>#7 smaller AI bubble · #8 wrap-up docs · #9 preview progress, batch controls, autostart · #10 real batch lists, delete template · #11 GitHub Actions CI · #12 and #13 drafts and spelling · #14 spoken suffix, name mid-video ·</p>
+<p>#15, #16 and #17 several name slots · #18 guard update · #19 status report · #20 Docker app and installer ·</p>
+<p>#21 task-log cleanup · #22 M2 docs rescue · #23 cloud mode is demo-only (C5) · #24 render providers, chooser and spend cap (phase a). <strong>Open: #25</strong> (Modal adapters, phase b).</p>
+<h2>3. What is left</h2>
+<table><tr><th>#</th><th>Item</th><th>Why</th><th>Needs from you</th><th>Effort</th><th>Blocked?</th></tr><tr><td>1</td><td>Merge PR #25</td><td>Modal adapters, tested against a fake client</td><td>Your merge</td><td>minutes</td><td>No</td></tr><tr><td>2</td><td>Migration 0003</td><td>Adds provider, data class and cost columns; the app needs it</td><td><strong>Done on the real database <code>vidgen</code>.</strong> Optional on <code>vidgen_demo</code>, only if you need it for new screenshots (section 5)</td><td>done</td><td>No</td></tr><tr><td>3</td><td>Better name detection (BL-6)</td><td>Today "Krishan" in Roman letters misses the Devanagari word in the audio, and low-confidence words count as not found</td><td>Yes/no on the plan</td><td>Medium, 1-2 days of agent work</td><td>No</td></tr><tr><td>4</td><td>Startup schema check (BL-8)</td><td>A clear "database needs migration" message instead of broken screens</td><td>Nothing</td><td>Small</td><td>No</td></tr><tr><td>5</td><td>Docs and README for the chooser and cloud mode (BL-5)</td><td>Includes the spend-cap overshoot note</td><td>Nothing</td><td>Small</td><td>No</td></tr><tr><td>6</td><td>Local AI with the Docker app and a native worker (BL-4)</td><td>Mac-local without hand-starting the worker</td><td>Plan approval</td><td>Medium</td><td>No</td></tr><tr><td>7</td><td>Licence gate for production weights (G8)</td><td>Three lip-sync weights are cleared for the pilot only, not commercial use</td><td>Approve the plan and pick a replacement</td><td>Medium to large</td><td>Needs your decision</td></tr><tr><td>8</td><td>Modal spike with real numbers (BL-1)</td><td>Speed and cost of the cloud path</td><td>A Modal card with a $5 workspace limit</td><td>Small</td><td><strong>Blocked: your card</strong></td></tr><tr><td>9</td><td>Lip sync on Modal (BL-7)</td><td>Cloud lip sync</td><td>Your licence decision: (a) allow dev-only use of the two unverified weights on your Modal account with demo data, (b) replace the weights first, or (c) cloud for speech and voice only</td><td>Medium</td><td><strong>Blocked: your licence decision</strong></td></tr></table>
+<h2>4. Recommended order (Mac-local complete first, Modal waits for the card)</h2>
+<ol><li>Merge PR #25 (you).</li><li>~~Migration 0003~~ <strong>Done</strong> on the real database <code>vidgen</code>. The demo database <code>vidgen_demo</code> is still at 0002 (optional).</li><li><strong>Better name detection (BL-6):</strong> fuzzy Roman and Devanagari matching, the closest 3 candidates when nothing</li></ol>
+<p>   passes, the expected name as a Whisper hint, and a Whisper model-size test on demo templates.</p>
+<ol><li>Startup schema check (BL-8).</li><li>Docs and README (BL-5).</li><li>Local AI with the Docker app (BL-4).</li><li>Licence gate (G8), once you approve the plan; needed before any production run.</li><li>Waiting on you: Modal spike (card), then lip sync on Modal (licence decision), then switch cloud mode on.</li></ol>
+<h2>5. What you do yourself</h2>
+<ol><li><strong>Merge PR #25</strong> on GitHub (checks are green).</li><li>~~Migration 0003 on the real database~~ <strong>Done:</strong> <code>vidgen</code> is at <code>0003</code>.</li><li><strong>Optional: migration 0003 on the demo database</strong> <code>vidgen_demo</code> (now at <code>0002</code>), only if you need it for new</li></ol>
+<p>   screenshots. It only adds columns, nothing is deleted.</p>
+<ul><li>Look first, changes nothing: <code>uv run python scripts/dev_setup.py pending</code></li><li>Back up: <code>docker compose exec -T postgres pg_dump -U vidgen vidgen_demo &gt; vidgen_demo-before-0003.sql</code></li><li>Apply: <code>alembic -c backend/alembic.ini upgrade head</code> with <code>VIDGEN_DATABASE_URL</code> set to the demo database.</li><li>Check: <code>select version_num from alembic_version;</code> should say <code>0003</code>.</li><li>Undo, if needed: <code>alembic -c backend/alembic.ini downgrade 0002</code> (drops exactly the three new columns), or</li></ul>
+<p>     restore the backup.</p>
+<p>Where things stand: <code>vidgen</code> (real) is at <code>0003</code>, <code>vidgen_demo</code> is at <code>0002</code>. A backup file <code>vidgen-backup-before-0003.sql</code> is in the project root. It is not git-ignored and holds data: never commit it; move it out of the project.</p></div></body></html>

@@ -58,3 +58,8 @@ Feature: Better name detection
 ```
 
 Frontend tree (A-N2): `docs/test-tree/better-name-detection-ui.md`.
+
+## Verification results (A-V1)
+- Obsolete script-mismatch test replaced: Krishan now matches the Devanagari word (unconfirmed); an unrelated Devanagari word (Rahul) still needs a manual slot.
+- Full suite: 3226 passed, 2 skipped. Coverage name_match.py + name_sounds.py: 99-100 % (branch).
+- False-positive check (tests/unit/name_detection/test_false_positives.py): 42 other names x 2 scripts x 3 targets = 252 unrelated pairs, 0 at or above 0.8 (rate 0 %). Closest unrelated pairs: Krishan vs Kiran/Karan = 0.75. Variants (Krishn, Kishan 0.88, Krishna, Kirshan) are expected matches.

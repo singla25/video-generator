@@ -274,3 +274,4 @@ None blocking. Open for AC9: a real second OS process worker is not exercised (t
 - Coverage 100 % on every module (_guard, client, errors, modal_client, stt, tts); statements and branches.
 - Added in verify: 27 tests (positive 7, negative 16, edge 4 groups incl. unicode bytes, two cloners, failed-row accounting, empty text); modal_client tested via a stubbed `modal` module.
 - Defects: none. Note: RemoteAuthError keeps `__context__` (Python behaviour of `from None`) but it is hidden from tracebacks; token does not appear in formatted output.
+- A-V1 name detection: name_match 99 % / name_sounds 100 % branch coverage; false-positive rate 0/252 (closest Krishan~Kiran 0.75).

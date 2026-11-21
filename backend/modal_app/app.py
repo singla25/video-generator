@@ -87,6 +87,7 @@ image = (
     .uv_pip_install(*PINS)
     .run_commands("uv pip install --system --no-deps chatterbox-tts==0.1.7")
     .run_function(download_models)
+    .add_local_python_source("vidgen")  # last step: Modal requires local sources last
 )
 
 app = modal.App(DEFAULT_APP_NAME)

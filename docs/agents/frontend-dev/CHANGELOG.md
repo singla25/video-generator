@@ -114,3 +114,4 @@ Newest first. One entry per task.
 - `ProviderChooser`: the only selectable provider is preselected, derived as `chosen ?? onlySelectable` (a user choice always wins).
 - Files: frontend/src/components/{ScrollRegion,BatchListTable,RowsTable,DraftsSection}.tsx, pages/HistoryPage.tsx, pages/wizard/{StepMap,ProviderChooser}.tsx.
 - Tests: none added (red tests from tester); Vitest 646/646.
+- 2026-11-22 A-F1 (BL-6): closest-match "Use this word" buttons in the slot editor (frontend/src/api/candidates.ts, pages/templates/CandidateButtons.tsx; edits to NewTemplateForm, SlotEditor, TemplatesPage, api/types.ts); Vitest 660/660.

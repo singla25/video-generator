@@ -3,6 +3,7 @@ import { useId, useRef, useState } from 'react';
 
 import { ApiError, apiFetch, apiUrl } from '../../api/client';
 import type { Template } from '../../api/types';
+import { CandidateButtons } from '../templates/CandidateButtons';
 import { ExtraSlotRow } from './ExtraSlotRow';
 import { SlotField } from './SlotField';
 import {
@@ -135,6 +136,7 @@ export function SlotEditor({
           The slot could not be found automatically. Set it by hand.
         </p>
       )}
+      {!template.slot && <CandidateButtons templateId={template.id} />}
       {showVideo && (
         <video
           data-testid="template-video"

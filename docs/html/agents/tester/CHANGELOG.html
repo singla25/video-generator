@@ -11,6 +11,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>Tester — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-11-17 — Modal adapters (RED, phase b)</h2>
+<ul><li>Added tests/unit/modal_ai/ (test_modal_stt, test_modal_tts, test_cloud_extra_and_import_safety, conftest), tests/fixtures/modal_fake.py, docs/test-tree/modal-adapters.md. Contract: vidgen.infrastructure.modal_ai.{client,errors,stt,tts}; pyproject extra cloud = modal==X.Y.Z. Fails on missing modules and missing extra. No wiring or lip sync tests.</li></ul>
 <h2>2026-10-30 — RM-G3 (remove redundant red set)</h2>
 <ul><li>Removed: the redundant G3 adapter test set (tests/unit/infra/ai/, docs/test-tree/m2-real-ai.md). The adapters were built as vidgen.infrastructure.local_ai and are covered by tests/unit/ai_local/. The Admin approved the deletion. Those tests failed at collection with ModuleNotFoundError.</li></ul>
 <h2>2026-10-20 - W-4 tests</h2>
@@ -106,4 +108,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 <h2>2026-11-17 - A11Y-SCROLL RED (PR 24 axe)</h2>
 <ul><li>tests/frontend/unit/scroll-region.test.tsx + tree section in render-providers.md. Needs shared ScrollRegion component and five labelled usages.</li></ul>
 <h2>2026-11-18 - CHOOSER PRESELECT RED (PR 24 e2e)</h2>
-<ul><li>provider-chooser.test.tsx: E1 changed (single selectable is preselected), N1 adjusted, new PS1-PS8; e2e full-flow.spec.ts TT-UI-E2E-P2c goes through the chooser. No other e2e spec approves a preview.</li><li>Result: 5 new/changed red (E1, PS2, PS4, PS6, PS8), rest green; scroll-region.test.tsx still red from the earlier A11Y-SCROLL step.</li></ul></div></body></html>
+<ul><li>provider-chooser.test.tsx: E1 changed (single selectable is preselected), N1 adjusted, new PS1-PS8; e2e full-flow.spec.ts TT-UI-E2E-P2c goes through the chooser. No other e2e spec approves a preview.</li><li>Result: 5 new/changed red (E1, PS2, PS4, PS6, PS8), rest green; scroll-region.test.tsx still red from the earlier A11Y-SCROLL step.</li></ul>
+<h2>2026-11-17 - Modal adapters VERIFY (phase b)</h2>
+<ul><li>Added tests/unit/modal_ai/test_modal_client.py (stub <code>modal</code> module; 4 methods, error translation, from_name failure) and test_modal_tts_extra.py (UTF-8 byte accounting, two cloner instances, failed row bytes, empty text).</li><li>modal_ai coverage 100 % (stmts + branches). No backend defects.</li></ul>
+<h2>2026-11-17 - Modal adapters RED (no exception link)</h2>
+<ul><li>Added tests/unit/modal_ai/test_no_exception_link.py: RemoteAuthError must have <code>__cause__</code> and <code>__context__</code> None (call_remote via STT/TTS synthesize/upload; _translate via stub modal) and no token in chain or traceback. Extra-scope tests for RemoteTimeoutError/RemoteCrashError from _translate.</li><li>Result: 6 fail (context still set because the raise is inside the except block), 65 pass. Backend fix: raise outside the except block.</li></ul></div></body></html>

@@ -1,0 +1,56 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree: Modal adapters (ADR-013 decisions 2-4, 6a, 7; plan AC4, P6, Q2)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree: Modal adapters (ADR-013 decisions 2-4, 6a, 7; plan AC4, P6, Q2)</h1>
+<p>Scope: adapters only, against <code>tests/fixtures/modal_fake.py</code>. No network, no <code>modal</code> import. Not covered here: <code>ai_mode == "modal"</code> wiring, installer gate, lip sync (ADR-012), the real Modal-backed client.</p>
+<h2>Contract pinned (package <code>vidgen.infrastructure.modal_ai</code>)</h2>
+<ul><li><code>client.RemoteModelClient</code> Protocol: <code>transcribe(audio: bytes) -&gt; list[dict]</code> (keys text, start_s, end_s, confidence),</li></ul>
+<p>  <code>has_sample(sample_hash) -&gt; bool</code>, <code>upload_sample(sample_hash, data) -&gt; None</code>, <code>synthesize(text, sample_hash) -&gt; bytes</code> (wav).</p>
+<ul><li><code>errors</code>: <code>RemoteAuthError</code> (has <code>.code</code>, not retryable, fixed message, raised without cause),</li></ul>
+<p>  <code>RemoteTimeoutError(TimeoutError)</code> -&gt; TIMEOUT, <code>RemoteCrashError(WorkerCrashedError)</code> -&gt; CRASH.</p>
+<ul><li><code>stt.ModalSpeechToText(client)</code> and <code>tts.ModalVoiceCloner(client)</code>, both with <code>bytes_sent</code> / <code>bytes_received</code>.</li><li>Bad remote result: <code>DomainError</code> with <code>STT_FAILED</code> / <code>TTS_FAILED</code>. Missing file: <code>FileNotFoundError</code>; empty audio: <code>EmptyAudioError</code>.</li><li>Concurrency decision: one cloner instance uploads a new sample exactly once (lock); separate instances rely on <code>has_sample</code>.</li></ul>
+<pre><code>Feature: Modal speech-to-text adapter
+├── Scenario: transcribe a file
+│   ├── ✅ words mapped to Word, one remote call with the file bytes
+│   ├── ✅ silence -&gt; []
+│   ├── ⚠️ Devanagari text kept
+│   ├── ⚠️ missing file / empty file -&gt; clear error, no remote call
+│   └── ❌ malformed result (8 variants) -&gt; STT_FAILED
+├── Scenario: remote failures
+│   ├── ❌ timeout -&gt; TIMEOUT, retryable
+│   ├── ❌ crash -&gt; CRASH, retryable
+│   └── ❌ auth -&gt; not retryable, message and repr free of token
+├── Scenario: accounting and privacy
+│   ├── ✅ bytes_sent / bytes_received counted
+│   └── ✅ no text or token in log records
+Feature: Modal voice cloner adapter
+├── Scenario: synthesize rows
+│   ├── ✅ wav written, duration returned
+│   ├── ✅ sample uploaded once over 5 rows; rows send text + sha256 only
+│   ├── ✅ remote already has the sample -&gt; no upload
+│   ├── ⚠️ two adapters, one client -&gt; one upload
+│   ├── ⚠️ concurrent calls, same new sample -&gt; exactly one upload
+│   ├── ⚠️ changed sample content -&gt; uploaded again
+│   ├── ⚠️ Devanagari text; 20k-char text
+│   └── ✅ bytes accounting: sample counted once, wav counted per row
+├── Scenario: failures
+│   ├── ❌ missing sample -&gt; FileNotFoundError, no remote call
+│   ├── ❌ empty / garbled / zero-frame wav -&gt; TTS_FAILED, no out file, no temp file
+│   ├── ❌ remote error keeps an existing out untouched
+│   ├── ❌ timeout / crash retryable; auth not, no token leak
+│   └── ✅ no name text or token in logs
+Feature: Dependency and import safety
+├── ✅ pyproject extra `cloud` has `modal==X.Y.Z`
+├── ❌ modal not in base dependencies
+└── ⚠️ adapters import with `modal` blocked</code></pre>
+<p>Feature: ModalRemoteClient (stubbed <code>modal</code> module via sys.modules; no network) ├── ✅ each of 4 methods looks up the right function name in the app and passes the right args ├── ✅ synthesize returns bytes (bytearray coerced); has_sample returns bool ├── ❌ AuthError -&gt; RemoteAuthError, fixed message, no __cause__, token absent from traceback ├── ❌ FunctionTimeoutError -&gt; RemoteTimeoutError; other modal Error -&gt; RemoteCrashError (no details) ├── ❌ failure inside Function.from_name is translated the same way ├── ❌ non-modal exception (ValueError) is not swallowed └── ⚠️ empty bytes / unicode text pass through unchanged</p>
+<p>Feature: ModalVoiceCloner extras ├── ⚠️ bytes_sent counts UTF-8 bytes (Devanagari + emoji), not characters ├── ⚠️ second cloner on the same remote re-checks has_sample but does not re-upload or recount the sample ├── ⚠️ failed synthesis (bad wav) books no per-row bytes └── ⚠️ empty text sent with the hash only</p>
+<p>Feature: RemoteAuthError carries no link to the original exception (tests/unit/modal_ai/test_no_exception_link.py) ├── ❌ _guard.call_remote: auth error with token via STT transcribe, TTS synthesize, TTS upload -&gt; __cause__ None AND __context__ None, token absent from whole chain and traceback ├── ❌ modal_client._translate: stub modal AuthError -&gt; same assertions └── ⚠️ EXTRA SCOPE (tester proposal): _translate Timeout/Crash errors -&gt; same "no context" (tests named *_extra_scope)</p></div></body></html>

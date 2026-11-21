@@ -197,3 +197,5 @@ Newest first. One entry per task.
 ## 2026-11-17 - Modal adapters RED (no exception link)
 - Added tests/unit/modal_ai/test_no_exception_link.py: RemoteAuthError must have `__cause__` and `__context__` None (call_remote via STT/TTS synthesize/upload; _translate via stub modal) and no token in chain or traceback. Extra-scope tests for RemoteTimeoutError/RemoteCrashError from _translate.
 - Result: 6 fail (context still set because the raise is inside the except block), 65 pass. Backend fix: raise outside the except block.
+- 2026-11-22 A-N2: tests/frontend/unit/name-candidates.test.tsx (candidate buttons, red) and docs/test-tree/better-name-detection-ui.md.
+- 2026-11-22 A-N1: better name detection backend tests (red): tests/unit/name_detection/, tests/unit/infra/test_name_match_setting.py, tests/integration/api/test_name_candidates.py; FakeSpeechToText records hints; tree docs/test-tree/better-name-detection.md.

@@ -205,3 +205,4 @@ Newest first. One entry per task.
 - 2026-11-22 A-N2: tests/frontend/unit/name-candidates.test.tsx (candidate buttons, red) and docs/test-tree/better-name-detection-ui.md.
 - 2026-11-22 A-N1: better name detection backend tests (red): tests/unit/name_detection/, tests/unit/infra/test_name_match_setting.py, tests/integration/api/test_name_candidates.py; FakeSpeechToText records hints; tree docs/test-tree/better-name-detection.md.
 - 2026-11-22 A-V1: replaced obsolete script-mismatch test, added false-positive suite, name-matching coverage 99 %.
+- 2026-11-22 D-T1: tests/frontend/unit/provider-cap-note.test.tsx (chooser spend-cap overshoot note, red) and docs/test-tree/provider-cap-note.md.

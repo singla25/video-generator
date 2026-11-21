@@ -15,6 +15,7 @@ EXPECTED_CODES = {
     "NAME_TOO_LONG_TO_SPEAK",
     "TTS_FAILED",
     "LIPSYNC_LOW_QUALITY",
+    "LIPSYNC_UNAVAILABLE",  # Modal plan: cloud lip sync is not available yet
     "RENDER_TIMEOUT",
     "STORAGE_ERROR",
     "CONSENT_MISSING",

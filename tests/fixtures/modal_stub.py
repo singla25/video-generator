@@ -144,5 +144,10 @@ def load_app(path: Path) -> Recorder:
         spec = importlib.util.spec_from_file_location("modal_app_under_test", path)
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        # inspect.getsource needs the module registered; always removed afterwards
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(spec.name, None)
     return rec

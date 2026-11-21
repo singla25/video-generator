@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import inspect
 import sys
 from pathlib import Path
 
@@ -89,7 +88,13 @@ def test_the_image_pins_include_the_two_models() -> None:
 def test_one_warm_container_class_loads_the_models_once() -> None:
     rec = load_app(APP_FILE)
     assert len(rec.classes) == 1
-    source = inspect.getsource(rec.classes[0])
+    text = APP_FILE.read_text(encoding="utf-8")
+    node = next(
+        n
+        for n in ast.walk(ast.parse(text))
+        if isinstance(n, ast.ClassDef) and n.name == rec.classes[0].__name__
+    )
+    source = ast.get_source_segment(text, node) or ""
     assert "faster_whisper" in source and "chatterbox" in source.lower()
 
 
@@ -165,3 +170,4 @@ def test_checker_reports_a_secret_looking_string(tmp_path: Path, line: str) -> N
 def test_a_broken_app_file_fails_loudly(tmp_path: Path) -> None:
     with pytest.raises(SyntaxError):
         load_app(write(tmp_path, "def broken(:\n"))
+

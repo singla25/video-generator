@@ -74,7 +74,12 @@ def test_transcribe_calls_named_function_with_audio_and_returns_result(stub: _St
     stub.fn.result = {"text": "hi"}
     assert ModalRemoteClient("app1").transcribe(b"aud") == {"text": "hi"}
     assert stub.lookups == [("app1", "transcribe")]
-    assert stub.fn.calls == [(b"aud",)]
+    assert stub.fn.calls == [(b"aud", None)]
+
+
+def test_transcribe_passes_the_hint_to_the_remote_call(stub: _Stub) -> None:
+    ModalRemoteClient("app1").transcribe(b"aud", "Zoë")
+    assert stub.fn.calls == [(b"aud", "Zoë")]
 
 
 @pytest.mark.parametrize("value", [True, False])
@@ -170,4 +175,4 @@ def test_empty_audio_and_empty_data_are_passed_through(stub: _Stub) -> None:
     c = ModalRemoteClient("a")
     c.transcribe(b"")
     c.upload_sample("h", b"")
-    assert stub.fn.calls == [(b"",), ("h", b"")]
+    assert stub.fn.calls == [(b"", None), ("h", b"")]

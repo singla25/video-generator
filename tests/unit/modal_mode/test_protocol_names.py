@@ -41,7 +41,7 @@ def test_importing_protocol_pulls_in_no_third_party_package() -> None:
         "import sys\n"
         "import vidgen.infrastructure.modal_ai.protocol\n"
         "bad = [m for m in ('modal', 'torch', 'sqlalchemy', 'pydantic') if m in sys.modules]\n"
-        "raise SystemExit(','.join(bad))\n"
+        "print(','.join(bad))\nraise SystemExit(1 if bad else 0)\n"
     )
     done = subprocess.run(  # noqa: S603 - fixed argv, no network
         [sys.executable, "-c", code], capture_output=True, text=True, cwd=ROOT, check=False

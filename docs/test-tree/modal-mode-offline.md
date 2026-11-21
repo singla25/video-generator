@@ -55,3 +55,4 @@ Feature: Modal mode without live calls
 └── Scenario: no network (AC7)                           test_network_guard.py + autouse fixture
     └── ❌ connect, getaddrinfo and create_connection raise
 ```
+- B-V1: fixed 5 outdated/defective modal-mode tests (exit code, getsource loader, LIPSYNC_UNAVAILABLE, hint arg).

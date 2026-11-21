@@ -68,12 +68,13 @@ def test_modal_works_as_before_when_the_backend_accepts_it(harness: Harness) -> 
 # --- the real repository file ----------------------------------------------------------------
 
 
-def test_real_backend_settings_refuse_modal_today(harness: Harness) -> None:
-    """T4 flips this test on purpose: once the real Literal accepts "modal", expect acceptance."""
+def test_real_backend_settings_accept_modal_now(harness: Harness) -> None:
+    """Flipped in track B (AC3): the real Literal accepts "modal", so no refusal happens."""
     harness.write_backend_settings((ROOT / BACKEND_SETTINGS).read_text(encoding="utf-8"))
-    harness.answers["mode"] = ["modal", "fake"]
+    harness.answers["mode"] = ["modal"]
     assert harness.run_main() == 0
-    assert_modal_refused(harness)
+    assert read_settings(harness.dotenv)["VIDGEN_AI_MODE"] == "modal"
+    assert len(mode_prompts(harness)) == 1
 
 
 # --- edge: how the Literal is written ---------------------------------------------------------

@@ -40,6 +40,7 @@ class Recorder:
     pins: list[str] = field(default_factory=list)
     classes: list[type] = field(default_factory=list)
     gpu_requests: list[Any] = field(default_factory=list)
+    image_steps: list[tuple[str, tuple[Any, ...]]] = field(default_factory=list)
 
     def signature(self, name: str) -> list[tuple[str, Any]]:
         """``(parameter name, default)`` pairs without ``self``; default is ``inspect._empty``."""
@@ -52,6 +53,12 @@ class _Image(_Anything):
         self._rec = rec
 
     def __getattr__(self, name: str) -> Any:
+        if not name.startswith("__"):
+            return self._step(name)
+        return super().__getattr__(name)
+
+    def _step(self, name: str) -> Any:
+        """Record every image-chain call in order, then keep chaining."""
         if name in PIN_METHODS:
 
             def collect(*packages: Any, **_kw: Any) -> _Image:
@@ -59,10 +66,16 @@ class _Image(_Anything):
                 for item in packages:
                     flat.extend(item if isinstance(item, list | tuple) else [item])
                 self._rec.pins.extend(str(p) for p in flat)
+                self._rec.image_steps.append((name, tuple(packages)))
                 return self
 
             return collect
-        return super().__getattr__(name)
+
+        def other(*args: Any, **_kw: Any) -> _Image:
+            self._rec.image_steps.append((name, args))
+            return self
+
+        return other
 
 
 class _ImageFactory(_Anything):
@@ -72,7 +85,12 @@ class _ImageFactory(_Anything):
     def __getattr__(self, name: str) -> Any:
         if name.startswith("__"):
             raise AttributeError(name)
-        return lambda *_a, **_k: _Image(self._rec)
+
+        def start(*args: Any, **_k: Any) -> _Image:
+            self._rec.image_steps.append((name, args))
+            return _Image(self._rec)
+
+        return start
 
 
 class _App(_Anything):

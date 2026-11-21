@@ -171,3 +171,10 @@ def test_a_broken_app_file_fails_loudly(tmp_path: Path) -> None:
     with pytest.raises(SyntaxError):
         load_app(write(tmp_path, "def broken(:\n"))
 
+
+def test_the_image_chain_ends_with_the_local_vidgen_package_and_adds_no_other_path() -> None:
+    """The container must import vidgen...protocol, so the image has to carry the package."""
+    steps = load_app(APP_FILE).image_steps
+    local = [s for s in steps if s[0].startswith("add_local")]
+    assert local == [("add_local_python_source", ("vidgen",))]
+    assert steps[-1] == ("add_local_python_source", ("vidgen",))

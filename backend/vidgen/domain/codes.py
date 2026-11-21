@@ -16,6 +16,7 @@ class FailureCode(StrEnum):
     NAME_TOO_LONG_TO_SPEAK = "NAME_TOO_LONG_TO_SPEAK"
     TTS_FAILED = "TTS_FAILED"
     LIPSYNC_LOW_QUALITY = "LIPSYNC_LOW_QUALITY"
+    LIPSYNC_UNAVAILABLE = "LIPSYNC_UNAVAILABLE"
     RENDER_TIMEOUT = "RENDER_TIMEOUT"
     STORAGE_ERROR = "STORAGE_ERROR"
     CONSENT_MISSING = "CONSENT_MISSING"
@@ -49,6 +50,7 @@ _MESSAGES: dict[FailureCode, str] = {
     FailureCode.NAME_TOO_LONG_TO_SPEAK: "The name takes too long to say within the video.",
     FailureCode.TTS_FAILED: "The voice for this name could not be created.",
     FailureCode.LIPSYNC_LOW_QUALITY: "The lip movement for this name did not look good enough.",
+    FailureCode.LIPSYNC_UNAVAILABLE: "Lip sync on the cloud is not available yet.",
     FailureCode.RENDER_TIMEOUT: "Making this video took too long.",
     FailureCode.STORAGE_ERROR: "The video could not be saved. Please check the free disk space.",
     FailureCode.CONSENT_MISSING: "Consent for this video has not been confirmed.",

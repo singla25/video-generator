@@ -21,6 +21,7 @@ from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.fakes import FakeSpeechToText
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
 from vidgen.infrastructure.local_ai.factory import build_ai_adapters
+from vidgen.infrastructure.modal_ai.factory import build_modal_adapters
 from vidgen.infrastructure.provider_registry import load_registry
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
 from vidgen.infrastructure.queue.redis_heartbeat import RedisQueueHeartbeats, RedisWorkerHeartbeat
@@ -94,6 +95,8 @@ def _default_stt(settings: Settings) -> SpeechToText:
     """Whisper in local mode, else the fake transcriber."""
     if settings.ai_mode == "local":
         return build_ai_adapters(settings).stt
+    if settings.ai_mode == "modal":
+        return build_modal_adapters(settings).stt
     if settings.ai_backend == "fake":
         return FakeSpeechToText()
     return _NotConfiguredSpeechToText()  # type: ignore[return-value]
@@ -178,9 +181,17 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         throttle_gap=timedelta(seconds=settings.login_throttle_seconds),
     )
     queue = deps.job_queue or _default_queue(settings)
-    ai = build_ai_adapters(settings)
+    ai = (
+        build_modal_adapters(settings)
+        if settings.ai_mode == "modal"
+        else build_ai_adapters(settings)
+    )
     registry = load_registry(
-        settings.providers_file, ai_mode=settings.ai_mode, queue_name=settings.queue_name
+        settings.providers_file,
+        ai_mode=settings.ai_mode,
+        queue_name=settings.queue_name,
+        modal_spend_cap_usd=settings.modal_spend_cap_usd,
+        modal_rate_per_second=settings.modal_rate_per_second,
     )
     batches = BatchService(
         BatchContext(

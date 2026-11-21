@@ -41,6 +41,7 @@ from vidgen.infrastructure.local_ai.factory import (
     log_startup_warning,
     warmable_adapters,
 )
+from vidgen.infrastructure.modal_ai.factory import build_modal_adapters
 from vidgen.infrastructure.provider_registry import load_registry
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
 from vidgen.infrastructure.queue.redis_heartbeat import (
@@ -96,7 +97,11 @@ def build_renderer(
     """The row renderer; AI adapters follow ``ai_mode`` (fake or local), the engine is real."""
     if settings.ai_backend != "fake":
         raise RuntimeError("Real AI adapters arrive in M2; set VIDGEN_AI_MODE=local instead.")
-    ai = build_ai_adapters(settings)
+    ai = (
+        build_modal_adapters(settings)
+        if settings.ai_mode == "modal"
+        else build_ai_adapters(settings)
+    )
     factory = sessionmaker(get_engine(settings.database_url), expire_on_commit=False)
     cipher = AesGcmCipher(
         keys={settings.encryption_key_id: settings.encryption_key_bytes()},
@@ -125,7 +130,11 @@ def build_renderer(
         stage_reporter=stage_reporter,
         provider_guard=ProviderGuard(
             load_registry(
-                settings.providers_file, ai_mode=settings.ai_mode, queue_name=settings.queue_name
+                settings.providers_file,
+                ai_mode=settings.ai_mode,
+                queue_name=settings.queue_name,
+                modal_spend_cap_usd=settings.modal_spend_cap_usd,
+                modal_rate_per_second=settings.modal_rate_per_second,
             ),
             row_timeout_seconds=settings.row_timeout_seconds,
         ),
@@ -145,7 +154,11 @@ def build_requeue_job(
     queue = DramatiqJobQueue(broker, queue_name=settings.queue_name)
     clock = SystemClock()
     registry = load_registry(
-        settings.providers_file, ai_mode=settings.ai_mode, queue_name=settings.queue_name
+        settings.providers_file,
+        ai_mode=settings.ai_mode,
+        queue_name=settings.queue_name,
+        modal_spend_cap_usd=settings.modal_spend_cap_usd,
+        modal_rate_per_second=settings.modal_rate_per_second,
     )
 
     def job() -> object:

@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-11-17 — Modal adapters (RED, phase b)
+- Added tests/unit/modal_ai/ (test_modal_stt, test_modal_tts, test_cloud_extra_and_import_safety, conftest), tests/fixtures/modal_fake.py, docs/test-tree/modal-adapters.md. Contract: vidgen.infrastructure.modal_ai.{client,errors,stt,tts}; pyproject extra cloud = modal==X.Y.Z. Fails on missing modules and missing extra. No wiring or lip sync tests.
+
 ## 2026-10-30 — RM-G3 (remove redundant red set)
 - Removed: the redundant G3 adapter test set (tests/unit/infra/ai/, docs/test-tree/m2-real-ai.md). The adapters were built as vidgen.infrastructure.local_ai and are covered by tests/unit/ai_local/. The Admin approved the deletion. Those tests failed at collection with ModuleNotFoundError.
 
@@ -186,3 +189,11 @@ Newest first. One entry per task.
 ## 2026-11-18 - CHOOSER PRESELECT RED (PR 24 e2e)
 - provider-chooser.test.tsx: E1 changed (single selectable is preselected), N1 adjusted, new PS1-PS8; e2e full-flow.spec.ts TT-UI-E2E-P2c goes through the chooser. No other e2e spec approves a preview.
 - Result: 5 new/changed red (E1, PS2, PS4, PS6, PS8), rest green; scroll-region.test.tsx still red from the earlier A11Y-SCROLL step.
+
+## 2026-11-17 - Modal adapters VERIFY (phase b)
+- Added tests/unit/modal_ai/test_modal_client.py (stub `modal` module; 4 methods, error translation, from_name failure) and test_modal_tts_extra.py (UTF-8 byte accounting, two cloner instances, failed row bytes, empty text).
+- modal_ai coverage 100 % (stmts + branches). No backend defects.
+
+## 2026-11-17 - Modal adapters RED (no exception link)
+- Added tests/unit/modal_ai/test_no_exception_link.py: RemoteAuthError must have `__cause__` and `__context__` None (call_remote via STT/TTS synthesize/upload; _translate via stub modal) and no token in chain or traceback. Extra-scope tests for RemoteTimeoutError/RemoteCrashError from _translate.
+- Result: 6 fail (context still set because the raise is inside the except block), 65 pass. Backend fix: raise outside the except block.

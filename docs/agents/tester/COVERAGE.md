@@ -269,3 +269,8 @@ Verify additions: RP-E2E-P1/N1 (two workers, two queues on one StubBroker), RP-W
 
 ## Defects in backend/frontend found
 None blocking. Open for AC9: a real second OS process worker is not exercised (the broker is in memory).
+
+## Modal adapters (vidgen.infrastructure.modal_ai) - verify
+- Coverage 100 % on every module (_guard, client, errors, modal_client, stt, tts); statements and branches.
+- Added in verify: 27 tests (positive 7, negative 16, edge 4 groups incl. unicode bytes, two cloners, failed-row accounting, empty text); modal_client tested via a stubbed `modal` module.
+- Defects: none. Note: RemoteAuthError keeps `__context__` (Python behaviour of `from None`) but it is hidden from tracebacks; token does not appear in formatted output.

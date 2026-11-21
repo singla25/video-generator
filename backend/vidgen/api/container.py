@@ -63,7 +63,7 @@ class AppDeps:
 class _NotConfiguredSpeechToText:
     """Placeholder until the fake/real STT adapters exist (T14 / M2); analysis then fails."""
 
-    def transcribe(self, audio: object) -> list[object]:
+    def transcribe(self, audio: object, hint: str | None = None) -> list[object]:
         raise RuntimeError("speech-to-text is not configured")
 
 
@@ -150,6 +150,7 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         stt=deps.speech_to_text or _default_stt(settings),
         clock=clock,
         confidence_threshold=settings.stt_confidence_threshold,
+        name_match_threshold=settings.name_match_threshold,
         sniff_consent=detect_consent_type,
     )
     rules = LoginRules(

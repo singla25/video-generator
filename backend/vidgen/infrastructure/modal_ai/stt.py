@@ -54,8 +54,12 @@ class ModalSpeechToText:
         self.bytes_sent = 0
         self.bytes_received = 0
 
-    def transcribe(self, audio: Path) -> list[Word]:
-        """Return words with timestamps; silence gives an empty list."""
+    def transcribe(self, audio: Path, hint: str | None = None) -> list[Word]:
+        """Return words with timestamps; silence gives an empty list.
+
+        ``hint`` is accepted for the port but not sent yet (the remote call has no field for it;
+        passing it is planned in track B).
+        """
         require_audio(audio)
         data = audio.read_bytes()  # call-sized clips only (ADR-013 Q2)
         raw = call_remote(lambda: self._client.transcribe(data))

@@ -20,8 +20,11 @@ from vidgen.ports.models import AuditEntry, SheetRow, TemplateRecord, VideoInfo
 class SpeechToText(Protocol):
     """Transcribes audio into words with timestamps."""
 
-    def transcribe(self, audio: Path) -> list[Word]:
-        """Return the words with timestamps and confidence."""
+    def transcribe(self, audio: Path, hint: str | None = None) -> list[Word]:
+        """Return the words with timestamps and confidence.
+
+        ``hint`` is the expected spoken name; adapters may use it to bias recognition.
+        """
         ...
 
 

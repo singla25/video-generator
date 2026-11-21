@@ -19,9 +19,9 @@ from vidgen.domain.values import Word
 # Below this closeness a word is not worth showing as a candidate.
 MIN_CANDIDATE_CLOSENESS = 0.4
 DEFAULT_MAX_CANDIDATES = 3
-# A key shorter than this is too little to compare: it is refused (one sound) ...
-MIN_KEY_LENGTH = 2
-# ... or needs an exact skeleton match (two sounds).
+# A typed name of fewer characters than this is refused (a single letter matches too much) ...
+MIN_TARGET_CHARS = 2
+# ... and a skeleton shorter than this needs an exact skeleton match, with no candidates.
 LOOSE_KEY_LENGTH = 3
 WEAK_COST = 0.5
 SIMILAR_COST = 0.5
@@ -167,11 +167,11 @@ def select_name_slot(
     A word is chosen only if closeness >= ``closeness_threshold`` AND confidence >=
     ``confidence_threshold`` (both inclusive). Otherwise up to ``max_candidates`` words with
     closeness >= MIN_CANDIDATE_CLOSENESS are returned, best first; they are never chosen
-    automatically. A target of one sound is refused; two sounds need an exact match and give
-    no candidates (too little to compare loosely).
+    automatically. A one-character target is refused; a target with fewer than three sounds
+    needs an exact skeleton match and gives no candidates (too little to compare loosely).
     """
     target_key = sound_key(target)
-    if len(target_key) < MIN_KEY_LENGTH:
+    if not target_key or len(_tokens(target)) < MIN_TARGET_CHARS:
         return NameMatch(None, ())
     strict = len(target_key) < LOOSE_KEY_LENGTH
     scored = [ScoredWord(w, closeness(target, w.text)) for w in words]

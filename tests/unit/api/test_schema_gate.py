@@ -114,10 +114,13 @@ def test_blocked_body_has_no_stack_trace_or_sql(build: Build) -> None:
         assert marker not in text
 
 
-@pytest.mark.parametrize("current", ["0002", None])
-def test_behind_still_allows_health_login_and_status(build: Build, current: str | None) -> None:
-    """SS-A-P2: the Admin can still reach health, auth and the status screen."""
-    api = build(FakeSchemaReader(current))
+def test_empty_still_allows_health_login_and_status(build: Build) -> None:
+    """SS-A-P2: on an empty database (no tables) health, auth and status still answer.
+
+    The behind case lives in tests/integration/api/test_schema_gate_behind.py: a behind database
+    has its tables (DD-44), so it needs a real one, not this empty sqlite.
+    """
+    api = build(FakeSchemaReader(None))
     assert api.get("/health").json() == {"status": "ok"}
     assert api.get("/system/status").status_code == 200
     login = api.post("/auth/login", json={"password": "wrong password"})

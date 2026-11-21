@@ -200,3 +200,4 @@ Newest first. One entry per task.
 
 ## 2026-11-22 - C-T1 startup schema check RED (BL-8)
 - Test tree docs/test-tree/schema-check.md; new tests for classify, reader, cached check, API gate, worker log, settings, no-runtime-migration, frontend banner. All fail until backend/frontend implement it.
+- 2026-11-22 C-V1: behind-schema tests moved to tests/integration/api/test_schema_gate_behind.py (database with tables); added throttle-still-active test.

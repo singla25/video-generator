@@ -1,0 +1,21 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Whisper model size test (first result, 2026-11-22)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Whisper model size test (first result, 2026-11-22)</h1>
+<p>Run during the overnight run (DD-41, DD-42). Offline, on this Mac's CPU, with the Whisper weights the Admin approved (small and medium, public <code>Systran/faster-whisper-*</code>, stored in the git-ignored work folder; large-v3 was not downloaded). Data: the made-up <strong>neutral demo template</strong> (<code>neutral_demo/demo_template.mp4</code>, 10.5 s), no voter data. The spoken name in the video is राहुल; the typed name was <code>Rahul</code>. Script: <code>backend/scripts/whisper_size_test.py</code>.</p>
+<table><tr><th>Size</th><th>Name found</th><th>Closeness</th><th>Seconds (load + run)</th><th>Peak memory</th><th>What Whisper wrote</th></tr><tr><td>small</td><td>yes</td><td>1.00</td><td>8.9</td><td>1368 MB</td><td>रहुल</td></tr><tr><td>medium</td><td>yes</td><td>1.00</td><td>10.8</td><td>2317 MB</td><td>राहुल</td></tr></table>
+<h2>What it says</h2>
+<ul><li>Both sizes find the name. Small wrote the word slightly wrong, but the new sound-based matching still accepted it.</li></ul>
+<p>  Medium wrote it correctly.</p>
+<ul><li>Small is about 1 GB lighter and a little faster.</li><li>This is <strong>one demo clip</strong>. It does not prove small is enough for real templates. No default was changed. To decide, run</li></ul>
+<p>  the script on more demo templates (different voices, noise, names), then choose.</p>
+<h2>How to repeat</h2>
+<p><code>backend/scripts/whisper_size_test.py --weights-root &lt;folder with small/ and medium/ subfolders&gt; --name Rahul --audio &lt;16 kHz mono wav&gt;</code></p></div></body></html>

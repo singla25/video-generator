@@ -1,0 +1,92 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Plan — Better name detection in the template (BL-6)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Plan — Better name detection in the template (BL-6)</h1>
+<p><strong>Status:</strong> APPROVED by the Admin on 2026-11-22 (overnight run, DD-41). Decisions: 1 candidates only in the response (no migration); 2 plain sound rules (no new library); 3 closeness 0.8 as an adjustable setting; 4 download Whisper small and medium weights into the git-ignored weights folder, not large-v3. <strong>Starts after:</strong> PR #25 is merged (done) and migration 0003 is done (it is, on <code>vidgen</code>). Reason: this plan adds an optional hint argument to the speech-to-text port, and the Modal adapters in #25 implement that port too.</p>
+<h2>Goal</h2>
+<p>When you upload a template and type the name that is spoken in it (for example "Krishan"), the app finds that word in the audio far more often. Today it must match exactly, and it often misses. When it still cannot find it, it shows the closest 3 words so you can pick one instead of marking the time by hand.</p>
+<h2>Why it fails today (from the code)</h2>
+<ul><li><code>TemplateService.analyse</code> (<code>services/templates.py</code>) calls <code>select_target_word</code> (<code>domain/slot_match.py</code>).</li><li>That function compares the typed name and each heard word as exact text (after case and punctuation clean-up).</li><li>The speech-to-text adapter is told the language is Hindi, so the audio comes back in Devanagari ("कृष्ण"), but</li></ul>
+<p>  you type the name in Roman letters ("Krishan"). Those never match. Different Roman spellings ("Krishan",   "Krishn", "Kishan") do not match each other either.</p>
+<ul><li>A word under the confidence limit (<code>stt_confidence_threshold</code>, default 0.6) counts as "not found", with no clue</li></ul>
+<p>  why. The result is <code>SLOT_NOT_FOUND</code> and you have to mark the time by hand.</p>
+<h2>What we will build (plain language)</h2>
+<ol><li><strong>Sound-alike matching across scripts.</strong> Both the typed name and every heard word are turned into a simple</li></ol>
+<p>   "sound skeleton" (consonants and long vowels, with the usual Hindi/English spelling differences smoothed out:    v/w, sh/s, ph/f, double letters, matras, anusvara, nukta). Words are compared by how close the skeletons are,    from 0 to 1. No new library: plain Python rules we can test.</p>
+<ol><li><strong>Closest 3 candidates.</strong> If no word is close enough, the analysis result lists the 3 closest heard words with</li></ol>
+<p>   their time, their closeness and the speech-to-text confidence, including words below the confidence limit. The    dashboard shows them as buttons: "Use this word". Picking one only sets the slot; you still confirm it, as today.</p>
+<ol><li><strong>Whisper hint.</strong> The expected name is passed to Whisper as a hint (its <code>hotwords</code> / initial prompt option, in</li></ol>
+<p>   Devanagari and as typed), so it is more likely to write the name down.</p>
+<ol><li><strong>Model size test.</strong> A script compares Whisper model sizes on the demo templates (found or not, time, memory)</li></ol>
+<p>   and prints a table. You pick the default. No change of default without your decision.</p>
+<h2>Rules that do not change</h2>
+<ul><li>A found slot is never confirmed automatically (<code>slot_confirmed</code> stays false). You always confirm. The content</li></ul>
+<p>  lock and consent gate are untouched.</p>
+<ul><li>Local AI mode stays offline at run time. Real voter data is not used in tests: only made-up words.</li></ul>
+<h2>Acceptance criteria</h2>
+<ol><li>AC1 The typed name "Krishan" matches a heard "कृष्ण", "किशन" and "krishan" (and a labelled list of at least 20</li></ol>
+<p>   made-up name pairs, in both scripts, matches at 90 % or better). Unrelated words do not match.</p>
+<ol><li>AC2 A match needs closeness at or above a setting (<code>name_match_threshold</code>, default 0.8, range 0 to 1) and</li></ol>
+<p>   confidence at or above <code>stt_confidence_threshold</code>. Both are settings, no magic numbers.</p>
+<ol><li>AC3 When nothing passes, the result lists up to 3 closest words, best first, each with time, closeness and</li></ol>
+<p>   confidence. Words below the confidence limit may appear there but are never chosen automatically.</p>
+<ol><li>AC4 An empty transcript, one word, or silence gives a clear "not found" with an empty list. No crash.</li><li>AC5 The dashboard shows the candidates; picking one sets the slot, and the slot still needs your confirmation.</li><li>AC6 The expected name is passed to the speech-to-text adapter as an optional hint; with no hint, behaviour is the</li></ol>
+<p>   same as today. Fake and Modal adapters accept the new argument.</p>
+<ol><li>AC7 The model-size script runs offline on the demo templates and prints one table. It changes no setting.</li><li>AC8 Existing behaviour is kept: an exact match still works, and a typed name with a single character or only</li></ol>
+<p>   punctuation is refused clearly, not matched loosely.</p>
+<h2>Requirement tree</h2>
+<pre><code>Better name detection
+├── Functional
+│   ├── F1 Sound-skeleton for Roman and Devanagari text
+│   ├── F2 Closeness score and accept rule (closeness + confidence)
+│   ├── F3 Closest 3 candidates in the analysis result and the API
+│   ├── F4 Whisper hint (optional argument on the speech-to-text port)
+│   ├── F5 Dashboard: candidate buttons in the slot editor
+│   └── F6 Model-size comparison script
+├── Non-functional
+│   ├── Speed: matching 2000 heard words takes well under 100 ms
+│   ├── No new Python dependency, no network at run time
+│   └── Deterministic: same input, same answer (no AI model in the matcher)
+├── Constraints
+│   ├── Slot is always confirmed by a person
+│   ├── Port change must keep fake, local and Modal adapters working
+│   └── Typed and heard text may be unicode (Devanagari, nukta, chandrabindu, zero-width joiners)
+├── Out of scope
+│   ├── Several different names in one template (multi-name slots already exist)
+│   ├── Learning from your corrections
+│   └── Detecting the name without you typing it
+└── Open questions: none (4 decisions with defaults below, please confirm or change)</code></pre>
+<h2>Decisions for you (recommended answer first)</h2>
+<ol><li><strong>Keep candidates only in the response, not in the database (Recommended).</strong> No migration. After a page reload</li></ol>
+<p>   you press "Analyse again" (a few seconds on CPU). The alternative stores them in a new <code>slot_candidates</code>    column, which is migration 0004 and needs your separate approval.</p>
+<ol><li><strong>Plain rules for the sound skeleton (Recommended).</strong> Alternatives: a transliteration library (new dependency)</li></ol>
+<p>   or the local Qwen model (heavy, not in CI).</p>
+<ol><li><strong>Closeness default 0.8</strong>, tuned on the made-up list in AC1. Lower finds more but guesses more.</li><li><strong>Model-size test downloads Whisper weights</strong> for the sizes we do not have yet (MIT licence, a few GB). The</li></ol>
+<p>   script uses only a folder you name and never downloads by itself. Say yes to each size, or run it with the    sizes already on the Mac.</p>
+<h2>Test case tree (outline; the tester expands it in <code>docs/test-tree/better-name-detection.md</code>)</h2>
+<ul><li><strong>Skeleton and closeness:</strong> positive (Krishan / कृष्ण / किशन / Krishn), negative (Krishan vs Ramesh),</li></ul>
+<p>  edge (empty, one letter, only punctuation, mixed script, zero-width joiner, uppercase, long name, repeated   letters, numbers).</p>
+<ul><li><strong>Accept rule:</strong> positive (close and confident), negative (close but low confidence is a candidate, not a match;</li></ul>
+<p>  confident but far is nothing), edge (exactly at both thresholds, ties on closeness, same word twice).</p>
+<ul><li><strong>Candidates:</strong> positive (top 3 best first), negative (fewer than 3 words, none), edge (identical scores,</li></ul>
+<p>  duplicate words, a hundred words).</p>
+<ul><li><strong>Service and API:</strong> analysis returns match, candidates or not found; slot stays unconfirmed; picking a candidate</li></ul>
+<p>  sets the slot; unauthenticated and wrong template are refused.</p>
+<ul><li><strong>Whisper hint:</strong> passed when given, absent when not; fake, local and Modal adapters accept it.</li><li><strong>Dashboard:</strong> candidate buttons show, picking sets the slot, empty list shows the old message, errors show.</li><li><strong>Script:</strong> prints a table, runs without network, refuses a missing folder.</li></ul>
+<h2>Tasks</h2>
+<table><tr><th>ID</th><th>Task</th><th>Agent</th><th>Why this agent</th><th>Depends on</th><th>Model</th><th>Worktree?</th><th>Done when</th></tr><tr><td>N1</td><td>Expand test tree; write failing tests for matcher, service, API, hint, script</td><td>tester</td><td>Owns tests and the tree</td><td>PR #25 merged</td><td>haiku</td><td>feat/tester/name-detection</td><td>Tests fail for the right reasons</td></tr><tr><td>N2</td><td>Frontend failing tests for candidate buttons</td><td>tester</td><td>Owns frontend tests</td><td>N1</td><td>haiku</td><td>same</td><td>Fail for the right reasons</td></tr><tr><td>N3</td><td>Matcher: sound skeleton, closeness, accept rule, candidates (pure domain code)</td><td>backend-dev</td><td>Owns <code>backend/</code>, pure Python</td><td>N1</td><td>sonnet (the sound rules are the hard part)</td><td>feat/backend/name-detection</td><td>N1 matcher tests green</td></tr><tr><td>N4</td><td>Wire into <code>analyse</code>, API field, setting, hint on the port and all adapters</td><td>backend-dev</td><td>Same domain</td><td>N3</td><td>haiku</td><td>same</td><td>Service, API, hint tests green</td></tr><tr><td>N5</td><td>Model-size comparison script (offline)</td><td>backend-dev</td><td>Same domain</td><td>N3</td><td>haiku</td><td>same</td><td>Script test green</td></tr><tr><td>N6</td><td>Candidate buttons in the slot editor</td><td>frontend-dev</td><td>Owns <code>frontend/</code></td><td>N2, N4</td><td>haiku</td><td>feat/frontend/name-detection</td><td>N2 tests green</td></tr><tr><td>N7</td><td>Verify, coverage, run the size test with you</td><td>tester</td><td>Independent check</td><td>N3-N6</td><td>haiku</td><td>n/a</td><td>Full suite green</td></tr><tr><td>N8</td><td>Review, docs, PR</td><td>CEO</td><td>Review and records</td><td>N7</td><td>n/a</td><td>n/a</td><td>You approve merge</td></tr></table>
+<p>Order (TDD): N1 and N2 (red) → N3 → N4 and N5 → N6 → N7 → CEO review → you approve the merge.</p>
+<h2>Risks</h2>
+<table><tr><th>Risk</th><th>Mitigation</th></tr><tr><td>Loose matching picks the wrong word</td><td>Slot is always confirmed by a person; candidates show closeness; threshold is a setting</td></tr><tr><td>Short names match too much</td><td>Extra-strict rule for names under 3 sounds (AC8)</td></tr><tr><td>Port change breaks the Modal adapters</td><td>Plan starts after #25 merges; tests cover all three adapters</td></tr><tr><td>Made-up test names do not reflect real speech</td><td>Size test runs on your demo templates; you check the table</td></tr><tr><td>Whisper hint changes results for other words</td><td>Hint is optional and tested with and without it</td></tr></table>
+<h2>Migrations / dependencies (need separate approval)</h2>
+<ul><li>Migration: <strong>none</strong> with decision 1 as recommended. Option "store candidates" would be 0004.</li><li>New Python dependency: <strong>none</strong>.</li><li>Model weights: only if you say yes to a new Whisper size for the size test.</li></ul>
+<h2>Admin approval</h2>
+<ul><li>[x] Plan approved, decisions 1 to 4 confirmed (Admin, 2026-11-22)</li><li>[x] Task assignment approved (overnight delegated authority, DD-41)</li><li>[ ] Merge approved (the Admin merges the overnight PR; nothing goes to main alone)</li></ul></div></body></html>

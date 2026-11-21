@@ -1,0 +1,29 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree: better name detection, dashboard (A-N2, BL-6 AC5)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree: better name detection, dashboard (A-N2, BL-6 AC5)</h1>
+<p>Test file: tests/frontend/unit/name-candidates.test.tsx</p>
+<pre><code>Feature: Closest-match candidate buttons in the slot editor
+├── Scenario: analysis found no slot but returned candidates
+│   ├── ✅ 1, 2, 3 candidates -&gt; one list item and one &quot;Use this word&quot; button each (NC-P1)
+│   ├── ✅ best first; word, &quot;1.2-1.7 s&quot;, &quot;80% close&quot; for 0.804 (NC-P2)
+│   └── ✅ click sets the slot via PUT, group disappears, still needs &quot;Confirm slot&quot; (NC-P3)
+├── Scenario: no usable candidates
+│   ├── ❌ empty list -&gt; today&#x27;s message, no group (NC-N1)
+│   ├── ❌ slot found -&gt; no group (NC-N2)
+│   └── ❌ old response without the field -&gt; treated as empty (NC-N3)
+├── Scenario: picking fails
+│   └── ❌ 409 and 500 -&gt; message in role=&quot;alert&quot;, group kept (NC-N4)
+└── Scenario: odd cases
+    ├── ⚠️ very long and Devanagari words shown whole (NC-E1)
+    ├── ⚠️ double click -&gt; one request; all buttons disabled while pending (NC-E2)
+    ├── ⚠️ new analyse clears earlier candidates (NC-E3)
+    └── ⚠️ candidates not kept after leaving the page (NC-E4)</code></pre></div></body></html>

@@ -1,0 +1,28 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>README additions (to paste into README.md)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='index.html'>← All docs</a></nav><h1>README additions (to paste into README.md)</h1>
+<p>The guard did not let an agent edit <code>README.md</code> during the overnight run, so the new text is here. Paste each part where it says. Every statement below is true of the code on <code>integration/overnight</code>; nothing here was run live.</p>
+<h2>1. "Choose your mode" table: replace the <code>modal</code> row with</h2>
+<p>| <code>modal</code> | On Modal cloud GPUs. <strong>Demo and learning data only, never real voter data</strong> | A Modal account with credit and a token pair | <strong>Code ready, not deployed, not tried live.</strong> The speech-to-text and voice-cloning code and the Modal app (<code>backend/modal_app/app.py</code>) are written and tested offline against a fake. Lip sync on Modal is <strong>not available yet</strong> (licence decision pending). See <a href="docs/decisions/ADR-013-cloud-gpu-modal.html">ADR-013</a> |</p>
+<h2>2. New subsection after "Choose your mode": "Where to render"</h2>
+<p>When you approve a preview, the dashboard asks <strong>where to render</strong>: on this computer, or on a cloud provider when one is set up. A provider that is for demo data only is not offered for a batch that holds real data. Each cloud provider has a <strong>spend cap</strong>; when it is reached the batch pauses.</p>
+<p>The cap is a soft limit. With N rows rendering at once it can be passed by up to N-1 rows' cost. The cloud provider's own workspace limit is the hard stop, so always set one there too.</p>
+<h2>3. New subsection under "Usage": "Finding the name in the template"</h2>
+<p>Type the name as it is spoken in the template, in Roman letters (for example <code>Rahul</code>). The app listens to the template and matches by <strong>sound</strong>, so <code>Rahul</code> and the Devanagari word <code>राहुल</code> count as the same name. If no word is close enough, the dashboard shows up to <strong>3 closest words</strong> with their time and how close they are; press <strong>Use this word</strong> to mark the slot. You always confirm the slot yourself.</p>
+<ul><li>Setting: <code>VIDGEN_NAME_MATCH_THRESHOLD</code> (default <code>0.8</code>, from 0 to 1). Lower finds more but guesses more.</li><li>To compare Whisper sizes on your own demo templates (offline, no downloads), run</li></ul>
+<p>  <code>backend/scripts/whisper_size_test.py --weights-root &lt;folder with small/ and medium/ subfolders&gt; --name Rahul --audio &lt;16 kHz mono wav&gt;</code>.   First result: <a href="docs/reports/WHISPER-SIZE-TEST-2026-11-22.html">docs/reports/WHISPER-SIZE-TEST-2026-11-22.md</a>. It is one demo clip, so no default was changed.</p>
+<h2>4. New bullet in "Troubleshooting"</h2>
+<p><strong>The dashboard shows "The database needs migration ..."</strong> The database is behind the code. Most pages answer 503 until the admin applies the migration. The app never applies migrations by itself: run the guided start (it asks y/N) or the migration command, then reload. The page recovers within a few seconds.</p>
+<h2>5. Local mode with the Docker app (already in README)</h2>
+<p>The README already names <code>python3 scripts/setup.py native-worker</code>. Keep the honest status: only static and configuration checks were run; the first real run on a Mac (about 20 GB of RAM) is still to be done.</p>
+<h2>6. Optional setting to mention</h2>
+<p><code>VIDGEN_WARM_UP_ON_START</code> (default off) loads each AI model once at worker start, one at a time, so a missing weight shows immediately. It does not keep models in memory.</p></div></body></html>

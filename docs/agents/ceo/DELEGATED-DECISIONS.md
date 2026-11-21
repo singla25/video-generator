@@ -101,3 +101,18 @@ The native local-AI worker next to the Docker app is started by `python3 scripts
 
 ## DD-46 (2026-11-22) Modal mode scope without live calls (track B)
 Plan `docs/plans/modal-mode-offline.md`. Lip sync on Modal stays unavailable (licence, BL-7) and fails with a clear message, never a silent fake. No Modal command, token or network call. Undo: revert the track B merge.
+
+## DD-47 (2026-11-22) README text goes to docs, not README.md
+The guard refused backend-dev's edit of `README.md` in the docs track (agents may write only their own folders). The README text is in `docs/README-additions.md` for the Admin to paste. I did not work around the guard. Undo: nothing to undo.
+
+## DD-48 (2026-11-22) Modal mode details
+New failure code `LIPSYNC_UNAVAILABLE` ("Lip sync on the cloud is not available yet."): lip sync on Modal fails clearly, never silently fakes (BL-7 licence). Placeholder cost settings until the spike measures them: `modal_spend_cap_usd` 5.0 (the Admin's $5 limit) and `modal_rate_per_second` 0.0006. In modal mode the spelling pre-fill stays the fake transliterator (no remote version planned). Undo: revert the track B merge, or set the two settings.
+
+## DD-49 (2026-11-22) Modal app image carries the `vidgen` package
+CEO review found the Modal app imports `vidgen.infrastructure.modal_ai.protocol`, but the container image would not contain `vidgen`. Fixed test-first: the image chain ends with `add_local_python_source("vidgen")` (the import path has no imports, so it is light). `huggingface_hub` is pinned to 2.3.0 from the lock; not verified on Modal. Undo: revert commit 5764b22.
+
+## DD-50 (2026-11-22) Whisper size result recorded, no default changed
+Small and medium both found "Rahul" on the neutral demo template (small wrote रहुल, medium राहुल; 1.4 GB vs 2.3 GB; 8.9 s vs 10.8 s on CPU). One clip is not enough to change the default; the Admin decides after more demo clips. Report: `docs/reports/WHISPER-SIZE-TEST-2026-11-22.md`. Weights live in the git-ignored `backend/spikes/m2_mac/work/whisper_sizes/`.
+
+## DD-51 (2026-11-22) PR 26 branch merged into the overnight branch
+`docs/ceo/current-plan` (PR #26, still open, CI green) was merged into `integration/overnight` so the plan could be updated. When PR #26 is merged first or second, its changes are identical. Undo: revert that merge commit.

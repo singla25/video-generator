@@ -1,0 +1,33 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Plan — Modal mode without live calls (overnight track B)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Plan — Modal mode without live calls (overnight track B)</h1>
+<p><strong>Status:</strong> Scope given by the Admin on 2026-11-22 (overnight run, DD-41). Nothing here calls Modal: no <code>modal deploy</code>, no <code>modal run</code>, no token, no network. Everything is tested with a fake client or a stub <code>modal</code> module. No migration. The only dependency is the already approved <code>modal==1.6.4</code> extra.</p>
+<h2>Goal</h2>
+<p>When the Admin adds Modal credits in the morning, the only steps left are "deploy the app" and "run the spike". All the code that talks to Modal, and the Modal app itself, already exists and is tested offline.</p>
+<h2>Acceptance criteria</h2>
+<ol><li>AC1 One module holds the remote function names and the default app name, imported by both the client and the Modal</li></ol>
+<p>   app, so the two cannot drift apart (this replaces the guessed names).</p>
+<ol><li>AC2 <code>backend/modal_app/app.py</code> defines the remote functions <code>transcribe</code>, <code>has_sample</code>, <code>upload_sample</code> and</li></ol>
+<p>   <code>synthesize</code> with exactly the signatures the client calls, the model image (pinned) and one warm container class.    It is never imported by the API or the worker, only by the Modal command line.</p>
+<ol><li>AC3 <code>ai_mode="modal"</code> is accepted by the settings. The installer then offers <code>modal</code> (it still needs the clear yes</li></ol>
+<p>   to demo data only, C5, and the token pair).</p>
+<ol><li>AC4 In modal mode the adapter factory builds the Modal speech-to-text and voice-cloning adapters around the real</li></ol>
+<p>   client class, importing <code>modal</code> only when a call is made. Lip sync on Modal stays unavailable (licence decision    BL-7): a clear "not available yet" failure, never a silent fake.</p>
+<ol><li>AC5 The provider registry and the chooser work in modal mode: a Modal provider is listed as demo-only, a batch with</li></ol>
+<p>   real data is refused (C5), a demo batch is allowed once the provider is ready, and the spend cap still pauses.</p>
+<ol><li>AC6 The speech-to-text hint (track A) travels to the remote function.</li><li>AC7 Tests make zero network calls (a test fails if a socket is opened) and do not need <code>modal</code> installed.</li></ol>
+<h2>Out of scope</h2>
+<p>Lip sync on Modal (BL-7, licence), the CUDA image (G6), real deployment, real timings (the spike).</p>
+<h2>Tasks</h2>
+<table><tr><th>ID</th><th>Task</th><th>Agent</th><th>Depends on</th><th>Model</th><th>Done when</th></tr><tr><td>B1</td><td>Red tests: names module, app source with a stub <code>modal</code>, settings, installer, factory, registry/chooser, no network</td><td>tester</td><td>track A merged (port hint)</td><td>sonnet</td><td>fail for the right reasons</td></tr><tr><td>B2</td><td>Build: names module, <code>backend/modal_app/app.py</code>, settings, factory, registry entry, hint</td><td>backend-dev</td><td>B1</td><td>sonnet</td><td>tests green</td></tr><tr><td>B3</td><td>Verify, coverage</td><td>tester</td><td>B2</td><td>sonnet</td><td>full suite green</td></tr></table>
+<h2>Risks</h2>
+<table><tr><th>Risk</th><th>Mitigation</th></tr><tr><td>The app source cannot be run without Modal</td><td>Tests import it with a stub <code>modal</code> module and check names, signatures, image pins</td></tr><tr><td>Hidden live call</td><td>A socket-blocking test and no <code>modal</code> import at module level outside <code>modal_app</code></td></tr><tr><td>Real data sent to the cloud</td><td>Demo-only rule and the installer confirmation stay; tests keep them</td></tr></table></div></body></html>

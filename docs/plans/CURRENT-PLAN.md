@@ -1,4 +1,4 @@
-# Current plan (2026-11-22)
+# Current plan (2026-11-22, updated after the overnight run)
 
 Plain-language status. No code changed to write this.
 
@@ -21,34 +21,32 @@ Real voter data never goes to the cloud. The installer and the app enforce this.
 delete template · #11 GitHub Actions CI · #12 and #13 drafts and spelling · #14 spoken suffix, name mid-video ·
 #15, #16 and #17 several name slots · #18 guard update · #19 status report · #20 Docker app and installer ·
 #21 task-log cleanup · #22 M2 docs rescue · #23 cloud mode is demo-only (C5) · #24 render providers, chooser and
-spend cap (phase a). **Open: #25** (Modal adapters, phase b).
+spend cap (phase a). #25 Modal adapters (phase b). **Built overnight, waiting in one PR for your merge:** better name detection (BL-6), startup schema check (BL-8), chooser note about the spend-cap overshoot (BL-5, code part), local AI with the Docker app (BL-4, static checks), Modal mode with no live calls (BL-3). See `docs/reports/MORNING-REPORT.md`.
 
 ## 3. What is left
 | # | Item | Why | Needs from you | Effort | Blocked? |
 |---|------|-----|----------------|--------|----------|
-| 1 | Merge PR #25 | Modal adapters, tested against a fake client | Your merge | minutes | No |
+| 1 | ~~Merge PR #25~~ | Modal adapters, tested against a fake client | Done (merged) | done | No |
 | 2 | Migration 0003 | Adds provider, data class and cost columns; the app needs it | **Done on the real database `vidgen`.** Optional on `vidgen_demo`, only if you need it for new screenshots (section 5) | done | No |
-| 3 | Better name detection (BL-6) | Today "Krishan" in Roman letters misses the Devanagari word in the audio, and low-confidence words count as not found | Yes/no on the plan | Medium, 1-2 days of agent work | No |
-| 4 | Startup schema check (BL-8) | A clear "database needs migration" message instead of broken screens | Nothing | Small | No |
-| 5 | Docs and README for the chooser and cloud mode (BL-5) | Includes the spend-cap overshoot note | Nothing | Small | No |
-| 6 | Local AI with the Docker app and a native worker (BL-4) | Mac-local without hand-starting the worker | Plan approval | Medium | No |
+| 3 | ~~Better name detection (BL-6)~~ | Roman name now matches the Devanagari word by sound; closest 3 words when nothing matches | **Done, in the overnight PR.** You decide the default Whisper size after more demo clips | done | No |
+| 4 | ~~Startup schema check (BL-8)~~ | A clear "database needs migration" message instead of broken screens | **Done, in the overnight PR** | done | No |
+| 5 | Docs and README (BL-5) | Chooser note is built; the README text is ready in `docs/README-additions.md` | **Paste it into README.md** (agents may not edit it) | 10 min | No |
+| 6 | Local AI with the Docker app and a native worker (BL-4) | `python3 scripts/setup.py native-worker` exists, static checks only | First real run on the Mac (about 20 GB RAM) | 30 min | Needs you at the Mac |
 | 7 | Licence gate for production weights (G8) | Three lip-sync weights are cleared for the pilot only, not commercial use | Approve the plan and pick a replacement | Medium to large | Needs your decision |
-| 8 | Modal spike with real numbers (BL-1) | Speed and cost of the cloud path | A Modal card with a $5 workspace limit | Small | **Blocked: your card** |
+| 8 | Modal spike with real numbers (BL-1) | The Modal app is written and tested offline (not deployed) | Add credits and a $5 workspace limit, deploy, run the spike | Small | **Blocked: your card** |
 | 9 | Lip sync on Modal (BL-7) | Cloud lip sync | Your licence decision: (a) allow dev-only use of the two unverified weights on your Modal account with demo data, (b) replace the weights first, or (c) cloud for speech and voice only | Medium | **Blocked: your licence decision** |
 
 ## 4. Recommended order (Mac-local complete first, Modal waits for the card)
 1. Merge PR #25 (you).
 2. ~~Migration 0003~~ **Done** on the real database `vidgen`. The demo database `vidgen_demo` is still at 0002 (optional).
-3. **Better name detection (BL-6):** fuzzy Roman and Devanagari matching, the closest 3 candidates when nothing
-   passes, the expected name as a Whisper hint, and a Whisper model-size test on demo templates.
-4. Startup schema check (BL-8).
-5. Docs and README (BL-5).
-6. Local AI with the Docker app (BL-4).
-7. Licence gate (G8), once you approve the plan; needed before any production run.
-8. Waiting on you: Modal spike (card), then lip sync on Modal (licence decision), then switch cloud mode on.
+3. ~~Better name detection (BL-6)~~, ~~startup schema check (BL-8)~~, the chooser note, the native-worker command and the Modal
+   mode code are **built and waiting in the overnight PR** (merge it, then paste `docs/README-additions.md` into the README).
+4. First real run of local AI with the Docker app on the Mac (BL-4).
+5. Licence gate (G8), once you approve the plan; needed before any production run.
+6. Waiting on you: Modal spike (card), then lip sync on Modal (licence decision), then switch cloud mode on.
 
 ## 5. What you do yourself
-1. **Merge PR #25** on GitHub (checks are green).
+1. ~~Merge PR #25~~ **Done.** Next: review and merge the overnight PR (`integration/overnight`), then PR #26 if it is still open.
 2. ~~Migration 0003 on the real database~~ **Done:** `vidgen` is at `0003`.
 3. **Optional: migration 0003 on the demo database** `vidgen_demo` (now at `0002`), only if you need it for new
    screenshots. It only adds columns, nothing is deleted.

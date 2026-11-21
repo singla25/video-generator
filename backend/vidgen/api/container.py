@@ -16,6 +16,7 @@ from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.consent import detect_consent_type
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.login_state import SqlLoginStateStore
+from vidgen.infrastructure.db.schema_reader import SqlSchemaVersionReader
 from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.fakes import FakeSpeechToText
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
@@ -38,10 +39,12 @@ from vidgen.ports import (
 from vidgen.ports.models import TemplateRecord
 from vidgen.ports.progress import StageReporter
 from vidgen.ports.providers import QueueHeartbeats
+from vidgen.ports.schema import SchemaVersionReader
 from vidgen.services.audit import AuditTrail
 from vidgen.services.batch_support import BatchContext
 from vidgen.services.batches import BatchService
 from vidgen.services.login_guard import LoginGuard, LoginRules
+from vidgen.services.schema_check import SchemaCheck
 from vidgen.services.templates import TemplateService
 from vidgen.settings import Settings
 
@@ -58,6 +61,7 @@ class AppDeps:
     worker_heartbeat: WorkerHeartbeat | None = None
     stage_reporter: StageReporter | None = None
     queue_heartbeats: QueueHeartbeats | None = None
+    schema_reader: SchemaVersionReader | None = None
 
 
 class _NotConfiguredSpeechToText:
@@ -83,6 +87,7 @@ class Container:
     storage: Storage
     queue: JobQueue
     heartbeat: WorkerHeartbeat
+    schema: SchemaCheck
 
 
 def _default_stt(settings: Settings) -> SpeechToText:
@@ -200,6 +205,11 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         storage=storage,
         queue=queue,
         heartbeat=deps.worker_heartbeat or default_heartbeat(settings),
+        schema=SchemaCheck(
+            deps.schema_reader or SqlSchemaVersionReader(get_engine(settings.database_url)),
+            clock,
+            settings.schema_check_ttl_seconds,
+        ),
     )
 
 

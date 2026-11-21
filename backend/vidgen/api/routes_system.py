@@ -7,9 +7,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from redis.exceptions import RedisError
+from sqlalchemy.exc import SQLAlchemyError
 
 from vidgen.api.deps import container, require_session
 from vidgen.ports import JobQueue
+from vidgen.services.schema_check import SchemaCheck
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +27,24 @@ def _queue_depth(queue: JobQueue) -> int | None:
         return None
 
 
+def _schema_block(check: SchemaCheck) -> dict[str, Any] | None:
+    """Schema state for the banner; None when the database cannot answer."""
+    try:
+        status = check.status()
+    except SQLAlchemyError as exc:
+        logger.warning("schema check unavailable", extra={"error_type": type(exc).__name__})
+        return None
+    return {
+        "state": status.state.value,
+        "current": status.current,
+        "expected": status.expected,
+        "message": status.message,
+    }
+
+
 @router.get("/status")
 def system_status(request: Request) -> dict[str, Any]:
-    """Worker liveness, queue depth and Redis reachability. Never touches the database."""
+    """Worker liveness, queue depth, Redis reachability and the schema state."""
     app = container(request)
     try:
         worker_alive, redis_ok = app.heartbeat.is_alive(), True
@@ -35,9 +52,11 @@ def system_status(request: Request) -> dict[str, Any]:
         logger.warning("redis unreachable", extra={"error_type": type(exc).__name__})
         worker_alive, redis_ok = False, False
     depth = _queue_depth(app.queue)
+    schema = _schema_block(app.schema)
     return {
         "worker_alive": worker_alive,
         "queue_depth": depth,
         "redis_ok": redis_ok,
         "ai_mode": app.settings.ai_mode,
+        "schema": schema,
     }

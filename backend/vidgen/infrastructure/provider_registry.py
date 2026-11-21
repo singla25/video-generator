@@ -19,9 +19,12 @@ from vidgen.domain.providers import (
     ProviderKind,
     ProviderRegistry,
 )
+from vidgen.settings import DEFAULT_MODAL_RATE_PER_SECOND, DEFAULT_MODAL_SPEND_CAP_USD
 
 DEFAULT_ID = "default"
 DEFAULT_NAME = "This computer"
+MODAL_NAME = "Modal cloud GPU"
+MODAL_TOKEN_NAMES = ("MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET")  # names only, never values
 TABLE_KEY = "provider"
 QUEUE_PREFIX = "vidgen."
 ALLOWED_KEYS = frozenset(
@@ -40,9 +43,23 @@ ALLOWED_KEYS = frozenset(
 )
 
 
-def load_registry(path: Path | None, *, ai_mode: str, queue_name: str) -> ProviderRegistry:
-    """The registry from ``path``; no file means one provider built from today's settings."""
+def load_registry(
+    path: Path | None,
+    *,
+    ai_mode: str,
+    queue_name: str,
+    modal_spend_cap_usd: float = DEFAULT_MODAL_SPEND_CAP_USD,
+    modal_rate_per_second: float = DEFAULT_MODAL_RATE_PER_SECOND,
+) -> ProviderRegistry:
+    """The registry from ``path``; no file means one provider built from today's settings.
+
+    The two ``modal_*`` values only matter for the fallback provider in modal mode.
+    """
     if path is None or not path.exists():
+        if ai_mode == "modal":
+            return ProviderRegistry(
+                [_modal_fallback(queue_name, modal_spend_cap_usd, modal_rate_per_second)]
+            )
         return ProviderRegistry([_fallback(ai_mode, queue_name)])
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -62,6 +79,21 @@ def _fallback(ai_mode: str, queue_name: str) -> Provider:
         queue=queue_name,
         ai_mode=ai_mode,
         data_rule=DataRule.REAL_ALLOWED,
+    )
+
+
+def _modal_fallback(queue_name: str, spend_cap_usd: float, rate_per_second: float) -> Provider:
+    """Modal cloud GPU: demo data only, needs the token pair (names only), capped spend."""
+    return Provider(
+        id=DEFAULT_ID,
+        name=MODAL_NAME,
+        kind=ProviderKind.REMOTE_FUNCTION,
+        queue=queue_name,
+        ai_mode="modal",
+        data_rule=DataRule.DEMO_ONLY,
+        requires_env=MODAL_TOKEN_NAMES,
+        spend_cap_usd=spend_cap_usd,
+        rate_per_second=rate_per_second,
     )
 
 

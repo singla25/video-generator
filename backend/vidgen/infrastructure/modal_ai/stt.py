@@ -57,12 +57,11 @@ class ModalSpeechToText:
     def transcribe(self, audio: Path, hint: str | None = None) -> list[Word]:
         """Return words with timestamps; silence gives an empty list.
 
-        ``hint`` is accepted for the port but not sent yet (the remote call has no field for it;
-        passing it is planned in track B).
+        ``hint`` (for example a name) is sent to the remote function to bias recognition.
         """
         require_audio(audio)
         data = audio.read_bytes()  # call-sized clips only (ADR-013 Q2)
-        raw = call_remote(lambda: self._client.transcribe(data))
+        raw = call_remote(lambda: self._client.transcribe(data, hint))
         self.bytes_sent += len(data)
         words = parse_words(raw)
         self.bytes_received += len(json.dumps(raw, ensure_ascii=False).encode("utf-8"))

@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, Response
 
 from vidgen.api.deps import container, require_csrf
 from vidgen.api.errors import NOT_FOUND, VALIDATION_ERROR, ApiError
-from vidgen.api.schemas import SlotRequest, template_json
+from vidgen.api.schemas import SlotRequest, candidates_json, template_json
 from vidgen.api.uploads import PAYLOAD_TOO_LARGE, UploadTooLargeError, read_upload
 from vidgen.api.video_response import video_response
 from vidgen.domain.codes import FailureCode, plain_message
@@ -95,7 +95,10 @@ async def upload_consent(template_id: UUID, request: Request) -> JSONResponse:
 @router.post("/{template_id}/analyse")
 def analyse(template_id: UUID, request: Request, force: bool = False) -> dict[str, Any]:
     """Find the slot with speech-to-text (a stored result is reused unless ``force``)."""
-    return template_json(container(request).templates.analyse(template_id, force=force))
+    template, candidates = container(request).templates.analyse_with_candidates(
+        template_id, force=force
+    )
+    return {**template_json(template), "candidates": candidates_json(candidates)}
 
 
 @router.put("/{template_id}/slot")

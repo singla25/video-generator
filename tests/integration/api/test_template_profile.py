@@ -70,9 +70,22 @@ def test_devanagari_original_name_matches_the_same_devanagari_transcript_word(en
     assert analyse(env, template_id).json()["slot"]["start_s"] == 1.0
 
 
-def test_no_transliteration_in_m1_so_a_script_mismatch_needs_a_manual_slot(env: Env) -> None:
-    """Documented limit: 'Krishan' (Latin) does not match the Devanagari transcript word."""
+def test_roman_name_matches_the_devanagari_transcript_word_and_stays_unconfirmed(
+    env: Env,
+) -> None:
+    """AC1 (better name detection): 'Krishan' (Latin) is found as the Devanagari word."""
     env.stt.words = [word(DEVANAGARI_NAME, 1.0)]
+    template_id = new_template(env)  # original_name "Krishan"
+    body = analyse(env, template_id).json()
+    assert body["needs_manual_slot"] is False
+    assert body["slot"]["start_s"] == 1.0
+    assert body["slot_source"] == "AUTO"
+    assert body["slot_confirmed"] is False
+
+
+def test_an_unrelated_devanagari_word_still_needs_a_manual_slot(env: Env) -> None:
+    """A different name in another script is not a match."""
+    env.stt.words = [word("\u0930\u093e\u0939\u0941\u0932", 1.0)]  # Rahul
     template_id = new_template(env)  # original_name "Krishan"
     body = analyse(env, template_id).json()
     assert body["needs_manual_slot"] is True

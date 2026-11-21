@@ -301,3 +301,4 @@ Newest first. One entry per task.
 - Files: backend/vidgen/infrastructure/modal_ai/_guard.py, modal_client.py. Tests: tests/unit/modal_ai/test_no_exception_link.py (6) now green.
 - 2026-11-22 E-B1: scripts/setup.py native-worker subcommand, README local-mode status (static checks only).
 - 2026-11-22 C-B1 (BL-8): startup schema check — SchemaCheck (TTL cache), read-only SqlSchemaVersionReader, 503 DB_NEEDS_MIGRATION gate, status.schema, worker start ERROR, setting schema_check_ttl_seconds; login tolerates a behind DB. Open: existing API tests need an ok schema_reader double.
+- 2026-11-22 A-B1: sound-alike name matching (domain/name_match.py), name_match_threshold setting, STT hint on the port and adapters, candidates in the analyse response, backend/scripts/whisper_size_test.py. No migration.

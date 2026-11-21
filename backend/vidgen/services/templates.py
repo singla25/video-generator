@@ -15,7 +15,8 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from vidgen.domain.codes import DomainError, FailureCode
-from vidgen.domain.slot_match import Slot, select_target_word, validate_slot, validate_slots
+from vidgen.domain.name_match import NameMatch, ScoredWord, select_name_slot
+from vidgen.domain.slot_match import Slot, validate_slot, validate_slots
 from vidgen.ports import Clock, SpeechToText, Storage, TemplateRecord, UnitOfWork, VideoProbe
 from vidgen.services.audit import ACTOR_ADMIN, UowFactory
 from vidgen.services.errors import (
@@ -48,6 +49,7 @@ class TemplateService:
         stt: SpeechToText,
         clock: Clock,
         confidence_threshold: float,
+        name_match_threshold: float = 0.8,
         sniff_consent: ConsentSniffer,
     ) -> None:
         self._uow = uow
@@ -56,6 +58,7 @@ class TemplateService:
         self._stt = stt
         self._clock = clock
         self._threshold = confidence_threshold
+        self._name_match_threshold = name_match_threshold
         self._sniff_consent = sniff_consent
 
     # ---- reads -------------------------------------------------------------------------
@@ -153,12 +156,22 @@ class TemplateService:
 
     def analyse(self, template_id: UUID, *, force: bool = False) -> TemplateRecord:
         """Find the original name's slot with speech-to-text; reuse the stored result (AC6)."""
+        return self.analyse_with_candidates(template_id, force=force)[0]
+
+    def analyse_with_candidates(
+        self, template_id: UUID, *, force: bool = False
+    ) -> tuple[TemplateRecord, tuple[ScoredWord, ...]]:
+        """Like ``analyse``, also returning the closest words when none was accepted.
+
+        Candidates are not stored: a reused (not re-run) analysis returns none.
+        """
         with self._uow() as uow:
             template = self._load(uow, template_id)
             if template.analysed_at is not None and not force:
-                return template
+                return template, ()
             words = self._transcribe(template)
-            found = select_target_word(words, template.original_name, self._threshold)
+            match = self._select(words, template.original_name)
+            found = match.found
             template.analysed_at = self._clock.now()
             template.slot_confirmed = False
             template.extra_slots = ()  # automatic detection replaces the whole slot set
@@ -176,7 +189,7 @@ class TemplateService:
                 uow, "TEMPLATE_ANALYSED", template_id=str(template_id), found=found is not None
             )
             uow.commit()
-            return template
+            return template, match.candidates
 
     def set_slot(
         self,
@@ -235,6 +248,15 @@ class TemplateService:
             details=details,
         )
 
+    def _select(self, words: list[Any], name: str) -> NameMatch:
+        """Sound-alike choice of the name word with the configured thresholds."""
+        return select_name_slot(
+            words,
+            name,
+            confidence_threshold=self._threshold,
+            closeness_threshold=self._name_match_threshold,
+        )
+
     def _transcribe(self, template: TemplateRecord) -> list[Any]:
         """Run speech-to-text on a temporary copy of the stored video (STT_FAILED on error)."""
         with tempfile.NamedTemporaryFile(suffix=".mp4") as scratch:
@@ -242,7 +264,7 @@ class TemplateService:
                 shutil.copyfileobj(source, scratch)
             scratch.flush()
             try:
-                return list(self._stt.transcribe(Path(scratch.name)))
+                return list(self._stt.transcribe(Path(scratch.name), hint=template.original_name))
             except Exception as exc:
                 # Only the exception type is logged: its text could contain personal data.
                 logger.error("speech-to-text failed", extra={"error_type": type(exc).__name__})

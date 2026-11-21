@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
+from vidgen.domain.name_match import ScoredWord
 from vidgen.domain.slot_match import MAX_SLOTS
 from vidgen.ports import AuditEntry, TemplateRecord
 
 MAX_PASSWORD_CHARS = 1024
+CANDIDATE_DECIMALS = 3
 # The primary slot is one of the MAX_SLOTS, so at most this many extras come in a request.
 MAX_EXTRA_SLOTS = MAX_SLOTS - 1
 _Seconds = Annotated[float, Field(allow_inf_nan=False)]
@@ -56,6 +59,20 @@ def template_json(template: TemplateRecord) -> dict[str, Any]:
         "usable": template.usable,
         "created_at": None if template.created_at is None else template.created_at.isoformat(),
     }
+
+
+def candidates_json(candidates: Sequence[ScoredWord]) -> list[dict[str, Any]]:
+    """Public view of the closest heard words (closeness and confidence rounded)."""
+    return [
+        {
+            "text": c.word.text,
+            "start_s": c.word.start_s,
+            "end_s": c.word.end_s,
+            "closeness": round(c.closeness, CANDIDATE_DECIMALS),
+            "confidence": round(c.word.confidence, CANDIDATE_DECIMALS),
+        }
+        for c in candidates
+    ]
 
 
 def audit_json(entry: AuditEntry) -> dict[str, Any]:

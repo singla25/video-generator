@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     duration_tolerance_ms: int = Field(default=50, ge=0)
     loudness_tolerance_lu: float = Field(default=1.0, gt=0)
     stt_confidence_threshold: float = Field(default=0.6, ge=0, le=1)
+    # How alike a heard word and the typed name must sound to count as the name (0 to 1).
+    name_match_threshold: float = Field(default=0.8, ge=0, le=1)
 
     # Queue behaviour
     row_timeout_seconds: int = Field(default=600, gt=0)

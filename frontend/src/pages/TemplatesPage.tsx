@@ -1,6 +1,8 @@
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 
+import { clearAllCandidates } from '../api/candidates';
 import { useTemplates } from '../api/queries';
 import { EmptyState, ErrorState, Skeleton } from '../components/states';
 import { NewTemplateForm } from './templates/NewTemplateForm';
@@ -10,6 +12,9 @@ import { TemplateCard } from './templates/TemplateCard';
 export function TemplatesPage() {
   const templates = useTemplates();
   const [adding, setAdding] = useState(false);
+  const client = useQueryClient();
+  // Candidates live in memory for this visit only.
+  useEffect(() => () => clearAllCandidates(client), [client]);
 
   return (
     <div>

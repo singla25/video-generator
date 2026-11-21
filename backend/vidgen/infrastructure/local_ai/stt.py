@@ -18,12 +18,16 @@ class FasterWhisperSpeechToText:
     def __init__(self, weights_dir: Path, loader: Loader[Any] = load_whisper) -> None:
         self._model = LazyModel("speech-to-text", weights_dir, loader)
 
-    def transcribe(self, audio: Path) -> list[Word]:
-        """Return words with start/end seconds and confidence; silence gives an empty list."""
+    def transcribe(self, audio: Path, hint: str | None = None) -> list[Word]:
+        """Return words with start/end seconds and confidence; silence gives an empty list.
+
+        A non-empty ``hint`` (the expected name) is passed to Whisper as ``hotwords``.
+        """
         require_audio(audio)
-        segments, _info = self._model.get().transcribe(
-            str(audio), language=TRANSCRIBE_LANGUAGE, word_timestamps=True
-        )
+        options: dict[str, Any] = {"language": TRANSCRIBE_LANGUAGE, "word_timestamps": True}
+        if hint:
+            options["hotwords"] = hint
+        segments, _info = self._model.get().transcribe(str(audio), **options)
         return [
             Word(
                 text=raw.word.strip(),

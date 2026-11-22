@@ -50,3 +50,4 @@ Feature: Startup schema check
 Acceptance mapping: design points 1 -> SS-D, SS-S; 2 -> SS-R; 3 -> SS-S, SS-ST; 4 -> SS-A;
 5 -> SS-W; 6 -> TT-SB; "never migrates" -> SS-M.
 - SS-A-P2 (behind) and SS-A-N4 (DD-44): behind database has tables (integration test, real DB); login throttle still counts failures and locks out (429).
+- 2026-11-22 F-T1: tests/unit/api/test_schema_gate_mounted.py (SS-M-*: gate under the API mount, red); health, auth and status must stay open, lookalike paths blocked.

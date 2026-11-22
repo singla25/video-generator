@@ -21,7 +21,7 @@ from vidgen.services.render_support import RenderConfig
 from vidgen.settings import Settings
 from vidgen.worker.runner import render_config
 
-URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_test"
+URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_unit_nodb_test"
 ENV = "VIDGEN_SPOKEN_SUFFIX"
 DEFAULT_SUFFIX = "जी"  # "जी"
 

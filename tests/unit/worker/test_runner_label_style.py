@@ -9,7 +9,7 @@ import pytest
 from tests.integration.api.conftest import make_settings
 from vidgen.worker.runner import render_config
 
-URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_test"
+URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_unit_nodb_test"
 
 
 def test_render_config_defaults_to_the_bubble(

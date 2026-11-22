@@ -1,0 +1,32 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree: running the backend suite in parallel (pytest-xdist)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree: running the backend suite in parallel (pytest-xdist)</h1>
+<p>Task XD-T1. Goal: <code>pytest -n 4</code>, <code>-n auto</code> and <code>--dist loadgroup</code> give the same pass/skip counts as the serial run. Checks live in <code>tests/unit/meta/test_xdist_isolation.py</code> (static, no Docker/DB).</p>
+<h2>Audit: what the suite shares</h2>
+<table><tr><th>Resource</th><th>Finding</th><th>Action</th></tr><tr><td>PostgreSQL</td><td><code>tests/integration/conftest.py</code> makes random <code>vidgen_&lt;hex&gt;_test</code> / <code>vidgen_mig_&lt;hex&gt;_test</code> per session; each xdist worker is its own session, so no clash. Names were not traceable to a worker. Six unit modules carried the URL of the real <code>vidgen_test</code> database (never connected).</td><td>Worker id in names (<code>vidgen_gw0_&lt;hex&gt;_test</code>, <code>master</code> when serial); <code>vidgen_demo</code> added to PROTECTED; unit URLs renamed <code>vidgen_unit_nodb_test</code>.</td></tr><tr><td>Redis</td><td>Never real: doubles and Dramatiq <code>StubBroker</code>.</td><td>None.</td></tr><tr><td>TCP ports</td><td>Only <code>free_port()</code> (bind to port 0) in the Docker e2e; no fixed bind in the suite.</td><td>Static check forbids fixed binds.</td></tr><tr><td>Docker / compose</td><td>e2e used the fixed project <code>vidgen-t3test</code> (containers, volumes, images collide across workers).</td><td><code>project_name()</code> = <code>vidgen-t3test-&lt;worker&gt;</code>; module marked <code>xdist_group("docker-stack")</code> so the module-scoped stack is built once.</td></tr><tr><td>Files outside tmp_path</td><td>None found: repo files (<code>ROOT / ...</code>, <code>__file__</code>) are only read. <code>docs/html</code>, <code>.dev</code>, <code>media</code> are never written by tests.</td><td>AST check forbids repo-tree writes.</td></tr><tr><td>Environment variables</td><td>No <code>os.environ</code> assignment; <code>test_mode_switch</code> sets HF offline vars through app code and cleans up with monkeypatch.</td><td>Static check forbids assignments without monkeypatch.</td></tr><tr><td>Global state</td><td><code>dramatiq.set_broker</code> is always restored (two integration modules, e2e conftest). <code>sys.modules["modal"/"torch"]</code> use <code>monkeypatch.setitem</code>; <code>test_modal_whisper_size</code> pops its own key; no random seeds, no frozen time, no logging handlers left behind (<code>setLevel</code> on a test logger only). Per worker process, so nothing crosses workers.</td><td>None.</td></tr><tr><td>Wall-clock bounds</td><td>10 tests assert <code>perf_counter</code> bounds (0.5 s to 10 s); the hanging-ffmpeg test also relies on a timeout. Under CPU load they can flake.</td><td>Tagged <code>xdist_group("timing")</code> (they run on one worker under <code>--dist loadgroup</code>, so they do not compete with each other); the two 0.5 s bounds raised to 2.0 s because plain <code>-n</code> ignores groups.</td></tr><tr><td>Session fixtures</td><td><code>test_db_url</code>, <code>migration_db_url</code>, <code>db_engine</code>: per-session, so per-worker; each worker pays create + <code>create_all</code> once.</td><td>None.</td></tr></table>
+<h2>Tree</h2>
+<pre><code>Feature: Parallel-safe backend suite
+├── Scenario: integration database names
+│   ├── ✅ names carry the worker id (gw0, gw13) or &quot;master&quot; when serial
+│   ├── ❌ cleanup refuses vidgen, vidgen_demo, vidgen_test, vidgen_migration_test, postgres and names not ending in _test
+│   └── ⚠️ 100 generated names are unique and never collide with the protected list
+├── Scenario: Docker stack e2e
+│   ├── ✅ project name is vidgen-t3test-&lt;worker&gt;
+│   └── ⚠️ module is one xdist_group(&quot;docker-stack&quot;)
+├── Scenario: shared resources scan
+│   ├── ❌ no test module hard-codes a real database name (allow-list for assertions only)
+│   ├── ❌ no fixed TCP port bind
+│   ├── ❌ no write under the repo tree outside tmp_path
+│   └── ❌ no os.environ assignment without monkeypatch
+└── Scenario: wall-clock assertions
+    ├── ✅ every test with a perf_counter bound is tagged xdist_group(&quot;timing&quot;)
+    └── ⚠️ a new perf_counter bound in an unlisted module fails the scan</code></pre></div></body></html>

@@ -29,6 +29,7 @@ def validate_all(path: Path) -> int:
 
 
 @pytest.mark.parametrize("suffix", [".csv", ".xlsx"])
+@pytest.mark.xdist_group("timing")
 def test_one_thousand_rows_read_and_validate_in_under_three_seconds(
     tmp_path: Path, suffix: str
 ) -> None:
@@ -45,6 +46,7 @@ def test_one_thousand_rows_read_and_validate_in_under_three_seconds(
     assert elapsed < 3.0
 
 
+@pytest.mark.xdist_group("timing")
 def test_thousand_rows_with_all_duplicate_ids_is_still_fast(tmp_path: Path) -> None:
     """TT-AC4-E3."""
     path = write_csv(tmp_path / "s.csv", [HEADER, *[["Asha", "SAME"]] * 1000])

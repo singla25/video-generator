@@ -1,8 +1,9 @@
 """Shared fixtures for integration tests that need the throwaway Postgres database.
 
-Every pytest session creates its own databases ``vidgen_<8 hex>_test`` (models) and
-``vidgen_mig_<8 hex>_test`` (migrations) and removes them at the end, even after failures, so
-parallel runs by several agents cannot interfere. Only this session's databases are removed.
+Every pytest session (with xdist: every worker) creates its own databases
+``vidgen_<worker>_<8 hex>_test`` (models) and ``vidgen_mig_<worker>_<8 hex>_test`` (migrations)
+and removes them at the end, even after failures, so parallel runs by several agents cannot
+interfere. Only this session's databases are removed.
 ``VIDGEN_TEST_DATABASE_URL`` overrides the model database (then it is kept); the name must end in
 ``_test``. The databases ``vidgen``, ``vidgen_test`` and ``vidgen_migration_test`` are never
 created or removed here. Tables are created from the models and truncated before every test.
@@ -20,14 +21,23 @@ from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
 
 SERVER_URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/postgres"
-PROTECTED = frozenset({"vidgen", "vidgen_test", "vidgen_migration_test", "postgres"})
+PROTECTED = frozenset({"vidgen", "vidgen_demo", "vidgen_test", "vidgen_migration_test", "postgres"})
 LEGACY_MIGRATION_DB = "vidgen_migration_test"
 OVERRIDE_ENV = "VIDGEN_TEST_DATABASE_URL"
 
 
+def _worker_id() -> str:
+    """The pytest-xdist worker id (``gw0``...) or ``master`` when the run is not parallel."""
+    return os.environ.get("PYTEST_XDIST_WORKER", "master")
+
+
 def _random_name(prefix: str) -> str:
-    """A unique database name for this session, e.g. ``vidgen_1a2b3c4d_test``."""
-    return f"{prefix}_{secrets.token_hex(4)}_test"
+    """A unique database name for this session, e.g. ``vidgen_gw0_1a2b3c4d_test``.
+
+    The worker id makes a leftover database traceable to the worker that created it; the random
+    part keeps two runs (or two agents) apart.
+    """
+    return f"{prefix}_{_worker_id()}_{secrets.token_hex(4)}_test"
 
 
 def _admin_dsn(url: str) -> str:

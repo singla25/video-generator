@@ -86,6 +86,7 @@ def test_error_message_is_plain_and_does_not_dump_command_or_paths(
     assert "Error opening" not in info.value.message
 
 
+@pytest.mark.xdist_group("timing")
 def test_hanging_ffmpeg_is_killed_and_reported_as_render_timeout(
     tmp_path: Path, inputs: Inputs
 ) -> None:

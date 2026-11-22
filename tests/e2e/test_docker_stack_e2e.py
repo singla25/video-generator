@@ -21,11 +21,17 @@ import pytest
 
 from tests.unit.meta.conftest import ROOT
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+# One xdist group: the module-scoped stack is built once and its tests share it (--dist loadgroup).
+pytestmark = [pytest.mark.e2e, pytest.mark.slow, pytest.mark.xdist_group("docker-stack")]
 
-PROJECT = "vidgen-t3test"
+PROJECT_BASE = "vidgen-t3test"
 BUILD_TIMEOUT_S = 1800
 HEALTH_TIMEOUT_S = 180
+
+
+def project_name() -> str:
+    """Compose project name unique per xdist worker, so two workers never share containers."""
+    return f"{PROJECT_BASE}-{os.environ.get('PYTEST_XDIST_WORKER', 'master')}"
 
 
 def docker_available() -> bool:
@@ -64,6 +70,7 @@ class Stack:
     """Handle on the isolated compose project."""
 
     def __init__(self, settings: Path, media: Path) -> None:
+        self.project = project_name()
         self.api_port = free_port()
         self.dashboard_port = free_port()
         self.vars = {
@@ -83,7 +90,7 @@ class Stack:
                 shutil.which("docker") or "docker",
                 "compose",
                 "-p",
-                PROJECT,
+                self.project,
                 "--profile",
                 "app",
                 *args,

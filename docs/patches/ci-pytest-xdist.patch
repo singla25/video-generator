@@ -1,0 +1,12 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -98,7 +98,7 @@
+         run: uv run mypy --strict backend/vidgen
+ 
+       - name: Tests (pytest)
+-        run: uv run pytest -q -p no:cacheprovider
++        run: uv run pytest -q -p no:cacheprovider -n auto --dist loadgroup
+ 
+   frontend:
+     runs-on: ubuntu-24.04

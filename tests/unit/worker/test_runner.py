@@ -13,7 +13,7 @@ from vidgen.domain.timing import TimingRules
 from vidgen.services.render_row import RenderConfig, RowRenderer
 from vidgen.worker.runner import FONT_DIR, build_renderer, render_config
 
-URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_test"
+URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_unit_nodb_test"
 
 
 class Sink:

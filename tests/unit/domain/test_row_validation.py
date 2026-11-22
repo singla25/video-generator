@@ -194,6 +194,7 @@ def test_id_with_slashes_is_a_valid_id() -> None:
     assert check("Asha", n.SLASHED_ID).valid
 
 
+@pytest.mark.xdist_group("timing")
 def test_ten_thousand_character_name_is_rejected_quickly() -> None:
     """TT-AC3-E8: no catastrophic backtracking."""
     started = time.perf_counter()
@@ -237,6 +238,7 @@ def test_validate_rows_is_lazy_and_streams() -> None:
     assert len(consumed) < 5
 
 
+@pytest.mark.xdist_group("timing")
 def test_duplicate_detection_scales_linearly() -> None:
     """TT-AC4-E3: 20,000 rows of the same ID validate fast (O(n))."""
     rows = [RowInput(i, "Asha", "SAME") for i in range(2, 20_002)]

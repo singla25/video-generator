@@ -156,6 +156,7 @@ def test_cancel_with_nothing_left_queued_changes_no_rows(env: Env, db: Engine) -
     assert set(row_status(db, batch_id).values()) == {"COMPLETED"}
 
 
+@pytest.mark.xdist_group("timing")
 def test_cancelling_a_thousand_row_batch_is_a_bulk_operation(env: Env, db: Engine) -> None:
     """TT-AC13-E9."""
     import time

@@ -26,16 +26,18 @@ print(&quot;torch&quot;, torch.__version__, &quot;| gpus visible:&quot;, torch.c
 print(&quot;arch list:&quot;, torch.cuda.get_arch_list())   # must contain sm_75 (T4)
 print(torch.zeros(1).cuda() + 1)                  # a real kernel runs</code></pre>
 <h2>Cell 2: install, KEEP the preinstalled torch (no torch install)</h2>
-<p>Chatterbox 0.1.7 pins an old torch and <code>transformers==5.2.0</code>; those pins are stale. We install its dependencies at the versions we tested, then add Chatterbox with <code>--no-deps</code>, so pip never replaces the preinstalled <code>torch 2.11.0+cu130</code>.</p>
+<p><strong>Kaggle runs Python 3.13.</strong> The old exact pins (<code>omegaconf==2.0.6</code>, <code>numpy==1.26.4</code> and the others) were for the MuseTalk setup and the Mac. Python 3.13's pip refuses <code>omegaconf==2.0.6</code> (invalid metadata) and numpy 1.26.4 has no Python 3.13 build, so they are gone. Only three pins stay: <code>faster-whisper==1.2.1</code>, <code>transformers==5.20.2</code> and <code>chatterbox-tts==0.1.7</code>. Everything else is installed unpinned, so pip picks versions that work on 3.13 and keeps Kaggle's own numpy. Chatterbox 0.1.7 pins an old torch and <code>transformers==5.2.0</code>; those pins are stale, so we add Chatterbox with <code>--no-deps</code>. pip then never replaces the preinstalled <code>torch 2.11.0+cu130</code>.</p>
 <pre><code>%%bash
-set -e
-python -c &quot;import torch, torchaudio; print(&#x27;before:&#x27;, torch.__version__, torchaudio.__version__)&quot;
-pip install -q &quot;faster-whisper==1.2.1&quot; &quot;transformers==5.20.2&quot; &quot;accelerate==1.15.0&quot; &quot;librosa==0.11.0&quot; \
-  &quot;s3tokenizer==0.3.0&quot; &quot;diffusers==0.29.0&quot; &quot;resemble-perth==1.0.1&quot; &quot;conformer==0.3.2&quot; &quot;safetensors==0.8.0&quot; \
-  &quot;pykakasi==2.3.0&quot; &quot;pyloudnorm==0.2.0&quot; &quot;omegaconf==2.0.6&quot; &quot;numpy==1.26.4&quot; &quot;soundfile==0.14.0&quot; &quot;huggingface_hub==2.3.0&quot;
+python --version
+python -c &quot;import torch, torchaudio, numpy; print(&#x27;before:&#x27;, torch.__version__, torchaudio.__version__, &#x27;numpy&#x27;, numpy.__version__)&quot;
+pip install -q &quot;faster-whisper==1.2.1&quot; &quot;transformers==5.20.2&quot;
+# Chatterbox&#x27;s own dependencies, unpinned. Each one separately, so one failure does not hide the others.
+for p in accelerate librosa s3tokenizer diffusers resemble-perth conformer safetensors pykakasi pyloudnorm omegaconf soundfile huggingface_hub; do
+  pip install -q &quot;$p&quot; || echo &quot;FAILED: $p&quot;
+done
 pip install -q --no-deps &quot;chatterbox-tts==0.1.7&quot;
-python -c &quot;import torch; print(&#x27;after: &#x27;, torch.__version__)&quot;   # must be unchanged</code></pre>
-<p><strong>Then restart the kernel</strong> (Run menu, Restart session) because numpy was changed, and run Cell 1 again before Cell 3a. If <code>after:</code> shows a different torch, stop and send me the output.</p>
+python -c &quot;import torch, numpy; print(&#x27;after: &#x27;, torch.__version__, &#x27;numpy&#x27;, numpy.__version__)&quot;   # torch must be unchanged</code></pre>
+<p><strong>Then restart the kernel</strong> (Run menu, Restart session) to be safe, and run Cell 1 again before Cell 3a. If <code>after:</code> shows a different torch, or any line says <code>FAILED: &lt;package&gt;</code>, stop and send me the output.</p>
 <h2>Cell 3a: install the CUDA 12 and cuDNN 9 libraries (pip only)</h2>
 <p>faster-whisper runs on CTranslate2, which needs CUDA 12 cuBLAS and cuDNN 9. The machine has CUDA 13, so add the CUDA 12 libraries as pip wheels.</p>
 <pre><code>%%bash
@@ -129,5 +131,13 @@ torch.cuda.empty_cache()</code></pre>
 <pre><code>print(&quot;STT (size, load s, run s, GPU MiB):&quot;, stt_rows)
 print(subprocess.run([&quot;nvidia-smi&quot;, &quot;--query-gpu=name,memory.used,memory.total&quot;, &quot;--format=csv&quot;], capture_output=True, text=True).stdout)</code></pre>
 <p>Send me this output, the printed word lists from Cell 4, the dtype line and the Chatterbox timing lines.</p>
+<h2>Where it could fail</h2>
+<ul><li><strong>Python 3.13 (found in the first trial):</strong> Kaggle's Python is 3.13. Exact old pins can be refused by its pip or have no 3.13</li></ul>
+<p>  build (<code>omegaconf==2.0.6</code>, <code>numpy==1.26.4</code> did), so Cell 2 pins only faster-whisper, transformers and Chatterbox. An unpinned   package may still fail on 3.13 (the likely suspects are <code>resemble-perth</code>, <code>s3tokenizer</code>, <code>pykakasi</code>): Cell 2 prints   <code>FAILED: &lt;package&gt;</code> and goes on. Send me that line.</p>
+<ul><li><strong>numpy 2:</strong> Kaggle keeps its own numpy (version printed before and after). Chatterbox's metadata asks for an old numpy, which</li></ul>
+<p>  we ignore with <code>--no-deps</code>; if an import then fails with a numpy error, send me the message.</p>
+<ul><li><strong>Chatterbox on the preinstalled torch:</strong> untested. We only tested it on torch 2.14.1 on the Mac. If Cell 5 fails on import</li></ul>
+<p>  or on the first generate, send me the full error.</p>
+<ul><li><strong>bfloat16:</strong> if the <code>t3 dtype</code> line says bfloat16, the T4 runs it slowly. Tell me and I will adjust.</li><li><strong>cuDNN preload:</strong> if Cell 3b loads but Whisper still cannot find cuDNN, send me the exact error.</li></ul>
 <h2>Afterwards</h2>
 <p>Delete the uploaded dataset and the outputs, and turn Internet off. Nothing from this notebook goes into the project database.</p></div></body></html>

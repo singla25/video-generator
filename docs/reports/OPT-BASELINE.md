@@ -23,12 +23,12 @@ Retry-delay waiting alone is about 72 s of the 319 s serial run (sum of the repo
 | Job | Duration | Biggest steps |
 |---|---|---|
 | python | 250 s | pytest 181 s, apt-get 28 s, containers 19 s, mypy 8 s |
-| frontend | 136 s | vitest 64 s, npm ci 48 s, typecheck 9 s |
-| e2e (waits for python and frontend) | 203 s | e2e tests 95 s, npm ci 33 s, apt-get 31 s, Playwright browser 12 s |
+| frontend | 134 s | vitest 64 s, npm ci 48 s, typecheck 9 s |
+| e2e (waits for python and frontend) | 201 s | e2e tests 95 s, npm ci 33 s, apt-get 31 s, Playwright browser 12 s |
 | **Whole run (wall)** | **455 s** | |
 
 Before xdist (run 45035959027): pytest 378 s, python job 440 s, whole run 667 s. xdist already saved 212 s (32 %) of wall time in CI.
-The e2e job runs after the others (`needs: [python, frontend]`), so about 203 s of the 455 s is serial.
+The e2e job runs after the others (`needs: [python, frontend]`), so about 201 s of the 455 s is serial.
 CI prints no per-test durations (no `--durations`).
 
 ## 3. Static tools (local)
@@ -63,5 +63,5 @@ The core pipeline modules (`services/render_row.py`, `domain/timing.py`, `infras
 ## 6. What the next steps will be measured against
 
 - Local parallel suite: 99 s (80 s measured with the retry-delay fix, PR #48).
-- CI whole run: 455 s; python job 250 s; e2e 203 s.
+- CI whole run: 455 s; python job 250 s; e2e 201 s.
 - Coverage 97 %; mypy 5 s; app import about 650 ms.

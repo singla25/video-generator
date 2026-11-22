@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request, Response
 from sqlalchemy.exc import InterfaceError, OperationalError
@@ -19,6 +20,20 @@ DB_NEEDS_MIGRATION = "DB_NEEDS_MIGRATION"
 OPEN_PATHS = ("/health", "/system/status")
 OPEN_PREFIXES = ("/auth/",)
 DB_ERRORS = (OperationalError, InterfaceError, PoolTimeoutError)
+
+
+def _relative_path(scope: Mapping[str, Any]) -> str:
+    """Request path without the mount prefix.
+
+    Under a Starlette ``Mount`` the path may still carry the mount (``root_path``), so the
+    open-path check would never match behind the API prefix. Strip it only as a whole
+    segment prefix; older Starlette versions already strip it, so both shapes work.
+    """
+    path: str = scope["path"]
+    root: str = scope.get("root_path", "").rstrip("/")
+    if root and (path == root or path.startswith(root + "/")):
+        return path[len(root) :] or "/"
+    return path
 
 
 def _is_open(path: str) -> bool:
@@ -41,7 +56,7 @@ def install_schema_gate(app: FastAPI) -> None:
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         check: SchemaCheck | None = request.app.state.container.schema
-        if check is None or _is_open(request.url.path):
+        if check is None or _is_open(_relative_path(request.scope)):
             return await call_next(request)
         try:
             status = check.status()

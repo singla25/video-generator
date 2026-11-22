@@ -1,0 +1,59 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Test tree: Modal mode without live calls (track B)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Test tree: Modal mode without live calls (track B)</h1>
+<p>Plan: <code>docs/plans/modal-mode-offline.md</code>. All tests live in <code>tests/unit/modal_mode/</code> and run with sockets blocked (<code>tests/fixtures/network.py</code>), without <code>modal</code> installed (stub in <code>tests/fixtures/modal_stub.py</code>).</p>
+<h2>Contract chosen (the developer implements these names)</h2>
+<ul><li><code>vidgen.infrastructure.modal_ai.protocol</code>: <code>DEFAULT_APP_NAME="vidgen-ai"</code>, <code>FN_TRANSCRIBE</code>, <code>FN_HAS_SAMPLE</code>,</li></ul>
+<p>  <code>FN_UPLOAD_SAMPLE</code>, <code>FN_SYNTHESIZE</code>; stdlib only; <code>modal_client.py</code> imports them (no string literals left).</p>
+<ul><li><code>backend/modal_app/app.py</code> imports the names from <code>protocol</code>; four functions (module-level <code>app.function</code> or</li></ul>
+<p>  <code>modal.method</code> in the one <code>app.cls</code>); every image entry <code>name==version</code>; no <code>modal</code> in the image; no secrets.</p>
+<ul><li><code>RemoteModelClient.transcribe(audio, hint=None)</code>; <code>ModalRemoteClient</code> sends <code>(audio, hint)</code>; the fake records <code>transcribe_hints</code>.</li><li><code>Settings.ai_mode: Literal["fake","local","modal"]</code>, <code>Settings.modal_app_name = "vidgen-ai"</code>.</li><li><code>vidgen.infrastructure.modal_ai.factory.build_modal_adapters(settings, client=None)</code> returns an object with</li></ul>
+<p>  <code>.stt</code> (ModalSpeechToText), <code>.voice</code> (ModalVoiceCloner), <code>.lipsync</code> (UnavailableLipSyncer); the container and   <code>worker.runner.build_renderer</code> use it when <code>ai_mode == "modal"</code>.</p>
+<ul><li><code>vidgen.infrastructure.modal_ai.lipsync.UnavailableLipSyncer.sync(...)</code> raises <code>DomainError</code> with message</li></ul>
+<p>  "Lip sync on the cloud is not available yet." and a code other than <code>LIPSYNC_LOW_QUALITY</code>. No existing   FailureCode fits: a new one (e.g. <code>LIPSYNC_UNAVAILABLE</code>) is needed.</p>
+<ul><li>Fallback provider with <code>ai_mode == "modal"</code>: kind remote_function, demo_only, requires both token names, with a</li></ul>
+<p>  positive <code>spend_cap_usd</code> and <code>rate_per_second</code> (a remote provider needs a cap by existing validation).</p>
+<pre><code>Feature: Modal mode without live calls
+├── Scenario: shared names (AC1)                         test_protocol_names.py
+│   ├── ✅ constants have the agreed values, are distinct; modal_client re-uses them
+│   ├── ❌ client redefines or hard-codes a name literal; protocol imports a third-party package
+│   └── ⚠️ importing protocol in a fresh process loads no heavy module
+├── Scenario: Modal app source (AC2)                     test_modal_app_source.py, test_app_isolation.py
+│   ├── ✅ four functions with client signatures, one warm class, pinned image, imports names from protocol
+│   ├── ❌ checker catches: missing/renamed function, missing hint, unpinned or range entry, modal in image, secret-like text
+│   └── ⚠️ stub removed from sys.modules after load; token env values ignored; nothing in vidgen imports modal_app or modal at top level; syntax error fails loudly
+├── Scenario: hint travels (AC6)                         test_hint_forwarding.py
+│   ├── ✅ adapter -&gt; client -&gt; remote call with hint
+│   ├── ❌ (none: a missing hint is sent as None, not dropped)
+│   └── ⚠️ unicode (Devanagari, emoji), empty, 5000 characters, None
+├── Scenario: settings (AC3)                             test_settings_modal.py
+│   ├── ✅ modal accepted; app name default and env override
+│   ├── ❌ cloud / &quot;MODAL &quot; / empty / remote refused
+│   └── ⚠️ no token field in Settings
+├── Scenario: installer (AC3)                            test_installer_modal_mode.py, meta/test_setup_mode_gate.py
+│   ├── ✅ real Settings annotation lists modal; prompt offers three modes; tokens collected
+│   ├── ❌ declined demo-data confirmation writes nothing; empty token refused
+│   └── ⚠️ (existing meta suite keeps covering literal parsing)
+├── Scenario: factory (AC4)                              test_factory.py
+│   ├── ✅ builds Modal STT and TTS around injected or real client with settings.modal_app_name
+│   ├── ❌ lip sync raises the clear domain error, writes no file
+│   └── ⚠️ no modal import on build or on import (fresh process); remote call without package -&gt; ImportError
+├── Scenario: container and worker (AC4)                 test_container_modal.py
+│   ├── ✅ container uses ModalSpeechToText; renderer uses ModalVoiceCloner + UnavailableLipSyncer
+│   └── ⚠️ builds with modal blocked and no tokens; no faster_whisper/torch loaded
+├── Scenario: registry, chooser, guard (AC5)             test_registry_chooser_modal.py
+│   ├── ✅ fallback is demo-only remote function; ready with tokens + heartbeat; demo batch allowed
+│   ├── ❌ real data refused; not ready (token missing or empty, no heartbeat); worker guard pauses real batch
+│   └── ⚠️ spend cap pauses at the cap; cost = seconds x rate; fake/local fallbacks unchanged
+└── Scenario: no network (AC7)                           test_network_guard.py + autouse fixture
+    └── ❌ connect, getaddrinfo and create_connection raise</code></pre>
+<ul><li>B-V1: fixed 5 outdated/defective modal-mode tests (exit code, getsource loader, LIPSYNC_UNAVAILABLE, hint arg).</li></ul></div></body></html>

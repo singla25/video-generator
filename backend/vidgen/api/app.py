@@ -17,6 +17,7 @@ from vidgen.api import (
 )
 from vidgen.api.container import AppDeps, build_container
 from vidgen.api.errors import install_error_handlers
+from vidgen.api.schema_gate import install_schema_gate
 from vidgen.settings import Settings
 
 # Loggers of HTTP client libraries; they log full request URLs at INFO (see create_app).
@@ -31,6 +32,7 @@ def create_app(settings: Settings, *, deps: AppDeps | None = None) -> FastAPI:
     app = FastAPI(title="Dynamic Video Generator", docs_url=None, redoc_url=None)
     app.state.container = build_container(settings, deps or AppDeps())
     install_error_handlers(app)
+    install_schema_gate(app)
 
     @app.get("/health")
     def health() -> dict[str, str]:

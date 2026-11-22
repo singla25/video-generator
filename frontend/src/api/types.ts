@@ -29,6 +29,20 @@ export interface SheetReport {
   problems: Problem[];
 }
 
+// A word the analyser found close to the wanted name when it found no slot (BL-6).
+export interface NameCandidate {
+  text: string;
+  start_s: number;
+  end_s: number;
+  closeness: number;
+  confidence: number;
+}
+
+// The analyse response; an older server omits `candidates`.
+export interface AnalyseResult {
+  candidates?: NameCandidate[];
+}
+
 export interface Template {
   id: string;
   original_name: string;
@@ -181,4 +195,14 @@ export interface SystemStatus {
   redis_ok: boolean;
   /** Absent from older servers. */
   ai_mode?: 'fake' | 'local';
+  /** Absent from older servers. */
+  schema?: SchemaStatus;
+}
+
+/** Whether the database matches the code (BL-8). */
+export interface SchemaStatus {
+  state: 'ok' | 'behind' | 'ahead' | 'empty';
+  current: string | null;
+  expected: string;
+  message: string;
 }

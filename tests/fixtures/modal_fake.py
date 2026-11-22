@@ -37,6 +37,7 @@ class FakeRemoteClient:
     def __init__(self) -> None:
         self.samples: dict[str, bytes] = {}
         self.transcribe_calls: list[bytes] = []
+        self.transcribe_hints: list[str | None] = []  # the hint of each transcribe call
         self.synthesize_calls: list[tuple[str, str]] = []
         self.upload_calls: list[str] = []
         self.has_sample_calls: list[str] = []
@@ -50,10 +51,11 @@ class FakeRemoteClient:
         if self.error is not None:
             raise self.error
 
-    def transcribe(self, audio: bytes) -> Any:
-        """Record the call; return the configured words."""
+    def transcribe(self, audio: bytes, hint: str | None = None) -> Any:
+        """Record the call and its hint; return the configured words."""
         self._maybe_fail()
         self.transcribe_calls.append(audio)
+        self.transcribe_hints.append(hint)
         return self.words
 
     def has_sample(self, sample_hash: str) -> bool:

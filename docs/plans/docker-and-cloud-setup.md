@@ -16,6 +16,13 @@
 | P8 | Root-file grants for this task: backend-dev may write `scripts/setup.py`, `Dockerfile.backend`, `docker-compose.yml`; frontend-dev may write `Dockerfile.frontend`. |
 | P9 | The dashboard image is a production build served by a small static web server image that forwards `/api` to the API container (no Vite dev server in Docker). |
 
+## Update 2026-11-22 (overnight run, track E): the native worker command
+In `local` mode the worker runs natively on the Mac next to the Docker app. Start it with
+`python3 scripts/setup.py native-worker` (add `--print` to only show the environment, with secrets hidden). It points the
+worker at the Docker PostgreSQL and Redis on 127.0.0.1 and at the same host media folder the API container mounts.
+Status: checked by static and configuration tests only; the first real run on the Mac is still to be done (needs about
+20 GB of RAM, so not run overnight).
+
 ## Goal
 A user can set the product up from one terminal command and pick where AI rendering runs:
 

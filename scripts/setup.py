@@ -11,6 +11,7 @@ import argparse
 import ast
 import getpass
 import os
+import platform
 import secrets
 import shutil
 import subprocess
@@ -42,6 +43,14 @@ DEMO_NOTICE = (
 )
 DEMO_PROMPT = "I will use demo data only. Type yes to continue: "
 DEMO_DECLINED = "Stopped: Modal mode needs a clear yes to demo data only. Nothing was written."
+NATIVE_COMMAND = "python3 scripts/setup.py native-worker"
+NATIVE_STEPS = (
+    ("uv", "pip", "install", "--no-deps", "chatterbox-tts==0.1.7"),
+    ("uv", "run", "--extra", "local-ai", "python", "-m", "vidgen.worker"),
+)
+DEFAULT_WEIGHTS = Path("backend") / "spikes" / "m2_mac" / "work" / "local_ai_weights"
+LOOPBACK = "127.0.0.1"
+REDACTED = "***"
 # Keys that protect stored data: losing them makes existing encrypted rows unreadable.
 KEPT_KEYS = ("VIDGEN_ENCRYPTION_KEY", "VIDGEN_INDEX_KEY")
 
@@ -274,6 +283,89 @@ def install(root: Path, seams: Seams) -> int:
     seams.echo("Settings file written (owner-only permissions).")
     maybe_migrate(seams, root)
     seams.echo(f"Next: {COMPOSE_COMMAND}")
+    if mode == "local":
+        seams.echo(f"Local mode: then start the worker on this Mac with: {NATIVE_COMMAND}")
+    return 0
+
+
+def host_platform() -> tuple[str, str]:
+    """The host's ``(system, machine)``; the seam tests replace."""
+    return platform.system(), platform.machine()
+
+
+def read_env_file(path: Path) -> dict[str, str]:
+    """Parse ``KEY=value`` lines (quotes stripped); unreadable files raise InstallerError."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise InstallerError(
+            f"Cannot read the settings file {path} ({type(error).__name__}). "
+            "Run python3 scripts/setup.py first."
+        ) from None
+    values: dict[str, str] = {}
+    for line in text.splitlines():
+        key, sep, value = line.partition("=")
+        if sep and not key.lstrip().startswith("#"):
+            values[key.strip()] = value.strip().strip("'\"")
+    return values
+
+
+def build_native_env(root: Path, env_file: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Return ``(real, shown)`` worker variables; ``shown`` has the password redacted."""
+    system, machine = host_platform()
+    if (system, machine) != ("Darwin", "arm64"):
+        raise InstallerError(
+            f"The native worker needs a Mac with Apple silicon (macOS arm64); this is {system} "
+            f"{machine}."
+        )
+    if not env_file.is_file():
+        raise InstallerError(
+            f"Settings file not found: {env_file}. Run python3 scripts/setup.py first."
+        )
+    cfg = read_env_file(env_file)
+    if cfg.get("VIDGEN_AI_MODE") != "local":
+        raise InstallerError(
+            "The native worker is only for AI mode local; set VIDGEN_AI_MODE=local."
+        )
+    user, name = cfg.get("VIDGEN_DB_USER", "vidgen"), cfg.get("VIDGEN_DB_NAME", "vidgen")
+    password = cfg.get("VIDGEN_DB_PASSWORD", "devpassword")
+    host = f"{LOOPBACK}:{cfg.get('VIDGEN_DB_PORT', '5432')}/{name}"
+    media = Path(cfg.get("VIDGEN_MEDIA_DIR") or "./media")
+    weights = cfg.get("VIDGEN_LOCAL_AI_WEIGHTS_DIR") or str(root / DEFAULT_WEIGHTS)
+    real = {
+        "VIDGEN_AI_MODE": "local",
+        "VIDGEN_DATABASE_URL": f"postgresql+psycopg://{user}:{password}@{host}",
+        "VIDGEN_REDIS_URL": f"redis://{LOOPBACK}:{cfg.get('VIDGEN_REDIS_PORT', '6379')}/0",
+        "VIDGEN_WORKER_THREADS": "1",
+        "VIDGEN_STORAGE_ROOT": str(media if media.is_absolute() else root / media),
+        "VIDGEN_LOCAL_AI_WEIGHTS_DIR": weights,
+    }
+    shown = {
+        **real,
+        "VIDGEN_DATABASE_URL": real["VIDGEN_DATABASE_URL"].replace(
+            f":{password}@", f":{REDACTED}@"
+        ),
+    }
+    return real, shown
+
+
+def native_worker(
+    root: Path, env_file: Path | None, print_only: bool, echo: Callable[[str], None]
+) -> int:
+    """Print (``--print``) or run the two native-worker steps with the built environment."""
+    real, shown = build_native_env(root, env_file or root / DOTENV_NAME)
+    if print_only:
+        for key, value in shown.items():
+            echo(f"{key}={value}")
+        for step in NATIVE_STEPS:
+            echo(" ".join(step))
+        return 0
+    cfg = read_env_file(env_file or root / DOTENV_NAME)
+    child = {**os.environ, **cfg, **real}
+    for step in NATIVE_STEPS:
+        done = subprocess.run(list(step), cwd=root, env=child, check=False)  # noqa: S603
+        if done.returncode != 0:
+            return done.returncode
     return 0
 
 
@@ -281,12 +373,21 @@ def main(argv: Sequence[str] | None = None, seams: Seams | None = None) -> int:
     """Entry point; returns 0 on success, non-zero with a clear message otherwise."""
     parser = argparse.ArgumentParser(description="Guided installer for the video generator.")
     parser.add_argument("--root", default=str(Path(__file__).resolve().parent.parent))
+    sub = parser.add_subparsers(dest="command")
+    nw = sub.add_parser("native-worker", help="run the local-AI worker on this Mac")
+    nw.add_argument("--print", dest="print_only", action="store_true")
+    nw.add_argument("--env-file", default=None)
     args = parser.parse_args(argv)
     active = seams or real_seams()
     try:
+        if args.command == "native-worker":
+            env_file = Path(args.env_file) if args.env_file else None
+            return native_worker(Path(args.root), env_file, args.print_only, active.echo)
         return install(Path(args.root), active)
     except InstallerError as error:
         active.echo(f"Error: {error}")
+        if args.command == "native-worker":
+            return EXIT_NO_TERMINAL
         return EXIT_NO_TERMINAL if not active.is_interactive() else EXIT_FAILURE
     except EOFError:
         active.echo("Input was closed before the questions were answered. Nothing was written.")

@@ -114,3 +114,6 @@ Newest first. One entry per task.
 - `ProviderChooser`: the only selectable provider is preselected, derived as `chosen ?? onlySelectable` (a user choice always wins).
 - Files: frontend/src/components/{ScrollRegion,BatchListTable,RowsTable,DraftsSection}.tsx, pages/HistoryPage.tsx, pages/wizard/{StepMap,ProviderChooser}.tsx.
 - Tests: none added (red tests from tester); Vitest 646/646.
+- 2026-11-22 C-F1: SchemaBanner (BL-8) shows the server's migration message when the database is behind or a call answers DB_NEEDS_MIGRATION; error states hidden meanwhile. Files: frontend/src/layout/SchemaBanner.tsx, api/migrationState.ts, api/client.ts, api/types.ts, components/states.tsx, layout/AppShell.tsx.
+- 2026-11-22 A-F1 (BL-6): closest-match "Use this word" buttons in the slot editor (frontend/src/api/candidates.ts, pages/templates/CandidateButtons.tsx; edits to NewTemplateForm, SlotEditor, TemplatesPage, api/types.ts); Vitest 660/660.
+- 2026-11-22 D-F1 (BL-5): ProviderChooser shows a role=note about the spend-cap overshoot when an offered provider has a cap (frontend/src/pages/wizard/ProviderChooser.tsx); Vitest 682/682.

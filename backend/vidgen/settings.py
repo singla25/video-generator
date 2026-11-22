@@ -10,6 +10,9 @@ from typing import Literal
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_MODAL_SPEND_CAP_USD = 5.0  # the Admin's limit
+DEFAULT_MODAL_RATE_PER_SECOND = 0.0006  # placeholder until the spike measures the real cost
+
 
 class Settings(BaseSettings):
     """All configurable values. Secrets have no defaults and must be provided."""
@@ -30,7 +33,11 @@ class Settings(BaseSettings):
     redis_url: str = "redis://127.0.0.1:6379/0"
     storage_root: Path = Path("./media")
     ai_backend: Literal["fake", "real"] = "fake"  # legacy M1 switch; superseded by ai_mode
-    ai_mode: Literal["fake", "local"] = "fake"
+    ai_mode: Literal["fake", "local", "modal"] = "fake"
+    modal_app_name: str = Field(default="vidgen-ai", min_length=1)
+    # Placeholders until the Admin's spike measures the real cost. The cap is the Admin's $5 limit.
+    modal_spend_cap_usd: float = Field(default=DEFAULT_MODAL_SPEND_CAP_USD, gt=0)
+    modal_rate_per_second: float = Field(default=DEFAULT_MODAL_RATE_PER_SECOND, gt=0)
     local_ai_weights_dir: Path = Path("./models")
 
     # Upload limits
@@ -51,6 +58,8 @@ class Settings(BaseSettings):
     duration_tolerance_ms: int = Field(default=50, ge=0)
     loudness_tolerance_lu: float = Field(default=1.0, gt=0)
     stt_confidence_threshold: float = Field(default=0.6, ge=0, le=1)
+    # How alike a heard word and the typed name must sound to count as the name (0 to 1).
+    name_match_threshold: float = Field(default=0.8, ge=0, le=1)
 
     # Queue behaviour
     row_timeout_seconds: int = Field(default=600, gt=0)
@@ -64,6 +73,7 @@ class Settings(BaseSettings):
     providers_file: Path | None = None  # TOML registry of render providers; none = one default
     pause_poll_seconds: int = Field(default=5, gt=0)
     worker_threads: int = Field(default=2, gt=0)
+    schema_check_ttl_seconds: int = Field(default=5, ge=1, le=300)  # BL-8: cache of the check
     heartbeat_key: str = Field(default="vidgen:worker:heartbeat", min_length=1)
     heartbeat_ttl_seconds: int = Field(default=15, gt=0)
     heartbeat_interval_seconds: float = Field(default=5.0, gt=0)

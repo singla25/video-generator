@@ -10,7 +10,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from vidgen.api.app import create_app
-from vidgen.api.container import AppDeps
+from vidgen.api.container import AppDeps, default_schema_reader
 from vidgen.logging import configure_logging
 from vidgen.settings import Settings, get_settings
 
@@ -21,5 +21,8 @@ def create_server_app(settings: Settings | None = None, deps: AppDeps | None = N
     """Build the API app and mount it at ``/api``; settings default to the environment."""
     configure_logging()  # JSON logs; the uvicorn access log loses its query strings (C5)
     server = FastAPI(title="Dynamic Video Generator server", docs_url=None, redoc_url=None)
-    server.mount(API_PREFIX, create_app(settings or get_settings(), deps=deps))
+    settings = settings or get_settings()
+    # Production always gets the real reader; explicit deps (tests) decide for themselves.
+    deps = deps or AppDeps(schema_reader=default_schema_reader(settings))
+    server.mount(API_PREFIX, create_app(settings, deps=deps))
     return server

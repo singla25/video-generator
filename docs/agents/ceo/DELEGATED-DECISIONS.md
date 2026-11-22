@@ -83,3 +83,39 @@ After trying local mode the Admin reported: the typed spoken name was ignored af
 The Admin noticed that the voice says only the name while the template says "<name> ji" (the slot replaces both), and asked to test a template where the name is in the middle of the sentence. Decisions: (A) a global spoken suffix, default "जी", appended after the name (setting VIDGEN_SPOKEN_SUFFIX; empty switches it off; per-template suffix would need a migration and is out of scope); (B) mid-video slot support for the lip sync (the lip sync always started at 0:00): additive optional argument, tests first; a synthetic marketing template (two-wheeler dealer, name in the middle) is built first for testing. Plan: docs/plans/spoken-suffix-and-mid-slot.md. No migration. Undo: set VIDGEN_SPOKEN_SUFFIX to empty; revert the merge commits.
 ## DD-40 (2026-10-31) Several name slots per template
 The Admin's video says the name twice (2-3 s and 10-11 s) and the app supported one slot. Decision: template extra slots (additive nullable JSON column, migration 0002 run by the Admin after a rehearsal), the same spoken name at every slot, lip sync once per slot, the encoder run once per slot from the last slot to the first (earlier time ranges do not move), up to 5 slots, dashboard slot editor with "Add another name slot". One-slot templates are unchanged. Automatic detection of every occurrence is out of scope. Plan: docs/plans/multi-name-slots.md. Undo: do not run the migration or revert the merge commits (a template with no extra slots behaves as before).
+
+## DD-41 (2026-11-22) Overnight delegated-authority run
+Admin asleep about 7 hours. Authority: decide design details inside approved plans; assign tasks; merge track branches into `integration/overnight` with `--no-ff`; fix or revert red merges; rebuild docs; create (never run) a migration only if truly needed. NOT allowed: merge into main, run any migration, touch databases `vidgen` or `vidgen_demo`, add dependencies other than the approved `modal==1.6.4` extra, spend money, run any Modal command or read Modal credentials, read `.env`, delete files, force-push, change CLAUDE.md or `.claude/`, send real data anywhere. Tracks: A name detection (BL-6), B Modal mode with no live calls, C startup schema check (BL-8), D docs (BL-5), E local AI with the Docker app (static tests and docs only). Skipped: lip sync on Modal, CUDA image (G6), G8. At most 3 tracks in parallel; sonnet by default, haiku for docs, no opus. Outcome: one PR from `integration/overnight` to main, a morning report in `docs/reports/MORNING-REPORT.md`. Undo: close the PR and delete the integration branch (Admin).
+
+## DD-42 (2026-11-22) BL-6 plan approved with the four decisions
+Plan `docs/plans/better-name-detection.md`: candidates only in the response (no migration 0004); plain sound rules (no new library); `name_match_threshold` default 0.8 as a setting; Whisper small and medium weights may be downloaded into the git-ignored weights folder, not large-v3. Undo: revert the track merge.
+
+## DD-43 (2026-11-22) BL-6 design details
+Candidates are words with closeness at least 0.4 (`MIN_CANDIDATE_CLOSENESS`), at most 3, best first, shown only when no word is accepted. A target whose sound key is shorter than 3 characters needs an exact key match and gets no candidates (false-positive guard). The Whisper hint is the typed name, passed as `hotwords`. The slot is never auto-confirmed. Undo: revert the track A merge.
+
+## DD-44 (2026-11-22) BL-8 design: gate, cache, tolerant login
+`SchemaCheck` reads the database revision (read-only) and compares it with the newest shipped migration, cached 5 s (`schema_check_ttl_seconds`). While behind or empty, every API route except health, auth and system status answers 503 `DB_NEEDS_MIGRATION`; the status route carries a `schema` object; the dashboard shows a banner. The app never applies migrations. The schema reader is optional in test app builders (None = check off) so about 590 older tests stay unchanged; production wiring always passes the real reader. Login skips its throttle and audit writes ONLY when the state is "empty" (no tables at all); with tables present the login guard runs unchanged. Undo: revert the track C merge.
+
+## DD-45 (2026-11-22) Gap 2 as a `scripts/setup.py native-worker` subcommand
+The native local-AI worker next to the Docker app is started by `python3 scripts/setup.py native-worker` (`--print` shows the environment with secrets hidden). Checked by static and configuration tests only; the first real run needs about 20 GB of RAM and is NOT done overnight. Reason for the subcommand: setup.py is stdlib-only, testable, and inside the backend-dev write grants. The compose test uses PyYAML, which is available as a transitive dependency of the locked environment (no dependency change). Undo: revert the track E merge.
+
+## DD-46 (2026-11-22) Modal mode scope without live calls (track B)
+Plan `docs/plans/modal-mode-offline.md`. Lip sync on Modal stays unavailable (licence, BL-7) and fails with a clear message, never a silent fake. No Modal command, token or network call. Undo: revert the track B merge.
+
+## DD-47 (2026-11-22) README text goes to docs, not README.md
+The guard refused backend-dev's edit of `README.md` in the docs track (agents may write only their own folders). The README text is in `docs/README-additions.md` for the Admin to paste. I did not work around the guard. Undo: nothing to undo.
+
+## DD-48 (2026-11-22) Modal mode details
+New failure code `LIPSYNC_UNAVAILABLE` ("Lip sync on the cloud is not available yet."): lip sync on Modal fails clearly, never silently fakes (BL-7 licence). Placeholder cost settings until the spike measures them: `modal_spend_cap_usd` 5.0 (the Admin's $5 limit) and `modal_rate_per_second` 0.0006. In modal mode the spelling pre-fill stays the fake transliterator (no remote version planned). Undo: revert the track B merge, or set the two settings.
+
+## DD-49 (2026-11-22) Modal app image carries the `vidgen` package
+CEO review found the Modal app imports `vidgen.infrastructure.modal_ai.protocol`, but the container image would not contain `vidgen`. Fixed test-first: the image chain ends with `add_local_python_source("vidgen")` (the import path has no imports, so it is light). `huggingface_hub` is pinned to 2.3.0 from the lock; not verified on Modal. Undo: revert commit 5764b22.
+
+## DD-50 (2026-11-22) Whisper size result recorded, no default changed
+Small and medium both found "Rahul" on the neutral demo template (small wrote रहुल, medium राहुल; 1.4 GB vs 2.3 GB; 8.9 s vs 10.8 s on CPU). One clip is not enough to change the default; the Admin decides after more demo clips. Report: `docs/reports/WHISPER-SIZE-TEST-2026-11-22.md`. Weights live in the git-ignored `backend/spikes/m2_mac/work/whisper_sizes/`.
+
+## DD-51 (2026-11-22) PR 26 branch merged into the overnight branch
+`docs/ceo/current-plan` (PR #26, still open, CI green) was merged into `integration/overnight` so the plan could be updated. When PR #26 is merged first or second, its changes are identical. Undo: revert that merge commit.
+
+## DD-52 (2026-11-22) CI caught a schema-gate bug; fixed test first
+CI on the overnight PR failed the Docker stack test for the health endpoint: the health route answered 503 in the real containers. Cause: the gate compared the path including the api mount prefix, so health, login and the status route were never "open" on a database that is behind or empty. My earlier local run had skipped the Docker tests. Fix: failing test against the deployable app (`tests/unit/api/test_schema_gate_mounted.py`, 23 tests), then a whole-segment prefix strip in `schema_gate.py` (`feat/overnight/f-gate-prefix`). Lesson: always run the exact CI command, including `tests/e2e`. Undo: revert the merge of `feat/overnight/f-gate-prefix` (this would bring the bug back).

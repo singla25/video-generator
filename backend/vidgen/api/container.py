@@ -16,10 +16,12 @@ from vidgen.infrastructure.clock import SystemClock
 from vidgen.infrastructure.consent import detect_consent_type
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.login_state import SqlLoginStateStore
+from vidgen.infrastructure.db.schema_reader import SqlSchemaVersionReader
 from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
 from vidgen.infrastructure.fakes import FakeSpeechToText
 from vidgen.infrastructure.ffmpeg.probe import FfprobeVideoProbe
 from vidgen.infrastructure.local_ai.factory import build_ai_adapters
+from vidgen.infrastructure.modal_ai.factory import build_modal_adapters
 from vidgen.infrastructure.provider_registry import load_registry
 from vidgen.infrastructure.queue.dramatiq_queue import DramatiqJobQueue
 from vidgen.infrastructure.queue.redis_heartbeat import RedisQueueHeartbeats, RedisWorkerHeartbeat
@@ -38,10 +40,12 @@ from vidgen.ports import (
 from vidgen.ports.models import TemplateRecord
 from vidgen.ports.progress import StageReporter
 from vidgen.ports.providers import QueueHeartbeats
+from vidgen.ports.schema import SchemaVersionReader
 from vidgen.services.audit import AuditTrail
 from vidgen.services.batch_support import BatchContext
 from vidgen.services.batches import BatchService
 from vidgen.services.login_guard import LoginGuard, LoginRules
+from vidgen.services.schema_check import SchemaCheck
 from vidgen.services.templates import TemplateService
 from vidgen.settings import Settings
 
@@ -58,12 +62,13 @@ class AppDeps:
     worker_heartbeat: WorkerHeartbeat | None = None
     stage_reporter: StageReporter | None = None
     queue_heartbeats: QueueHeartbeats | None = None
+    schema_reader: SchemaVersionReader | None = None
 
 
 class _NotConfiguredSpeechToText:
     """Placeholder until the fake/real STT adapters exist (T14 / M2); analysis then fails."""
 
-    def transcribe(self, audio: object) -> list[object]:
+    def transcribe(self, audio: object, hint: str | None = None) -> list[object]:
         raise RuntimeError("speech-to-text is not configured")
 
 
@@ -83,12 +88,15 @@ class Container:
     storage: Storage
     queue: JobQueue
     heartbeat: WorkerHeartbeat
+    schema: SchemaCheck | None  # None = gate off (no reader supplied)
 
 
 def _default_stt(settings: Settings) -> SpeechToText:
     """Whisper in local mode, else the fake transcriber."""
     if settings.ai_mode == "local":
         return build_ai_adapters(settings).stt
+    if settings.ai_mode == "modal":
+        return build_modal_adapters(settings).stt
     if settings.ai_backend == "fake":
         return FakeSpeechToText()
     return _NotConfiguredSpeechToText()  # type: ignore[return-value]
@@ -121,6 +129,18 @@ def default_stage_reporter(settings: Settings) -> RedisStageReporter:
     return RedisStageReporter(redis.Redis.from_url(settings.redis_url))
 
 
+def default_schema_reader(settings: Settings) -> SqlSchemaVersionReader:
+    """The real read-only schema reader on the configured database (production wiring)."""
+    return SqlSchemaVersionReader(get_engine(settings.database_url))
+
+
+def _schema_check(settings: Settings, deps: AppDeps, clock: Clock) -> SchemaCheck | None:
+    """The cached schema check, or None (gate off) when no reader was supplied."""
+    if deps.schema_reader is None:
+        return None
+    return SchemaCheck(deps.schema_reader, clock, settings.schema_check_ttl_seconds)
+
+
 def build_container(settings: Settings, deps: AppDeps) -> Container:
     """Create the container; refuses to start without an admin password hash."""
     if not settings.admin_password_hash.get_secret_value().strip():
@@ -150,6 +170,7 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         stt=deps.speech_to_text or _default_stt(settings),
         clock=clock,
         confidence_threshold=settings.stt_confidence_threshold,
+        name_match_threshold=settings.name_match_threshold,
         sniff_consent=detect_consent_type,
     )
     rules = LoginRules(
@@ -160,9 +181,17 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         throttle_gap=timedelta(seconds=settings.login_throttle_seconds),
     )
     queue = deps.job_queue or _default_queue(settings)
-    ai = build_ai_adapters(settings)
+    ai = (
+        build_modal_adapters(settings)
+        if settings.ai_mode == "modal"
+        else build_ai_adapters(settings)
+    )
     registry = load_registry(
-        settings.providers_file, ai_mode=settings.ai_mode, queue_name=settings.queue_name
+        settings.providers_file,
+        ai_mode=settings.ai_mode,
+        queue_name=settings.queue_name,
+        modal_spend_cap_usd=settings.modal_spend_cap_usd,
+        modal_rate_per_second=settings.modal_rate_per_second,
     )
     batches = BatchService(
         BatchContext(
@@ -200,7 +229,8 @@ def build_container(settings: Settings, deps: AppDeps) -> Container:
         storage=storage,
         queue=queue,
         heartbeat=deps.worker_heartbeat or default_heartbeat(settings),
+        schema=_schema_check(settings, deps, clock),
     )
 
 
-__all__ = ["AppDeps", "Container", "TemplateRecord", "build_container"]
+__all__ = ["AppDeps", "Container", "TemplateRecord", "build_container", "default_schema_reader"]

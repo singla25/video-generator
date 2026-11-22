@@ -2,7 +2,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { apiFetch, apiUpload, type UploadOptions } from '../../api/client';
-import type { Template } from '../../api/types';
+import { clearAllCandidates, setCandidates } from '../../api/candidates';
+import type { AnalyseResult, Template } from '../../api/types';
 import { useUpload } from '../../api/useUpload';
 import { UploadFeedback } from '../../components/UploadFeedback';
 import { VideoDropZone } from './VideoDropZone';
@@ -33,7 +34,12 @@ export function NewTemplateForm({ onDone }: { onDone: () => void }) {
     void create.start(async (options: UploadOptions) => {
       const created = await apiUpload<Template>('/templates', form, options);
       // Best effort: finding the slot automatically; if it fails the user sets it by hand.
-      await apiFetch(`/templates/${created.id}/analyse`, { method: 'POST' }).catch(() => undefined);
+      const analysis = await apiFetch<AnalyseResult>(`/templates/${created.id}/analyse`, {
+        method: 'POST',
+      }).catch(() => undefined);
+      // In memory only: a new analyse replaces whatever candidates were kept before.
+      clearAllCandidates(client);
+      setCandidates(client, created.id, analysis?.candidates ?? []);
       return created;
     });
   }

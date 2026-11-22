@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { useMigrationMessage } from '../api/migrationState';
+
 /** Grey pulsing placeholder shown while data loads. */
 export function Skeleton({ className = 'h-24' }: { className?: string }) {
   return (
@@ -21,6 +23,9 @@ export function ErrorState({
   onRetry?: () => void;
   retryLabel?: string;
 }) {
+  // While the database needs a migration the banner says it once; no pile of errors.
+  const migrating = useMigrationMessage() !== null;
+  if (migrating) return null;
   return (
     <div role="alert" className="rounded-card border bg-card p-6 text-center">
       <p className="font-semibold text-status-failed">{title}</p>

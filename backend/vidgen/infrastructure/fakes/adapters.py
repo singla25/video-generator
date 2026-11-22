@@ -26,8 +26,8 @@ class FakeSpeechToText:
     def __init__(self, words: list[Word] | None = None) -> None:
         self._words = list(words or [])
 
-    def transcribe(self, audio: Path) -> list[Word]:
-        """Return the configured transcript."""
+    def transcribe(self, audio: Path, hint: str | None = None) -> list[Word]:
+        """Return the configured transcript (the hint is ignored)."""
         return list(self._words)
 
 

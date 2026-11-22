@@ -299,3 +299,9 @@ Newest first. One entry per task.
 ## 2026-11-17 - BL-3 modal_ai: no exception link on translated errors
 - `_guard.call_remote` and `modal_client._translate` no longer raise inside the except block: the fixed-message error is chosen in the handler and raised after it with `from None`, so `__cause__` and `__context__` are both None (the original exception, with its possible token text, is not reachable). Non-modal exceptions still propagate untouched; `modal` import stays lazy.
 - Files: backend/vidgen/infrastructure/modal_ai/_guard.py, modal_client.py. Tests: tests/unit/modal_ai/test_no_exception_link.py (6) now green.
+- 2026-11-22 E-B1: scripts/setup.py native-worker subcommand, README local-mode status (static checks only).
+- 2026-11-22 C-B1 (BL-8): startup schema check — SchemaCheck (TTL cache), read-only SqlSchemaVersionReader, 503 DB_NEEDS_MIGRATION gate, status.schema, worker start ERROR, setting schema_check_ttl_seconds; login tolerates a behind DB. Open: existing API tests need an ok schema_reader double.
+- 2026-11-22 A-B1: sound-alike name matching (domain/name_match.py), name_match_threshold setting, STT hint on the port and adapters, candidates in the analyse response, backend/scripts/whisper_size_test.py. No migration.
+- 2026-11-22 B-B1 (feat/overnight/b-modal-mode): Modal mode offline: protocol names, backend/modal_app/app.py, hint to remote STT, ai_mode modal + settings, build_modal_adapters, UnavailableLipSyncer (LIPSYNC_UNAVAILABLE), modal fallback provider (demo-only, cap/rate from settings). No live call. Open: 2 tests look wrong (see report); huggingface_hub pin 2.3.0 from uv.lock, unverified on Modal.
+- 2026-11-22 B-B1 follow-up: Modal image carries the vidgen package (add_local_python_source last).
+- 2026-11-22 F-B1: schema gate open paths (health, auth, system status) now match under the API mount (schema_gate.py).

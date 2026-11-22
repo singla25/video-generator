@@ -10,7 +10,7 @@ pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}p
 table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Plan — Modal mode without live calls (overnight track B)</h1>
-<p><strong>Status:</strong> Scope given by the Admin on 2026-11-22 (overnight run, DD-41). Nothing here calls Modal: no <code>modal deploy</code>, no <code>modal run</code>, no token, no network. Everything is tested with a fake client or a stub <code>modal</code> module. No migration. The only dependency is the already approved <code>modal==1.6.4</code> extra.</p>
+<p><strong>Status:</strong> BUILT and merged into the overnight branch, then <strong>PARKED (budget) by the Admin on 2026-11-22</strong>: the code stays behind the <code>modal</code> flag, no Modal commands, payments or accounts. Scope given by the Admin on 2026-11-22 (overnight run, DD-41). Nothing here calls Modal: no <code>modal deploy</code>, no <code>modal run</code>, no token, no network. Everything is tested with a fake client or a stub <code>modal</code> module. No migration. The only dependency is the already approved <code>modal==1.6.4</code> extra.</p>
 <h2>Goal</h2>
 <p>When the Admin adds Modal credits in the morning, the only steps left are "deploy the app" and "run the spike". All the code that talks to Modal, and the Modal app itself, already exists and is tested offline.</p>
 <h2>Acceptance criteria</h2>

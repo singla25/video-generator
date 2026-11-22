@@ -1,6 +1,6 @@
 # Plan — Modal mode without live calls (overnight track B)
 
-**Status:** Scope given by the Admin on 2026-11-22 (overnight run, DD-41). Nothing here calls Modal: no `modal deploy`,
+**Status:** BUILT and merged into the overnight branch, then **PARKED (budget) by the Admin on 2026-11-22**: the code stays behind the `modal` flag, no Modal commands, payments or accounts. Scope given by the Admin on 2026-11-22 (overnight run, DD-41). Nothing here calls Modal: no `modal deploy`,
 no `modal run`, no token, no network. Everything is tested with a fake client or a stub `modal` module.
 No migration. The only dependency is the already approved `modal==1.6.4` extra.
 

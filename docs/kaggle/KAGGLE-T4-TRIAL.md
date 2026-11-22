@@ -170,6 +170,30 @@ print(subprocess.run(["nvidia-smi", "--query-gpu=name,memory.used,memory.total",
 ```
 Send me this output, the printed word lists from Cell 4, the dtype line and the Chatterbox timing lines.
 
+## Results of the first successful run (2026-11-22)
+Kaggle, **one Tesla T4** (the other was hidden), Python 3.13, torch 2.11.0+cu130, float16 for Whisper. **Cost: 0** (free tier).
+Reported by the Admin from the notebook output.
+
+| Model | Load | Run | Memory | Notes |
+|-------|------|-----|--------|-------|
+| Chatterbox (voice), warm | 17.9 s | 4.24 s for 3.84 s of audio (about 1.1 times the audio length) | peak 3.2 GB | dtype float32 (not bfloat16, good for the T4) |
+| Whisper small | 0.6 s | 0.69 s | 743 MiB | word confidence about 0.65 on the first word |
+| Whisper medium | 11.1 s | 0.71 s | 1963 MiB | word confidence about 0.91 on the first word |
+
+- **Did both sizes find the name?** The Admin's note says both did but marks it "confirm after you zoom in". **Not yet confirmed**:
+  I have not recorded it as a fact. Admin: please confirm from the screenshot, then this line is updated.
+- **MuseTalk (lip sync) was not tested.** It is the heaviest step on the Mac, so the real cloud question is still open.
+- **First (cold) Chatterbox generation time** was not reported.
+- **Fixes the notebook needed on Kaggle:** unpinned dependencies (only `faster-whisper`, `transformers`, `chatterbox-tts` are
+  pinned), no `numpy` or `omegaconf` pins (Python 3.13), and the audio loaded with `librosa` because of the PyAV mismatch.
+- **Caveats:** one short clip, and it is Chatterbox's own clean synthetic speech, so the confidence numbers are likely better than
+  on real recorded speech. The Mac numbers in `docs/reports/WHISPER-SIZE-TEST-2026-11-22.md` (CPU, load included, a 10.5 s clip)
+  are not like-for-like with these.
+
+**Recommendation:** use **Whisper medium on a GPU** (clearly higher word confidence, the same run time, and 2 GB is nothing on a
+15 GB card) and **Whisper small on the Mac** (the Mac is tight on RAM and small was enough there: the sound matching accepted its
+output on the demo template). Not applied in code yet: today the size is whatever weights sit in the `whisper` folder.
+
 ## Where it could fail
 - **PyAV mismatch (found in the second trial):** faster-whisper 1.2.1 on Kaggle (Python 3.13) fails with
   `TypeError: open() got an unexpected keyword argument 'metadata_errors'` (from `av.container.core.open` via

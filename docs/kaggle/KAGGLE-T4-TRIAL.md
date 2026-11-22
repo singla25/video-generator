@@ -28,20 +28,26 @@ print(torch.zeros(1).cuda() + 1)                  # a real kernel runs
 ```
 
 ## Cell 2: install, KEEP the preinstalled torch (no torch install)
-Chatterbox 0.1.7 pins an old torch and `transformers==5.2.0`; those pins are stale. We install its dependencies at the
-versions we tested, then add Chatterbox with `--no-deps`, so pip never replaces the preinstalled `torch 2.11.0+cu130`.
+**Kaggle runs Python 3.13.** The old exact pins (`omegaconf==2.0.6`, `numpy==1.26.4` and the others) were for the MuseTalk
+setup and the Mac. Python 3.13's pip refuses `omegaconf==2.0.6` (invalid metadata) and numpy 1.26.4 has no Python 3.13 build, so
+they are gone. Only three pins stay: `faster-whisper==1.2.1`, `transformers==5.20.2` and `chatterbox-tts==0.1.7`. Everything
+else is installed unpinned, so pip picks versions that work on 3.13 and keeps Kaggle's own numpy.
+Chatterbox 0.1.7 pins an old torch and `transformers==5.2.0`; those pins are stale, so we add Chatterbox with `--no-deps`.
+pip then never replaces the preinstalled `torch 2.11.0+cu130`.
 ```python
 %%bash
-set -e
-python -c "import torch, torchaudio; print('before:', torch.__version__, torchaudio.__version__)"
-pip install -q "faster-whisper==1.2.1" "transformers==5.20.2" "accelerate==1.15.0" "librosa==0.11.0" \
-  "s3tokenizer==0.3.0" "diffusers==0.29.0" "resemble-perth==1.0.1" "conformer==0.3.2" "safetensors==0.8.0" \
-  "pykakasi==2.3.0" "pyloudnorm==0.2.0" "omegaconf==2.0.6" "numpy==1.26.4" "soundfile==0.14.0" "huggingface_hub==2.3.0"
+python --version
+python -c "import torch, torchaudio, numpy; print('before:', torch.__version__, torchaudio.__version__, 'numpy', numpy.__version__)"
+pip install -q "faster-whisper==1.2.1" "transformers==5.20.2"
+# Chatterbox's own dependencies, unpinned. Each one separately, so one failure does not hide the others.
+for p in accelerate librosa s3tokenizer diffusers resemble-perth conformer safetensors pykakasi pyloudnorm omegaconf soundfile huggingface_hub; do
+  pip install -q "$p" || echo "FAILED: $p"
+done
 pip install -q --no-deps "chatterbox-tts==0.1.7"
-python -c "import torch; print('after: ', torch.__version__)"   # must be unchanged
+python -c "import torch, numpy; print('after: ', torch.__version__, 'numpy', numpy.__version__)"   # torch must be unchanged
 ```
-**Then restart the kernel** (Run menu, Restart session) because numpy was changed, and run Cell 1 again before Cell 3a.
-If `after:` shows a different torch, stop and send me the output.
+**Then restart the kernel** (Run menu, Restart session) to be safe, and run Cell 1 again before Cell 3a.
+If `after:` shows a different torch, or any line says `FAILED: <package>`, stop and send me the output.
 
 ## Cell 3a: install the CUDA 12 and cuDNN 9 libraries (pip only)
 faster-whisper runs on CTranslate2, which needs CUDA 12 cuBLAS and cuDNN 9. The machine has CUDA 13, so add the CUDA 12
@@ -154,6 +160,18 @@ print("STT (size, load s, run s, GPU MiB):", stt_rows)
 print(subprocess.run(["nvidia-smi", "--query-gpu=name,memory.used,memory.total", "--format=csv"], capture_output=True, text=True).stdout)
 ```
 Send me this output, the printed word lists from Cell 4, the dtype line and the Chatterbox timing lines.
+
+## Where it could fail
+- **Python 3.13 (found in the first trial):** Kaggle's Python is 3.13. Exact old pins can be refused by its pip or have no 3.13
+  build (`omegaconf==2.0.6`, `numpy==1.26.4` did), so Cell 2 pins only faster-whisper, transformers and Chatterbox. An unpinned
+  package may still fail on 3.13 (the likely suspects are `resemble-perth`, `s3tokenizer`, `pykakasi`): Cell 2 prints
+  `FAILED: <package>` and goes on. Send me that line.
+- **numpy 2:** Kaggle keeps its own numpy (version printed before and after). Chatterbox's metadata asks for an old numpy, which
+  we ignore with `--no-deps`; if an import then fails with a numpy error, send me the message.
+- **Chatterbox on the preinstalled torch:** untested. We only tested it on torch 2.14.1 on the Mac. If Cell 5 fails on import
+  or on the first generate, send me the full error.
+- **bfloat16:** if the `t3 dtype` line says bfloat16, the T4 runs it slowly. Tell me and I will adjust.
+- **cuDNN preload:** if Cell 3b loads but Whisper still cannot find cuDNN, send me the exact error.
 
 ## Afterwards
 Delete the uploaded dataset and the outputs, and turn Internet off. Nothing from this notebook goes into the project database.

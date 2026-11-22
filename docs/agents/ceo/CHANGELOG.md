@@ -2,6 +2,9 @@
 
 Newest first. One entry per task.
 
+## 2026-11-22 — BL-14 plan written
+- Wrote `docs/plans/bl14-output-checks.md`: real output quality checker (AC8, AC9), additive QualityChecker port change (flagged for gate 7 review), worker wiring, periodic temp cleanup. No migration, no new dependency. Tests next.
+
 ## 2026-11-17 — Render providers plan drafted; backlog recorded
 - Drafted `docs/plans/render-providers.md` and ADR-013 amendment A1 (both proposed, not accepted): provider registry (name, kind local / remote function / remote worker, measured-only estimates, C5 data rule, derived setup state, spend cap), chooser at preview approval, one queue per provider, pause at the cap. Remote worker needs G6 (CUDA image), shared storage and a private network. Open questions Q1–Q3 for the Admin.
 - TASK-LOG: Admin's backlog order BL-1 … BL-7 recorded, including BL-6 (name detection, last) and BL-7 (lip sync on Modal blocked on licence (a)/(b)).

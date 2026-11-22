@@ -305,3 +305,5 @@ Newest first. One entry per task.
 - 2026-11-22 B-B1 (feat/overnight/b-modal-mode): Modal mode offline: protocol names, backend/modal_app/app.py, hint to remote STT, ai_mode modal + settings, build_modal_adapters, UnavailableLipSyncer (LIPSYNC_UNAVAILABLE), modal fallback provider (demo-only, cap/rate from settings). No live call. Open: 2 tests look wrong (see report); huggingface_hub pin 2.3.0 from uv.lock, unverified on Modal.
 - 2026-11-22 B-B1 follow-up: Modal image carries the vidgen package (add_local_python_source last).
 - 2026-11-22 F-B1: schema gate open paths (health, auth, system status) now match under the API mount (schema_gate.py).
+- 2026-11-22 DI-B1: .dockerignore excludes backend/spikes, nested node_modules/__pycache__/.DS_Store, model weights and media (**/ patterns). Only .dockerignore changed; no tests edited. No Docker run.
+- 2026-11-22 DI-B2: .dockerignore adds .venv* so suffixed root virtualenvs (.venv-m2) are excluded; .venv kept because test_docker_stack requires it.

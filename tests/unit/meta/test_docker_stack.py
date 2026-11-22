@@ -174,6 +174,8 @@ def test_dockerignore_keeps_secrets_state_and_heavy_folders_out_of_the_build() -
         ".worktrees",
         ".git",
     }
+    # `**/node_modules` (any depth) is accepted as equivalent to the root-only form.
+    entries |= {e.removeprefix("**/") for e in entries}
     assert wanted - entries == set()
 
 

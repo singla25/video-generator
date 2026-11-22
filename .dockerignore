@@ -5,15 +5,29 @@
 .dev
 media
 .venv
-node_modules
+# Root virtualenvs, including suffixed ones such as .venv-m2 (about 11 GB), never belong in an image.
+.venv*
+**/node_modules
 .worktrees
 .git
-__pycache__
-.pytest_cache
-.mypy_cache
-.ruff_cache
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.DS_Store
 docs
 tests
 frontend/dist
-*.mp4
-*.mov
+# backend/spikes: about 21 GB of experiment output and model weights, never needed in the images.
+backend/spikes
+# Model weights and large media: never needed in the images.
+**/*.safetensors
+**/*.pt
+**/*.pth
+**/*.ckpt
+**/*.onnx
+**/*.bin
+**/*.wav
+**/*.mp3
+**/*.mp4
+**/*.mov

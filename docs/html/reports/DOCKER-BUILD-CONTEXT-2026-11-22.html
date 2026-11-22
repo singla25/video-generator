@@ -1,0 +1,38 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Docker build context: 22 GB sent, 42 GB images (2026-11-22)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Docker build context: 22 GB sent, 42 GB images (2026-11-22)</h1>
+<h2>What was measured</h2>
+<p><code>docker compose --profile app build</code> transferred a <strong>22.23 GB build context</strong> and took about 10 minutes.</p>
+<table><tr><th>Image</th><th>Size</th></tr><tr><td><code>video-generator-api:latest</code></td><td><strong>42.3 GB</strong></td></tr><tr><td><code>video-generator-worker:latest</code></td><td><strong>42.3 GB</strong></td></tr><tr><td><code>video-generator-dashboard:latest</code></td><td>77.7 MB</td></tr><tr><td><code>vidgen-t3test-api:latest</code> / <code>-worker</code> (built by the Docker e2e test from a clean clone)</td><td><strong>1.24 GB</strong> each</td></tr></table>
+<p>The 1.24 GB test images show what the images should weigh. Layer sizes of the 42.3 GB api image (<code>docker history</code>):</p>
+<table><tr><th>Layer</th><th>Size</th></tr><tr><td><code>COPY backend ./backend</code></td><td><strong>22.2 GB</strong></td></tr><tr><td><code>uv sync --frozen --no-dev --no-install-project</code></td><td>258 MB</td></tr><tr><td><code>apt-get install ffmpeg libfribidi0 libraqm0 libharfbuzz0b</code></td><td>442 MB</td></tr><tr><td><code>pip install uv</code></td><td>45.7 MB</td></tr><tr><td>everything else</td><td>under 3 MB each</td></tr></table>
+<p>(The two 42.3 GB images share most layers, so the disk use is less than the sum.)</p>
+<h2>Cause</h2>
+<p><code>Dockerfile.backend</code> copies the whole <code>backend/</code> folder. <code>.dockerignore</code> does not exclude <code>backend/spikes/</code>, which holds about <strong>21 GB of git-ignored experiment output</strong> on this Mac:</p>
+<table><tr><th>Folder under <code>backend/spikes/m2_mac/work</code></th><th>Size</th></tr><tr><td><code>hf</code> (Hugging Face cache)</td><td>14 GB</td></tr><tr><td><code>musetalk</code></td><td>4.1 GB</td></tr><tr><td><code>whisper_sizes</code> (the small and medium weights downloaded for the size test)</td><td>1.9 GB</td></tr><tr><td><code>local_out</code> (demo outputs)</td><td>447 MB</td></tr><tr><td><code>torch</code></td><td>285 MB</td></tr><tr><td><code>real</code> (outputs and frames from the real samples), <code>marketing_demo</code>, <code>neutral_demo</code>, wav files</td><td>about 100 MB</td></tr></table>
+<p>Nothing in <code>backend/vidgen</code>, the Dockerfiles or <code>docker-compose.yml</code> uses <code>backend/spikes</code>.</p>
+<p>Two smaller leaks from the same file:</p>
+<ul><li><code>node_modules</code> and <code>__pycache__</code> are listed without <code>**/</code>. Docker matches a pattern from the context root only, so</li></ul>
+<p>  <code>frontend/node_modules</code> (352 MB), <code>backend/vidgen/__pycache__</code> and <code>backend/migrations/__pycache__</code> are sent too.</p>
+<ul><li><code><em>.mp4</code> and <code></em>.mov</code> are also root-only, so a video anywhere deeper would be sent.</li></ul>
+<h2>Privacy note (important)</h2>
+<p>The old local images were built from a context that contained <code>backend/spikes/m2_mac/work/real</code>, which holds outputs and frames from the <strong>real sample</strong>. Videos (<code>*.mp4</code>) are ignored at the root only, and other files there (jpg, wav) were not. So the existing <code>video-generator-api</code> and <code>video-generator-worker</code> images may contain a copy of that folder. They are local only. <strong>Never push or share them.</strong> After the fix is merged, rebuild and remove the old images yourself: <code>docker image ls</code> to list, then <code>docker image rm &lt;id&gt;</code> for the two old ones. I did not delete anything.</p>
+<h2>Fix (test first)</h2>
+<ul><li>Test: <code>tests/unit/meta/test_dockerignore_context.py</code> applies <code>.dockerignore</code> the way Docker does and checks that the spike</li></ul>
+<p>  folder, nested <code>node_modules</code> and <code>__pycache__</code>, model weight and media files are excluded, that everything the Dockerfiles   copy (code, migrations, fonts, <code>pyproject.toml</code>, <code>uv.lock</code>, the dashboard sources) is still included, and that the tracked   files that remain in the context add up to less than 20 MB, none above 5 MB.</p>
+<ul><li>Change: <code>.dockerignore</code> only. Exclude <code>backend/spikes</code>, use <code>**/</code> for <code>node_modules</code>, <code>__pycache__</code>, caches, <code>.DS_Store</code>,</li></ul>
+<p>  and for model and media file types (<code>.safetensors .pt .pth .ckpt .onnx .bin .wav .mp3 .mp4 .mov</code>), with a comment saying why.</p>
+<ul><li>Third leak found while measuring: root virtualenvs with a suffix (<code>.venv-m2</code>, 11 GB; <code>.venv-py314-old</code>) did not match the</li></ul>
+<p>  <code>.venv</code> line. BuildKit skips them because no <code>COPY</code> names them, but the classic builder would send them. Added <code>.venv*</code>.</p>
+<h2>Result (measured with the test's Docker-style matcher on the real checkout, nothing built)</h2>
+<table><tr><th>Rules</th><th>Files that would be sent</th><th>Size</th></tr><tr><td>Old <code>.dockerignore</code></td><td>91,352</td><td>about 67 GB (BuildKit sent only what the COPY lines name: 22.23 GB)</td></tr><tr><td>New <code>.dockerignore</code></td><td><strong>332</strong></td><td><strong>3.9 MB</strong> (backend 2.3 MB, frontend 1.2 MB, lockfile 0.3 MB)</td></tr></table>
+<p>Expected: a build context of a few MB and images close to the 1.24 GB of the clean-clone test images, built in about a minute instead of ten. <strong>Not verified by a real build</strong>: I did not run Docker builds. Run <code>docker compose --profile app build</code> once after merging and check the "transferring context" line and <code>docker images</code>.</p></div></body></html>

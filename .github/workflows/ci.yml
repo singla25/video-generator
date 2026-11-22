@@ -98,7 +98,7 @@ jobs:
         run: uv run mypy --strict backend/vidgen
 
       - name: Tests (pytest)
-        run: uv run pytest -q -p no:cacheprovider
+        run: uv run pytest -q -p no:cacheprovider -n auto --dist loadgroup
 
   frontend:
     runs-on: ubuntu-24.04

@@ -174,11 +174,17 @@ No paid or external online service is required.
 |------|-------------------|----------|--------|
 | `fake` | Nowhere: test stand-ins, no models, no cost | Docker | Ready |
 | `local` | Natively on your Mac (Apple GPU) | Apple silicon; worker peak 20–21 GB measured, 32 GB recommended | Ready with `scripts/dev_up.sh` (pilot) |
-| `modal` | On Modal cloud GPUs. **Demo and learning data only, never real voter data** | Free Modal account + token | **Not available yet**: planned in [ADR-013](docs/decisions/ADR-013-cloud-gpu-modal.md) |
+| `modal` | On Modal cloud GPUs. **Demo and learning data only, never real voter data** | A Modal account with credit and a token pair | **Parked (budget).** The code and the Modal app (`backend/modal_app/app.py`) are written and tested offline and stay in the project behind the `modal` mode flag. Not deployed, never run live, no payment planned. Lip sync on Modal is not available (licence decision pending). See [ADR-013](docs/decisions/ADR-013-cloud-gpu-modal.md) |
 
 Docker cannot use the Apple GPU, so `local` AI never runs inside a container.
 
-**Kaggle** is not a render worker. You can use a Kaggle notebook by hand to try the models on a free GPU, but the app never connects to it.
+**Kaggle** is not a render worker. You can use a Kaggle notebook by hand to try the models on a free GPU, but the app never connects to it. A free Kaggle GPU can be used by hand to measure the models: see [docs/kaggle/KAGGLE-T4-TRIAL.md](docs/kaggle/KAGGLE-T4-TRIAL.md). Made-up demo data only.
+
+### Where to render
+
+When you approve a preview, the dashboard asks **where to render**: on this computer, or on a cloud provider when one is set up. A provider that is for demo data only is not offered for a batch that holds real data. Each cloud provider has a **spend cap**; when it is reached the batch pauses.
+
+The cap is a soft limit. With N rows rendering at once it can be passed by up to N-1 rows' cost. The cloud provider's own workspace limit is the hard stop, so always set one there too.
 
 ## Quick start with Docker and the installer
 
@@ -264,6 +270,8 @@ docker compose down                    # optional: stops PostgreSQL and Redis (d
 
 By default the app runs with **fake** AI adapters (no models, no cost). To try the real models on an Apple-silicon Mac, set `VIDGEN_AI_MODE=local` in `.env` (or the shell) and run `scripts/dev_up.sh`. This installs the `local-ai` extra, downloads weights on first use into `backend/spikes/m2_mac/work/local_ai_weights` (override with `VIDGEN_LOCAL_AI_WEIGHTS_DIR`) and renders one video at a time. This is a pilot; details in [docs/plans/m2-local-real-ai.md](docs/plans/m2-local-real-ai.md).
 
+Optional setting: `VIDGEN_WARM_UP_ON_START` (default off) loads each AI model once at worker start, one at a time, so a missing weight shows immediately. It does not keep models in memory.
+
 ## Usage
 
 1. **Log in** at http://localhost:5173.
@@ -272,6 +280,13 @@ By default the app runs with **fake** AI adapters (no models, no cost). To try t
 4. **Preview:** check the rendered preview of row 1 and approve it to start.
 5. **Monitor:** the Overview and batch pages show progress, ETA and failures. Pause, resume, cancel or retry failed rows.
 6. **Download:** single videos, a ZIP of all outputs, or the failures CSV. **History** lists past batches.
+
+### Finding the name in the template
+
+Type the name as it is spoken in the template, in Roman letters (for example `Rahul`). The app listens to the template and matches by **sound**, so `Rahul` and the Devanagari word `राहुल` count as the same name. If no word is close enough, the dashboard shows up to **3 closest words** with their time and how close they are; press **Use this word** to mark the slot. You always confirm the slot yourself.
+
+- Setting: `VIDGEN_NAME_MATCH_THRESHOLD` (default `0.8`, from 0 to 1). Lower finds more but guesses more.
+- To compare Whisper sizes on your own demo templates (offline, no downloads), run `backend/scripts/whisper_size_test.py --weights-root <folder with small/ and medium/ subfolders> --name Rahul --audio <16 kHz mono wav>`. First result: [docs/reports/WHISPER-SIZE-TEST-2026-11-22.md](docs/reports/WHISPER-SIZE-TEST-2026-11-22.md). It is one demo clip, so no default was changed.
 
 ## Troubleshooting
 
@@ -297,6 +312,12 @@ Install the packages as in step 2, then run `scripts/dev_up.sh` again.
 <summary><b>Nothing starts after the migration question</b></summary>
 
 Run the script from an interactive terminal and answer `y`. Without a terminal it never applies migrations.
+</details>
+
+<details>
+<summary><b>The dashboard shows "The database needs migration ..."</b></summary>
+
+The database is behind the code. Most pages answer 503 until the admin applies the migration. The app never applies migrations by itself: run the guided start (it asks y/N) or the migration command, then reload. The page recovers within a few seconds.
 </details>
 
 <details>

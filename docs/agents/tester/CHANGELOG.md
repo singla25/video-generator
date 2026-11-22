@@ -208,3 +208,4 @@ Newest first. One entry per task.
 - 2026-11-22 D-T1: tests/frontend/unit/provider-cap-note.test.tsx (chooser spend-cap overshoot note, red) and docs/test-tree/provider-cap-note.md.
 - 2026-11-22 B-T1: Modal mode without live calls (red): tests/unit/modal_mode/, fixtures network/modal_stub/modal_app_check, fake records hints, flipped test_setup_mode_gate real-settings test; tree docs/test-tree/modal-mode-offline.md.
 - 2026-11-22 B-V1: fixed five modal-mode test defects/outdated expectations; suite green.
+- 2026-11-22 F-T1: schema gate under the API mount (red), tests/unit/api/test_schema_gate_mounted.py; tree schema-check.md.

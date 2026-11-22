@@ -211,3 +211,5 @@ Newest first. One entry per task.
 - 2026-11-22 F-T1: schema gate under the API mount (red), tests/unit/api/test_schema_gate_mounted.py; tree schema-check.md.
 - 2026-11-22 DI-T1: tests/unit/meta/test_dockerignore_context.py (spikes, nested node_modules, model files; red); test_docker_stack accepts **/node_modules; tree dockerignore-context.md.
 - 2026-11-22 SM-T1: tests/unit/ai_local/test_smoke_script.py (smoke script uses the new name matcher, red); tree smoke-script-matcher.md.
+- 2026-11-22 BL12-T1: tests/unit/api/test_system_status_spoken_suffix.py (status exposes spoken_suffix, red); key sets updated; tree spoken-suffix-note.md.
+- 2026-11-22 BL12-T2: tests/frontend/unit/spoken-suffix-note.test.tsx (dashboard suffix note, red); tree spoken-suffix-note.md.

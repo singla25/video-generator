@@ -1,0 +1,16 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Feature: spoken suffix shown in the dashboard (BL-12) - backend part</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Feature: spoken suffix shown in the dashboard (BL-12) - backend part</h1>
+<p>Feature: the system status route exposes <code>spoken_suffix</code> └── Scenario: dashboard reads the active suffix     ├── Positive: default "जी"; custom Latin/Devanagari; present in fake and local mode; key set exact     ├── Negative: 401 without a session (no suffix in body); no other setting or secret leaks     └── Edge: spaces stripped; empty or blank gives "" (not null); two apps differ; Redis down still 200 with suffix</p>
+<p>Tests: tests/unit/api/test_system_status_spoken_suffix.py; existing key-set assertions updated in test_system_status.py and test_schema_gate.py.</p>
+<h2>Dashboard (BL12-T2): tests/frontend/unit/spoken-suffix-note.test.tsx</h2>
+<p>Feature: spoken suffix note in the preview step (role="note", data-testid="spoken-suffix-note") └── Scenario: the user opens the preview step     ├── ✅ Positive: Devanagari, Latin and empty suffix give the exact texts; shown in every preview state (none, pending, ready, failed, stale), in fake and local mode; inside the panel; not aria-hidden (BL12-P1..P7)     ├── ❌ Negative: nothing while status loads, when status returns 500, or when the key is missing (older server) (BL12-N1..N3)     └── ⚠️ Edge: markup-like value stays text, 20 character suffix, surrounding spaces, one note after refetch, local spoken-name box coexists (BL12-E1..E5)</p></div></body></html>

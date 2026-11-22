@@ -308,4 +308,6 @@ Newest first. One entry per task.
 - 2026-11-22 DI-B1: .dockerignore excludes backend/spikes, nested node_modules/__pycache__/.DS_Store, model weights and media (**/ patterns). Only .dockerignore changed; no tests edited. No Docker run.
 - 2026-11-22 DI-B2: .dockerignore adds .venv* so suffixed root virtualenvs (.venv-m2) are excluded; .venv kept because test_docker_stack requires it.
 - 2026-11-22 SM-B1: smoke script gets --name and finds the name slot with the app's name matcher (hint to STT, candidates as times only); --slot unchanged. Only local_ai_smoke.py changed.
+- 2026-11-22 WS-B1: whisper_size (small) and modal_whisper_size (medium) settings; whisper_weights_dir in local_ai/factory.py; missing-weights error names the folder only; Modal WHISPER_REPO from VIDGEN_MODAL_WHISPER_SIZE. No tests edited.
+- 2026-11-22 BL12-B1 (BL-12): the authenticated system status endpoint gains spoken_suffix (settings value stripped; empty string when off; always present). Only routes_system.py changed. Tests: tests/unit/api/test_system_status_spoken_suffix.py (14) and the key-set updates green; full suite 3899 passed, 2 skipped, 21 deselected.
 - 2026-11-22 BL11-B1: spelling job for every row (enqueue_spellings, spell_rows actor, SpellingFiller, SqlRowStore spelling methods, preview_rendered trigger in local mode); no migration.

@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     modal_spend_cap_usd: float = Field(default=DEFAULT_MODAL_SPEND_CAP_USD, gt=0)
     modal_rate_per_second: float = Field(default=DEFAULT_MODAL_RATE_PER_SECOND, gt=0)
     local_ai_weights_dir: Path = Path("./models")
+    whisper_size: Literal["small", "medium"] = "small"  # local speech-to-text model size
+    modal_whisper_size: Literal["small", "medium"] = "medium"  # GPU app model size
 
     # Upload limits
     max_video_bytes: int = Field(default=500 * 1024 * 1024, gt=0)

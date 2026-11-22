@@ -44,6 +44,14 @@ def _schema_block(check: SchemaCheck | None) -> dict[str, Any] | None:
     }
 
 
+def _spoken_suffix(raw: str) -> str:
+    """The honorific the banner shows: surrounding spaces removed, "" when switched off.
+
+    Stripped here as well as in the speech path so the banner shows exactly what is spoken.
+    """
+    return raw.strip()
+
+
 @router.get("/status")
 def system_status(request: Request) -> dict[str, Any]:
     """Worker liveness, queue depth, Redis reachability and the schema state."""
@@ -60,6 +68,7 @@ def system_status(request: Request) -> dict[str, Any]:
         "queue_depth": depth,
         "redis_ok": redis_ok,
         "ai_mode": app.settings.ai_mode,
+        "spoken_suffix": _spoken_suffix(app.settings.spoken_suffix),
     }
     if app.schema is not None:  # no check configured: the key is left out
         body["schema"] = schema

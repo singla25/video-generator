@@ -31,3 +31,9 @@ backend/spikes
 **/*.mp3
 **/*.mp4
 **/*.mov
+
+# Dumps and key files: never in an image.
+**/*.sql
+**/*.dump
+**/*.pem
+**/*.key

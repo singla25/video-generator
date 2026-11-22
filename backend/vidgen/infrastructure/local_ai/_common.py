@@ -54,8 +54,8 @@ class LazyModel(Generic[M]):
         folder = self._weights_dir
         if not folder.is_dir() or not any(folder.iterdir()):
             raise ModelWeightsMissingError(
-                f"{self._label} weights not found in folder '{folder}'; "
-                "download them into the local AI weights folder first"
+                f"{self._label} weights not found in folder '{folder.name}'; "
+                f"download them into the local AI weights folder as '{folder.name}' first"
             )
 
 

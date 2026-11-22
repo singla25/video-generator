@@ -3,9 +3,10 @@
 Usage (one process only, a render peaks at 16-18 GB; do not start the app meanwhile):
 
     PYTHONPATH=backend .venv-m2/bin/python backend/scripts/local_ai_smoke.py [--rows 2]
-        [--template PATH] [--slot START END]... [--sheet PATH.csv] [--out-name NAME]
+        (--name TEXT | --slot START END...) [--template PATH] [--sheet PATH.csv] [--out-name NAME]
 
-Pipeline per sheet row: transcribe the template once -> find the name slots (or take each --slot,
+Pipeline per sheet row: transcribe the template once -> find the name slot with the app's
+matcher (or take each --slot,
 repeatable, sorted by start) -> pre-fill the spoken name (Qwen) -> clone the voice (Chatterbox) ->
 lip sync (MuseTalk, one pass per slot) -> splice, add the AI label (FFmpeg encoder, one pass per
 slot). Models run one stage at a time and are released in between so they fit in RAM. Only row
@@ -159,20 +160,32 @@ def _pause_after(words: list[Word], end_s: float) -> float:
     return max(pause, 0.0)
 
 
+def _no_match_message(candidates: Any) -> str:
+    """Why no word matched: closest candidates as times and closeness only, never any text."""
+    if not candidates:
+        return "no word is close to the name in the template"
+    lines = [
+        f"  {c.closeness:.2f} close at {c.word.start_s:.2f}-{c.word.end_s:.2f} s"
+        for c in candidates
+    ]
+    return "no word matched the name closely enough; closest candidates:\n" + "\n".join(lines)
+
+
 def _template_slots(
     adapters: Any,
     template: Path,
     tmp: Path,
     timer: Timer,
     manual: list[tuple[float, float]] | None,
+    name: str | None,
+    confidence_threshold: float,
+    closeness_threshold: float,
 ) -> tuple[list[tuple[float, float]], list[float], Path]:
     """Transcribe the template and return (slots, pauses_s, voice_sample), sorted by start.
 
-    The slots are the manual ones when ``manual`` is given, otherwise the first word that
-    matches the opening name. Each pause is the silence after its own slot in the transcript.
+    The slots are the manual ones when ``manual`` is given, otherwise the word that the app's
+    name matcher finds for ``name``. Each pause is the silence after its own slot.
     """
-    from vidgen.infrastructure.local_ai.name_slot import detect_name_slot
-
     audio = tmp / "template16k.wav"
     _run(
         "ffmpeg",
@@ -192,22 +205,29 @@ def _template_slots(
     start, length = str(VOICE_SAMPLE_START_S), str(VOICE_SAMPLE_LEN_S)
     _run("ffmpeg", "-v", "error", "-y", "-ss", start, "-t", length, "-i", str(audio), str(sample))
     started = time.perf_counter()
-    words = adapters.stt.transcribe(audio)
+    words = adapters.stt.transcribe(audio, hint=name)
     adapters.stt.release()
     timer.stage("stt", started)
     if not words:
         raise SystemExit("no speech found in the template")
     if manual:
-        found = [detect_name_slot(words, words[0].text, manual=slot) for slot in manual]
+        found = list(manual)
     else:
-        found = [detect_name_slot(words, words[0].text)]  # default: the opening name
-    pauses = [_pause_after(words, slot.end_s) for slot in found]
-    for slot, pause in zip(found, pauses, strict=True):
-        print(
-            f"slot {slot.start_s:.2f}-{slot.end_s:.2f}s, ambiguous={slot.ambiguous}, "
-            f"pause {pause:.2f}s"
+        from vidgen.domain.name_match import select_name_slot
+
+        match = select_name_slot(
+            words,
+            name or "",
+            confidence_threshold=confidence_threshold,
+            closeness_threshold=closeness_threshold,
         )
-    return [(slot.start_s, slot.end_s) for slot in found], pauses, sample
+        if match.found is None:
+            raise SystemExit(_no_match_message(match.candidates))
+        found = [(match.found.start_s, match.found.end_s)]
+    pauses = [_pause_after(words, end) for _, end in found]
+    for (slot_start, slot_end), pause in zip(found, pauses, strict=True):
+        print(f"slot {slot_start:.2f}-{slot_end:.2f}s, pause {pause:.2f}s")
+    return found, pauses, sample
 
 
 def _row_plans(
@@ -272,9 +292,14 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar=("START", "END"),
         help="manual name slot in seconds, repeatable; skips the transcript-based slot search",
     )
+    parser.add_argument(
+        "--name", help="the name spoken in the template; the matcher finds its slot (or use --slot)"
+    )
     parser.add_argument("--sheet", type=Path, help="csv sheet with header Name,VID")
     parser.add_argument("--out-name", help="sub-folder of local_out/ for the outputs")
     args = parser.parse_args(argv)
+    if args.name is None and args.slots is None:
+        parser.error("give --name (the spoken name) or --slot START END (manual slot)")
     if args.slots is not None:
         for start, end in args.slots:
             if not 0 <= start < end:
@@ -313,7 +338,16 @@ def main() -> int:
     tmp = out_dir / "_tmp"
     tmp.mkdir(exist_ok=True)
     timer, info = Timer(), _probe(template)
-    slots, pauses, sample = _template_slots(adapters, template, tmp, timer, args.slots)
+    slots, pauses, sample = _template_slots(
+        adapters,
+        template,
+        tmp,
+        timer,
+        args.slots,
+        args.name,
+        settings.stt_confidence_threshold,
+        settings.name_match_threshold,
+    )
     try:
         validate_slots(slots, info["duration"])
     except DomainError as exc:

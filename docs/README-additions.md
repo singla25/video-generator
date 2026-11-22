@@ -5,7 +5,10 @@ it says. Every statement below is true of the code on `integration/overnight`; n
 
 ## 1. "Choose your mode" table: replace the `modal` row with
 
-| `modal` | On Modal cloud GPUs. **Demo and learning data only, never real voter data** | A Modal account with credit and a token pair | **Code ready, not deployed, not tried live.** The speech-to-text and voice-cloning code and the Modal app (`backend/modal_app/app.py`) are written and tested offline against a fake. Lip sync on Modal is **not available yet** (licence decision pending). See [ADR-013](docs/decisions/ADR-013-cloud-gpu-modal.md) |
+| `modal` | On Modal cloud GPUs. **Demo and learning data only, never real voter data** | A Modal account with credit and a token pair | **Parked (budget).** The code and the Modal app (`backend/modal_app/app.py`) are written and tested offline and stay in the project behind the `modal` mode flag. Not deployed, never run live, no payment planned. Lip sync on Modal is not available (licence decision pending). See [ADR-013](docs/decisions/ADR-013-cloud-gpu-modal.md) |
+
+## 1b. Kaggle note (the existing README sentence stays true)
+Kaggle is still not a render worker. A free Kaggle GPU can be used by hand to measure the models: see `docs/kaggle/KAGGLE-T4-TRIAL.md`. Made-up demo data only.
 
 ## 2. New subsection after "Choose your mode": "Where to render"
 

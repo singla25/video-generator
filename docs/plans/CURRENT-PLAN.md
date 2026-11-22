@@ -33,8 +33,8 @@ spend cap (phase a). #25 Modal adapters (phase b). **Built overnight, waiting in
 | 5 | Docs and README (BL-5) | Chooser note is built; the README text is ready in `docs/README-additions.md` | **Paste it into README.md** (agents may not edit it) | 10 min | No |
 | 6 | Local AI with the Docker app and a native worker (BL-4) | `python3 scripts/setup.py native-worker` exists, static checks only | First real run on the Mac (about 20 GB RAM) | 30 min | Needs you at the Mac |
 | 7 | Licence gate for production weights (G8) | Three lip-sync weights are cleared for the pilot only, not commercial use | Approve the plan and pick a replacement | Medium to large | Needs your decision |
-| 8 | Modal spike with real numbers (BL-1) | The Modal app is written and tested offline (not deployed) | Add credits and a $5 workspace limit, deploy, run the spike | Small | **Blocked: your card** |
-| 9 | Lip sync on Modal (BL-7) | Cloud lip sync | Your licence decision: (a) allow dev-only use of the two unverified weights on your Modal account with demo data, (b) replace the weights first, or (c) cloud for speech and voice only | Medium | **Blocked: your licence decision** |
+| 8 | Modal spike with real numbers (BL-1) | **Parked (budget, Admin decision 2026-11-22).** The Modal code stays in the project behind its flag; no Modal commands, payments or cloud accounts | Nothing for now | n/a | **Parked** |
+| 9 | Lip sync on Modal (BL-7) | **Parked with Modal** | Licence decision only if Modal is resumed | n/a | **Parked** |
 
 ## 4. Recommended order (Mac-local complete first, Modal waits for the card)
 1. Merge PR #25 (you).
@@ -43,7 +43,7 @@ spend cap (phase a). #25 Modal adapters (phase b). **Built overnight, waiting in
    mode code are **built and waiting in the overnight PR** (merge it, then paste `docs/README-additions.md` into the README).
 4. First real run of local AI with the Docker app on the Mac (BL-4).
 5. Licence gate (G8), once you approve the plan; needed before any production run.
-6. Waiting on you: Modal spike (card), then lip sync on Modal (licence decision), then switch cloud mode on.
+6. **Modal is parked (budget).** Instead: a manual measurement on Kaggle's free GPU (`docs/kaggle/KAGGLE-T4-TRIAL.md`, made-up data only). When the results come back they are recorded here and we decide which cloud option, if any, still makes sense.
 
 ## 5. What you do yourself
 1. ~~Merge PR #25~~ **Done.** Next: review and merge the overnight PR (`integration/overnight`), then PR #26 if it is still open.

@@ -211,3 +211,4 @@ Newest first. One entry per task.
 - 2026-11-22 F-T1: schema gate under the API mount (red), tests/unit/api/test_schema_gate_mounted.py; tree schema-check.md.
 - 2026-11-22 DI-T1: tests/unit/meta/test_dockerignore_context.py (spikes, nested node_modules, model files; red); test_docker_stack accepts **/node_modules; tree dockerignore-context.md.
 - 2026-11-22 SM-T1: tests/unit/ai_local/test_smoke_script.py (smoke script uses the new name matcher, red); tree smoke-script-matcher.md.
+- 2026-11-22 BL11-T1: spoken spelling for every row (red): tests/unit/services/test_spelling_filler.py, tests/unit/infra/test_dramatiq_spellings.py, tests/integration/db/test_row_store_spellings.py, tests/integration/worker/test_spelling*.py, fixtures spelling_fakes.py, FakeJobQueue.enqueue_spellings; tree bl11-spellings-for-all-rows.md.

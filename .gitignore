@@ -25,3 +25,9 @@ backend/spikes/m2_mac/work/
 .venv-m2/
 output_m2_*.log
 .DS_Store
+
+# Database dumps and key files can hold personal data or secrets: never commit them.
+*.sql
+*.dump
+*.pem
+*.key

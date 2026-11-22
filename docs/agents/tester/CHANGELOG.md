@@ -210,4 +210,5 @@ Newest first. One entry per task.
 - 2026-11-22 B-V1: fixed five modal-mode test defects/outdated expectations; suite green.
 - 2026-11-22 F-T1: schema gate under the API mount (red), tests/unit/api/test_schema_gate_mounted.py; tree schema-check.md.
 - 2026-11-22 DI-T1: tests/unit/meta/test_dockerignore_context.py (spikes, nested node_modules, model files; red); test_docker_stack accepts **/node_modules; tree dockerignore-context.md.
+- 2026-11-22 SM-T1: tests/unit/ai_local/test_smoke_script.py (smoke script uses the new name matcher, red); tree smoke-script-matcher.md.
 - 2026-11-22 WS-T1: Whisper size setting (red): tests/unit/infra/test_whisper_size_setting.py, ai_local/test_whisper_size.py, modal_mode/test_modal_whisper_size.py; tree whisper-size-setting.md.

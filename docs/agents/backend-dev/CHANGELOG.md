@@ -307,4 +307,5 @@ Newest first. One entry per task.
 - 2026-11-22 F-B1: schema gate open paths (health, auth, system status) now match under the API mount (schema_gate.py).
 - 2026-11-22 DI-B1: .dockerignore excludes backend/spikes, nested node_modules/__pycache__/.DS_Store, model weights and media (**/ patterns). Only .dockerignore changed; no tests edited. No Docker run.
 - 2026-11-22 DI-B2: .dockerignore adds .venv* so suffixed root virtualenvs (.venv-m2) are excluded; .venv kept because test_docker_stack requires it.
+- 2026-11-22 SM-B1: smoke script gets --name and finds the name slot with the app's name matcher (hint to STT, candidates as times only); --slot unchanged. Only local_ai_smoke.py changed.
 - 2026-11-22 WS-B1: whisper_size (small) and modal_whisper_size (medium) settings; whisper_weights_dir in local_ai/factory.py; missing-weights error names the folder only; Modal WHISPER_REPO from VIDGEN_MODAL_WHISPER_SIZE. No tests edited.

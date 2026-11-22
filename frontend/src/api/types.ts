@@ -197,6 +197,8 @@ export interface SystemStatus {
   ai_mode?: 'fake' | 'local';
   /** Absent from older servers. */
   schema?: SchemaStatus;
+  /** Spoken suffix applied to every template; "" when off. Absent from older servers. */
+  spoken_suffix?: string;
 }
 
 /** Whether the database matches the code (BL-8). */

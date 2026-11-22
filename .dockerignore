@@ -5,6 +5,8 @@
 .dev
 media
 .venv
+# Root virtualenvs, including suffixed ones such as .venv-m2 (about 11 GB), never belong in an image.
+.venv*
 **/node_modules
 .worktrees
 .git

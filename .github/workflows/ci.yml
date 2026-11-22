@@ -98,7 +98,7 @@ jobs:
         run: uv run mypy --strict backend/vidgen
 
       - name: Tests (pytest)
-        run: uv run pytest -q -p no:cacheprovider -n auto --dist loadgroup
+        run: uv run pytest -q -p no:cacheprovider -n auto --dist loadgroup --durations=25
 
   frontend:
     runs-on: ubuntu-24.04
@@ -138,7 +138,6 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   e2e:
-    needs: [python, frontend]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:

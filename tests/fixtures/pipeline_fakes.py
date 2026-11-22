@@ -15,6 +15,7 @@ from pathlib import Path
 from PIL import Image
 
 from vidgen.domain.timing import TimingPlan
+from vidgen.ports.models import OutputExpectation
 
 SAMPLE_RATE = 16000
 
@@ -171,13 +172,17 @@ class FakeQuality:
 
     def __init__(self, calls: list[str] | None = None) -> None:
         self.result: list[str] = []
+        self.expectations: list[OutputExpectation | None] = []
         self.count = 0
         self.order = calls if calls is not None else []
 
-    def check(self, template: Path, output: Path) -> list[str]:
-        """Return the configured failure codes (empty = pass)."""
+    def check(
+        self, template: Path, output: Path, expected: OutputExpectation | None = None
+    ) -> list[str]:
+        """Return the configured failure codes (empty = pass); remember the expectation (BL-14)."""
         self.order.append("check")
         self.count += 1
+        self.expectations.append(expected)
         return list(self.result)
 
 

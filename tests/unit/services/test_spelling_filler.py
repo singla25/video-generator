@@ -99,7 +99,7 @@ def test_rows_that_are_not_queued_are_untouched(status: str) -> None:
 @pytest.mark.parametrize("result", ["", "   ", "\n\t", None])
 def test_a_blank_or_missing_result_is_skipped_not_stored(result: str | None) -> None:
     """SP-N3."""
-    store, translit = InMemorySpellingStore({}), FakeTransliterator({"Asha": result})
+    store, translit = InMemorySpellingStore(), FakeTransliterator({"Asha": result})
     batch = store.add_batch(["Asha", "Bina"])
     report = make(store, translit).fill_missing(batch)
     assert store.spoken(batch) == [None, "देव-Bina"]

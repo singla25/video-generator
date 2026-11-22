@@ -57,6 +57,7 @@ from vidgen.services.provider_guard import ProviderGuard
 from vidgen.services.render_row import RenderConfig, RowRenderer
 from vidgen.services.requeue import requeue_stuck_rows
 from vidgen.services.schema_check import SchemaCheck
+from vidgen.services.spelling_filler import SpellingFiller
 from vidgen.settings import Settings, get_settings
 from vidgen.worker.actors import WorkerConfig, register_actors
 from vidgen.worker.periodic import PeriodicTask
@@ -141,6 +142,22 @@ def build_renderer(
     )
 
 
+def build_spelling_filler(settings: Settings) -> SpellingFiller | None:  # pragma: no cover
+    """The spelling job (BL-11); only local mode has a transliterator to run it."""
+    if settings.ai_mode != "local":
+        return None
+    cipher = AesGcmCipher(
+        keys={settings.encryption_key_id: settings.encryption_key_bytes()},
+        active_key_id=settings.encryption_key_id,
+        index_key=settings.index_key_bytes(),
+    )
+    factory = sessionmaker(get_engine(settings.database_url), expire_on_commit=False)
+    return SpellingFiller(
+        SqlRowStore(factory, cipher),
+        build_ai_adapters(settings).transliterator,
+    )
+
+
 def build_requeue_job(
     settings: Settings, broker: RedisBroker
 ) -> Callable[[], object]:  # pragma: no cover
@@ -205,7 +222,12 @@ def run() -> None:  # pragma: no cover
     dramatiq.set_broker(broker)
     sink = build_container(settings, AppDeps(schema_reader=default_schema_reader(settings))).batches
     renderer = build_renderer(settings, sink, default_stage_reporter(settings))
-    register_actors(broker, renderer, WorkerConfig.from_settings(settings))
+    register_actors(
+        broker,
+        renderer,
+        WorkerConfig.from_settings(settings),
+        spelling_filler=build_spelling_filler(settings),
+    )
     queue = settings.queue_name
     worker = Worker(broker, worker_threads=effective_worker_threads(settings))
     stop = threading.Event()

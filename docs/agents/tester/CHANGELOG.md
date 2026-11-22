@@ -214,3 +214,4 @@ Newest first. One entry per task.
 - 2026-11-22 WS-T1: Whisper size setting (red): tests/unit/infra/test_whisper_size_setting.py, ai_local/test_whisper_size.py, modal_mode/test_modal_whisper_size.py; tree whisper-size-setting.md.
 - 2026-11-22 BL12-T1: tests/unit/api/test_system_status_spoken_suffix.py (status exposes spoken_suffix, red); key sets updated; tree spoken-suffix-note.md.
 - 2026-11-22 BL12-T2: tests/frontend/unit/spoken-suffix-note.test.tsx (dashboard suffix note, red); tree spoken-suffix-note.md.
+- 2026-11-22 BL11-T1: spoken spelling for every row (red): tests/unit/services/test_spelling_filler.py, tests/unit/infra/test_dramatiq_spellings.py, tests/integration/db/test_row_store_spellings.py, tests/integration/worker/test_spelling*.py, fixtures spelling_fakes.py, FakeJobQueue.enqueue_spellings; tree bl11-spellings-for-all-rows.md.

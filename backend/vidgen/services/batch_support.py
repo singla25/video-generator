@@ -83,6 +83,19 @@ def enqueue_rows(ctx: BatchContext, batch: BatchRecord, row_ids: list[UUID]) -> 
         ctx.queue.enqueue_rows(batch.id, row_ids, queue_name=name)
 
 
+def queue_spellings(ctx: BatchContext, batch_id: UUID) -> None:
+    """Queue the spelling job in local mode; a queue error never fails the preview."""
+    if ctx.transliterator is None or not ctx.require_spelling:
+        return
+    try:
+        ctx.queue.enqueue_spellings(batch_id)
+    except Exception as exc:
+        logger.warning(
+            "spelling job not queued",
+            extra={"error_type": type(exc).__name__, "batch_id": str(batch_id)},
+        )
+
+
 def provider_pause_reason(ctx: BatchContext, uow: UnitOfWork, batch: BatchRecord) -> str | None:
     """Why a PAUSED batch is paused by its provider (data class or spend cap), else None."""
     if batch.status != BatchState.PAUSED.value or ctx.providers is None:

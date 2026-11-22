@@ -18,12 +18,7 @@ from vidgen.domain.status import (
     approve_preview,
     can_start,
 )
-from vidgen.ports.batches import (
-    PREVIEW_FAILED,
-    PREVIEW_PENDING,
-    PREVIEW_READY,
-    PreviewRecord,
-)
+from vidgen.ports.batches import PREVIEW_FAILED, PREVIEW_PENDING, PREVIEW_READY, PreviewRecord
 from vidgen.services.batch_rules import fingerprint_for
 from vidgen.services.batch_support import (
     BatchContext,
@@ -35,6 +30,7 @@ from vidgen.services.batch_support import (
     load_template,
     pick_folder,
     preview_gate,
+    queue_spellings,
     transition,
 )
 from vidgen.services.batch_views import BatchView
@@ -143,6 +139,7 @@ class BatchFlow:
             )
             uow.batches.save(replace(batch, preview=preview))
             uow.commit()
+        queue_spellings(self._ctx, batch_id)
 
     def preview_failed(self, batch_id: UUID, code: FailureCode) -> None:
         """Worker hook: the preview could not be rendered."""

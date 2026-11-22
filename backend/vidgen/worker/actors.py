@@ -18,8 +18,10 @@ from vidgen.infrastructure.queue.dramatiq_queue import (
     DEFAULT_QUEUE,
     PREVIEW_ACTOR_NAME,
     ROW_ACTOR_NAME,
+    SPELLING_ACTOR_NAME,
 )
 from vidgen.services.render_row import RowOutcome, RowRenderer
+from vidgen.services.spelling_filler import SpellingFiller
 
 if TYPE_CHECKING:
     from vidgen.settings import Settings
@@ -56,10 +58,16 @@ class WorkerActors:
 
     render_row: Actor[..., None]
     render_preview: Actor[..., None]
+    spell_rows: Actor[..., None] | None = None
 
 
-def register_actors(broker: Broker, renderer: RowRenderer, config: WorkerConfig) -> WorkerActors:
-    """Register the row and preview actors on ``broker``."""
+def register_actors(
+    broker: Broker,
+    renderer: RowRenderer,
+    config: WorkerConfig,
+    spelling_filler: SpellingFiller | None = None,
+) -> WorkerActors:
+    """Register the row and preview actors (and the spelling actor, given a filler)."""
     options = {
         "max_retries": config.max_retries,
         "min_backoff": config.retry_delay_ms,
@@ -91,7 +99,22 @@ def register_actors(broker: Broker, renderer: RowRenderer, config: WorkerConfig)
         priority=0,
         options=dict(options),
     )
-    return WorkerActors(row_actor, preview_actor)
+    spell_actor = None
+    if spelling_filler is not None:
+        filler = spelling_filler
+
+        def spell_job(batch_id: str) -> None:
+            filler.fill_missing(UUID(batch_id))
+
+        spell_actor = Actor(
+            spell_job,
+            broker=broker,
+            actor_name=SPELLING_ACTOR_NAME,
+            queue_name=config.queue_name,
+            priority=0,
+            options={"max_retries": 0, "time_limit": config.time_limit_ms * 6},
+        )
+    return WorkerActors(row_actor, preview_actor, spell_actor)
 
 
 def _again(

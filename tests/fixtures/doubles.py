@@ -98,6 +98,8 @@ class FakeJobQueue:
     def __init__(self) -> None:
         self.previews: list[tuple[UUID, UUID]] = []
         self.rows: list[tuple[UUID, UUID]] = []
+        self.spellings: list[UUID] = []  # BL-11: one entry per queued spelling job
+        self.fail_spellings: Exception | None = None  # raise from enqueue_spellings (queue down)
         self.live: set[UUID] = set()  # rows with a queued job until mark_done()
         # (kind, batch id, row id, queue name or None) for the render-providers routing tests
         self.routed: list[tuple[str, UUID, UUID, str | None]] = []
@@ -115,6 +117,12 @@ class FakeJobQueue:
         self.rows.extend((batch_id, row_id) for row_id in row_ids)
         self.routed.extend(("row", batch_id, row_id, queue_name) for row_id in row_ids)
         self.live.update(row_ids)
+
+    def enqueue_spellings(self, batch_id: UUID) -> None:
+        """Record a spelling job for the batch (or raise when configured to)."""
+        if self.fail_spellings is not None:
+            raise self.fail_spellings
+        self.spellings.append(batch_id)
 
     def queues_used(self, kind: str = "row") -> set[str | None]:
         """Queue names that received jobs of ``kind`` ("row" or "preview")."""

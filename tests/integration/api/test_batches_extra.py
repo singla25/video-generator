@@ -106,6 +106,7 @@ def test_storage_failure_during_deletion_still_purges_the_database(env: Env, db:
 
 
 @pytest.mark.slow
+@pytest.mark.xdist_group("timing")
 def test_status_of_a_hundred_thousand_row_batch_is_answered_quickly(env: Env, db: Engine) -> None:
     """TT-AC14-E8: counts come from an aggregate query, not from loading rows."""
     import time

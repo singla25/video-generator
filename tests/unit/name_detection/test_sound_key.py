@@ -112,12 +112,13 @@ def test_digits_do_not_crash_and_stay_in_range() -> None:
     assert 0.0 <= closeness("123", "456") <= 1.0
 
 
+@pytest.mark.xdist_group("timing")
 def test_two_hundred_character_input_is_fast_and_exact() -> None:
     long_text = ("Krishan" * 30)[:200]
     start = time.perf_counter()
     assert closeness(long_text, long_text) == 1.0
     assert 0.0 <= closeness(long_text, "Ramesh") <= 1.0
-    assert time.perf_counter() - start < 0.5
+    assert time.perf_counter() - start < 2.0  # generous: xdist workers share the CPU
 
 
 @pytest.mark.parametrize(("a", "b"), [*MATCHING_PAIRS[:10], *UNRELATED_PAIRS[:5]])

@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from tests.integration.api.conftest import make_settings
 
-URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_test"
+URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_unit_nodb_test"
 
 
 def test_default_is_five_seconds(tmp_path: Path) -> None:

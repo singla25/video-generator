@@ -20,7 +20,7 @@ from pydantic import ValidationError
 from tests.integration.api.conftest import make_settings
 from vidgen.worker.periodic import PeriodicTask
 
-URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_test"
+URL = "postgresql+psycopg://vidgen:devpassword@127.0.0.1:5432/vidgen_unit_nodb_test"
 
 
 def test_defaults(tmp_path: Path) -> None:

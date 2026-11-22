@@ -385,6 +385,7 @@ def test_oversize_sheet_is_413_and_not_stored(make_env: EnvFactory, db: Engine) 
     assert table_count(db, Batch) == 0
 
 
+@pytest.mark.xdist_group("timing")
 def test_a_thousand_row_sheet_is_validated_quickly(env: Env) -> None:
     """TT-AC4-P1: the whole request, including database writes, stays under a few seconds."""
     import time

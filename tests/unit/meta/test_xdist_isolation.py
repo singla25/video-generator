@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ast
 import re
+from functools import cache, lru_cache
 from pathlib import Path
 
 import pytest
@@ -61,9 +62,22 @@ TIMING_MODULES = {
 }
 
 
-def repo_test_files() -> list[Path]:
-    """Every backend test module (the Playwright/Vitest tree is not run by pytest)."""
-    return sorted(p for p in TESTS.rglob("*.py") if "frontend" not in p.relative_to(TESTS).parts)
+SKIP_DIRS = {"frontend", "node_modules", "__pycache__", ".venv"}
+
+
+@lru_cache(maxsize=1)
+def repo_test_files() -> tuple[Path, ...]:
+    """Every backend test module (the Playwright/Vitest tree is not run by pytest), cached."""
+    return tuple(
+        sorted(p for p in TESTS.rglob("*.py") if not SKIP_DIRS & set(p.relative_to(TESTS).parts))
+    )
+
+
+@cache
+def parsed(path: Path) -> tuple[str, ast.Module]:
+    """Source and syntax tree of one file, parsed once per run."""
+    source = path.read_text(encoding="utf-8")
+    return source, ast.parse(source)
 
 
 def rel(path: Path) -> str:
@@ -204,8 +218,8 @@ def test_no_test_writes_under_the_repository_tree_outside_tmp_path() -> None:
     for path in repo_test_files():
         if rel(path) in REPO_WRITE_ALLOW or path.name == "test_xdist_isolation.py":
             continue
-        source = path.read_text(encoding="utf-8")
-        for node in ast.walk(ast.parse(source)):
+        source, tree = parsed(path)
+        for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
             func = node.func
@@ -224,24 +238,56 @@ def test_no_test_writes_under_the_repository_tree_outside_tmp_path() -> None:
     assert not offenders, offenders
 
 
+ENV_CALLS = {"update", "setdefault", "pop", "clear"}
+ENV_FUNCS = {"putenv", "unsetenv"}
+
+
+def _is_os_environ(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "environ"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "os"
+    )
+
+
+def env_mutations(tree: ast.Module) -> list[int]:
+    """Line numbers of ``os.environ[...] = x``, ``os.environ.update(...)``, ``os.putenv(...)``."""
+    lines: list[int] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign | ast.AugAssign | ast.Delete):
+            targets = node.targets if hasattr(node, "targets") else [node.target]
+            if any(isinstance(t, ast.Subscript) and _is_os_environ(t.value) for t in targets):
+                lines.append(node.lineno)
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            func = node.func
+            if (_is_os_environ(func.value) and func.attr in ENV_CALLS) or (
+                isinstance(func.value, ast.Name)
+                and func.value.id == "os"
+                and func.attr in ENV_FUNCS
+            ):
+                lines.append(node.lineno)
+    return lines
+
+
 def test_no_test_assigns_process_environment_without_monkeypatch() -> None:
-    offenders: list[str] = []
-    for path in repo_test_files():
-        if path.name == "test_xdist_isolation.py":
-            continue
-        source = path.read_text(encoding="utf-8")
-        for node in ast.walk(ast.parse(source)):
-            text = ast.get_source_segment(source, node) or ""
-            assigns = isinstance(node, ast.Assign) and any(
-                (ast.get_source_segment(source, t) or "").startswith("os.environ")
-                for t in node.targets
-            )
-            calls = isinstance(node, ast.Call) and re.match(
-                r"os\.(environ\.(update|setdefault|pop|clear)|putenv|unsetenv)\(", text
-            )
-            if assigns or calls:
-                offenders.append(f"{rel(path)}:{node.lineno}")
+    offenders = [
+        f"{rel(path)}:{line}"
+        for path in repo_test_files()
+        if path.name != "test_xdist_isolation.py"
+        for line in env_mutations(parsed(path)[1])
+    ]
     assert not offenders, offenders
+
+
+def test_the_environment_scan_catches_an_injected_violation(tmp_path: Path) -> None:
+    bad = tmp_path / "test_bad.py"
+    bad.write_text(
+        "import os\nos.environ['X'] = '1'\nos.environ.update(A='b')\nos.putenv('A', 'b')\n"
+        "def test_ok(monkeypatch):\n    monkeypatch.setenv('X', '1')\n    os.environ.get('X')\n",
+        encoding="utf-8",
+    )
+    assert env_mutations(ast.parse(bad.read_text(encoding="utf-8"))) == [2, 3, 4]
 
 
 # --- wall-clock assertions ---------------------------------------------------------------------

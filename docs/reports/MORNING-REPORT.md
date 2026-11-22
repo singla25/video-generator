@@ -8,7 +8,7 @@ changed (the approved `modal==1.6.4` extra was already there).
 ## 1. Numbers on `integration/overnight` (checked by me after the last merge)
 | Check | Result |
 |-------|--------|
-| pytest (all except e2e and the dashboard tests; worker tests included, dev stack was stopped) | **3772 passed, 2 skipped, 0 failed** (before the run: 3102 passed, 2 skipped) |
+| pytest, the exact CI command (`uv run pytest -q`: includes the worker tests and the real Docker stack test; dev stack was stopped) | **3800 passed, 2 skipped, 0 failed** (before the run: 3102 passed, 2 skipped) |
 | Vitest (dashboard) | **682 / 682** in 34 files (before: 646) |
 | Dashboard typecheck, lint, prettier, build | clean |
 | ruff check, ruff format | clean (487 files) |
@@ -16,6 +16,11 @@ changed (the approved `modal==1.6.4` extra was already there).
 | `uv lock --check` | up to date |
 | Playwright end-to-end (ports 5173 and 8000 were free) | **49 passed, 26 skipped, 0 failed** |
 | Diff vs main | 105+ files, no deleted file, no change to `pyproject.toml`, `uv.lock`, migrations, `docker-compose.yml`, `.claude/` or `CLAUDE.md` |
+
+**CI caught one bug, now fixed.** My first local run skipped the Docker-based tests, and CI then failed one of them: on a database that
+was behind or empty the new schema gate (track C) also blocked health and login, because the app is served under the api prefix and the gate
+compared the prefixed path. I reproduced it in the real containers, wrote a failing test against the deployable app (23 tests), fixed the
+path check (`feat/overnight/f-gate-prefix`, DD-52) and re-ran the full CI command (3800 passed).
 
 ## 2. What was built, per track (branch, tests)
 | Track | Result | Branch |

@@ -116,3 +116,6 @@ Small and medium both found "Rahul" on the neutral demo template (small wrote рд
 
 ## DD-51 (2026-11-22) PR 26 branch merged into the overnight branch
 `docs/ceo/current-plan` (PR #26, still open, CI green) was merged into `integration/overnight` so the plan could be updated. When PR #26 is merged first or second, its changes are identical. Undo: revert that merge commit.
+
+## DD-52 (2026-11-22) CI caught a schema-gate bug; fixed test first
+CI on the overnight PR failed the Docker stack test for the health endpoint: the health route answered 503 in the real containers. Cause: the gate compared the path including the api mount prefix, so health, login and the status route were never "open" on a database that is behind or empty. My earlier local run had skipped the Docker tests. Fix: failing test against the deployable app (`tests/unit/api/test_schema_gate_mounted.py`, 23 tests), then a whole-segment prefix strip in `schema_gate.py` (`feat/overnight/f-gate-prefix`). Lesson: always run the exact CI command, including `tests/e2e`. Undo: revert the merge of `feat/overnight/f-gate-prefix` (this would bring the bug back).

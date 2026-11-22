@@ -50,4 +50,4 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
     └── ⚠️ TT-SB-E1 DB-error toast hidden, one alert only; E2 odd text rendered as text;
            E3 banner disappears after migration</code></pre>
 <p>Acceptance mapping: design points 1 -&gt; SS-D, SS-S; 2 -&gt; SS-R; 3 -&gt; SS-S, SS-ST; 4 -&gt; SS-A; 5 -&gt; SS-W; 6 -&gt; TT-SB; "never migrates" -&gt; SS-M.</p>
-<ul><li>SS-A-P2 (behind) and SS-A-N4 (DD-44): behind database has tables (integration test, real DB); login throttle still counts failures and locks out (429).</li></ul></div></body></html>
+<ul><li>SS-A-P2 (behind) and SS-A-N4 (DD-44): behind database has tables (integration test, real DB); login throttle still counts failures and locks out (429).</li><li>2026-11-22 F-T1: tests/unit/api/test_schema_gate_mounted.py (SS-M-*: gate under the API mount, red); health, auth and status must stay open, lookalike paths blocked.</li></ul></div></body></html>

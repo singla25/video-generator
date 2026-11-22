@@ -11,6 +11,8 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
 </style></head><body><div class='wrap'><nav><a href='../../index.html'>← All docs</a></nav><h1>CEO agent — Changelog</h1>
 <p>Newest first. One entry per task.</p>
+<h2>2026-11-22 — BL-14 PR #49 open (docs only)</h2>
+<ul><li>BL-14 (real output checks AC8/AC9, stale temp cleanup in the worker) is in <a href="https://github.com/singla25/video-generator/pull/49">PR #49</a>, waiting for Admin merge. The QualityChecker port has an additive optional <code>expected</code> argument (gate 7, for Admin review). Local: 4165 passed, 5 skipped, 1 environmental failure (root user). CI pending.</li><li>Updated <code>docs/plans/CURRENT-PLAN.md</code> and TASK-LOG row BL-14.</li></ul>
 <h2>2026-11-22 — BL-14 plan written</h2>
 <ul><li>Wrote <code>docs/plans/bl14-output-checks.md</code>: real output quality checker (AC8, AC9), additive QualityChecker port change (flagged for gate 7 review), worker wiring, periodic temp cleanup. No migration, no new dependency. Tests next.</li></ul>
 <h2>2026-11-17 — Render providers plan drafted; backlog recorded</h2>

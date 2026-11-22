@@ -2,6 +2,10 @@
 
 Newest first. One entry per task.
 
+## 2026-11-22 — BL-14 PR #49 open (docs only)
+- BL-14 (real output checks AC8/AC9, stale temp cleanup in the worker) is in [PR #49](https://github.com/singla25/video-generator/pull/49), waiting for Admin merge. The QualityChecker port has an additive optional `expected` argument (gate 7, for Admin review). Local: 4165 passed, 5 skipped, 1 environmental failure (root user). CI pending.
+- Updated `docs/plans/CURRENT-PLAN.md` and TASK-LOG row BL-14.
+
 ## 2026-11-22 — BL-14 plan written
 - Wrote `docs/plans/bl14-output-checks.md`: real output quality checker (AC8, AC9), additive QualityChecker port change (flagged for gate 7 review), worker wiring, periodic temp cleanup. No migration, no new dependency. Tests next.
 

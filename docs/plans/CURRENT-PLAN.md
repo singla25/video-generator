@@ -21,7 +21,7 @@ Real voter data never goes to the cloud. The installer and the app enforce this.
 delete template · #11 GitHub Actions CI · #12 and #13 drafts and spelling · #14 spoken suffix, name mid-video ·
 #15, #16 and #17 several name slots · #18 guard update · #19 status report · #20 Docker app and installer ·
 #21 task-log cleanup · #22 M2 docs rescue · #23 cloud mode is demo-only (C5) · #24 render providers, chooser and
-spend cap (phase a). #25 Modal adapters (phase b). **Built overnight, waiting in one PR for your merge:** better name detection (BL-6), startup schema check (BL-8), chooser note about the spend-cap overshoot (BL-5, code part), local AI with the Docker app (BL-4, static checks), Modal mode with no live calls (BL-3). See `docs/reports/MORNING-REPORT.md`.
+spend cap (phase a). #25 Modal adapters (phase b). **Built overnight, waiting in one PR for your merge:** better name detection (BL-6), startup schema check (BL-8), chooser note about the spend-cap overshoot (BL-5, code part), local AI with the Docker app (BL-4, static checks), Modal mode with no live calls (BL-3). See `docs/reports/MORNING-REPORT.md`. **In [PR #49](https://github.com/singla25/video-generator/pull/49), waiting for your merge (merge commit):** BL-14 real output checks (AC8, AC9) and stale temp cleanup wired into the worker.
 
 ## 3. What is left
 | # | Item | Why | Needs from you | Effort | Blocked? |

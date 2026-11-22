@@ -6,7 +6,7 @@ import { useConfirmSpelling, useSystemStatus } from '../../api/queries';
 import type { Batch, SystemStatus } from '../../api/types';
 import { SLOW_PREVIEW_MS_FAKE, SLOW_PREVIEW_MS_LOCAL } from '../../config';
 import { PreviewProgress } from './PreviewProgress';
-import { FakeAiNote, FirstRunNote } from './PreviewNotes';
+import { FakeAiNote, FirstRunNote, SpokenSuffixNote } from './PreviewNotes';
 import { ProviderChooser } from './ProviderChooser';
 
 const FIELD_ID = 'spoken-name';
@@ -171,6 +171,7 @@ export function PreviewPanel({ batch }: { batch: Batch }) {
         </p>
       )}
       {aiMode === 'fake' && <FakeAiNote />}
+      <SpokenSuffixNote suffix={status?.spoken_suffix} />
       <div className="flex gap-2">
         <button
           type="button"

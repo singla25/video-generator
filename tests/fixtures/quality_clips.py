@@ -48,6 +48,7 @@ def make_clip(
     cmd += ["-c:v", vcodec, "-pix_fmt", "yuv420p"]
     cmd += ["-preset", "ultrafast"] if vcodec == "libx264" else []
     cmd += ["-c:a", "aac", "-ac", str(channels)] if audio else ["-an"]
-    cmd += ["-t", str(seconds), str(path)]
+    # Explicit container so a misleading extension (e.g. ".bin") still gets a real MP4 inside.
+    cmd += ["-t", str(seconds), "-f", "mp4", str(path)]
     subprocess.run(cmd, check=True, capture_output=True, timeout=120)  # noqa: S603
     return path

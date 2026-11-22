@@ -140,3 +140,12 @@ def test_default_tolerances_are_50_ms_and_one_lu(template: Path, tmp_path: Path)
 def test_empty_region_list_checks_only_duration(template: Path, tmp_path: Path) -> None:
     louder = make_clip(tmp_path / "o.mp4", gain_db=6.0)
     assert checker().check(template, louder, OutputExpectation(0.0, ())) == []
+
+
+def test_quiet_template_region_is_skipped_so_a_loud_output_is_not_a_mismatch(
+    tmp_path: Path,
+) -> None:
+    """Nothing to compare with where the template itself is silent (edge)."""
+    quiet_template = make_clip(tmp_path / "t.mp4", audio="silent")
+    out = make_clip(tmp_path / "o.mp4", gain_db=12.0)
+    assert checker().check(quiet_template, out, same()) == []

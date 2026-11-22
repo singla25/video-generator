@@ -17,18 +17,28 @@ from dramatiq.brokers.stub import StubBroker
 from tests.fixtures.doubles import CANARY_ID, CANARY_NAME
 from tests.integration.api.conftest import make_settings
 from tests.integration.worker.conftest import WorldFactory
-from tests.integration.worker.world import World
+from tests.integration.worker.world import CREATOR, PAUSE_S, World
 from vidgen.domain.codes import DomainError, FailureCode
-from vidgen.domain.retry import WorkerCrashedError
+from vidgen.domain.retry import RetryPolicy, WorkerCrashedError
 from vidgen.infrastructure.queue.dramatiq_queue import (
     PREVIEW_ACTOR_NAME,
     ROW_ACTOR_NAME,
     DramatiqJobQueue,
 )
+from vidgen.services.render_row import RenderConfig
 from vidgen.worker.actors import WorkerActors, WorkerConfig, register_actors
 
 QUEUE = "vidgen-test"
+INSTANT_RETRY = RenderConfig(
+    creator_entity=CREATOR, pause_s=PAUSE_S, retry=RetryPolicy(delay_seconds=0)
+)
 FAST = WorkerConfig(queue_name=QUEUE, max_retries=1, retry_delay_ms=20, pause_poll_ms=40)
+
+
+@pytest.fixture
+def world(make_world: WorldFactory) -> World:
+    """A running batch whose renderer asks for retries at once (the 10 s default only waits)."""
+    return make_world(config=INSTANT_RETRY)
 
 
 @pytest.fixture
@@ -140,7 +150,7 @@ def test_messages_carry_only_ids_never_personal_data(
     make_world: WorldFactory, broker: StubBroker
 ) -> None:
     """TT-AC17-P4: queue payloads are visible in Redis."""
-    world = make_world([(CANARY_NAME.replace("-", " "), CANARY_ID)])
+    world = make_world([(CANARY_NAME.replace("-", " "), CANARY_ID)], config=INSTANT_RETRY)
     _, queue = setup(world, broker)
     queue.enqueue_rows(world.batch_id, list(world.rows.values()))
     queue.enqueue_preview(world.batch_id, world.rows[2])
@@ -325,7 +335,7 @@ def test_worker_logs_contain_no_personal_data(
     make_world: WorldFactory, broker: StubBroker, caplog: pytest.LogCaptureFixture
 ) -> None:
     """TT-AC17-P4: the whole path, including a crash with a name in the exception text."""
-    world = make_world([(CANARY_NAME.replace("-", " "), CANARY_ID)])
+    world = make_world([(CANARY_NAME.replace("-", " "), CANARY_ID)], config=INSTANT_RETRY)
     world.encoder.errors = [WorkerCrashedError(f"died while rendering {CANARY_NAME}")]
     _, queue = setup(world, broker)
     queue.enqueue_rows(world.batch_id, [world.rows[2]])

@@ -29,7 +29,7 @@ from tests.integration.api.conftest import PASSWORD, make_settings
 from tests.integration.conftest import db, db_engine, test_db_url  # noqa: F401
 from vidgen.api.app import create_app
 from vidgen.api.container import AppDeps
-from vidgen.domain.retry import WorkerCrashedError
+from vidgen.domain.retry import RetryPolicy, WorkerCrashedError
 from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.row_store import SqlRowStore
 from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
@@ -120,7 +120,10 @@ def stack(db: Engine, test_db_url: str, tmp_path: Path) -> Iterator[Stack]:  # n
         labels=PillowLabelRenderer(devanagari_font=devanagari_font(), latin_font=latin_font()),
         clock=clock,
         config=RenderConfig(
-            creator_entity=settings.creator_entity, pause_s=0.6, label_style="band"
+            creator_entity=settings.creator_entity,
+            pause_s=0.6,
+            label_style="band",
+            retry=RetryPolicy(delay_seconds=0),  # the 10 s default only makes the test wait
         ),
         preview_sink=app.state.container.batches,
     )

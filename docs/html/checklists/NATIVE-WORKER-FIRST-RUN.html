@@ -1,4 +1,4 @@
-<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Checklist: first real run of local AI with the Docker app and a native worker</title><style>
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Checklist: first real run of local AI on the Mac (everything native, the tested route)</title><style>
 :root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
 @media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
@@ -9,31 +9,37 @@ a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:
 pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
 table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
 .meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
-</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Checklist: first real run of local AI with the Docker app and a native worker</h1>
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Checklist: first real run of local AI on the Mac (everything native, the tested route)</h1>
 <p>For the Admin, on the Mac (Apple silicon). Nothing here costs money or touches the cloud. Use <strong>made-up demo data only</strong> (the neutral demo template and the 4 made-up names). Not run by me; the first real run is yours.</p>
+<h2>Why this route, not the Docker app</h2>
+<p><strong>The Docker API cannot analyse a template in local AI mode yet.</strong> Template analysis (speech-to-text) runs inside the <strong>API process</strong>. The Docker backend image is built without the <code>local-ai</code> extra, so it has no <code>faster-whisper</code>, and the weights folder is not mounted into the container. In local mode the first "Analyse" would fail with a speech-to-text error (the API log shows <code>speech-to-text failed</code>, error type <code>ModuleNotFoundError</code>) and the template would end with the slot not found. So use <strong><code>scripts/dev_up.sh</code></strong>: API, worker and dashboard all run natively on the Mac; only PostgreSQL and Redis are in Docker. This is the route the pilot and the tests used. The "Docker app plus native worker" route is <strong>not ready</strong>: see the end of this file.</p>
 <h2>Before you start</h2>
 <ul><li>[ ] About <strong>20 to 21 GB of RAM</strong> is needed by the worker alone (measured on the M4 Pro, 24 GB); the Mac will swap. Quit</li></ul>
 <p>      browsers with many tabs, video apps and other heavy apps. 32 GB is recommended.</p>
-<ul><li>[ ] Docker Desktop: keep its memory limit small (Settings, Resources, for example 4 GB). The AI models run outside Docker,</li></ul>
-<p>      so Docker does not need much.</p>
-<ul><li>[ ] Stop the hand-started dev stack if it runs: <code>scripts/dev_down.sh</code>. It and the Docker app use the same ports (8000, 5173).</li><li>[ ] The weights are in <code>backend/spikes/m2_mac/work/local_ai_weights</code> (default) with whisper, qwen, chatterbox, musetalk.</li><li>[ ] The database is at migration 0003 (<code>vidgen</code> is). If you prefer a separate demo database, <code>vidgen_demo</code> first needs 0003</li></ul>
-<p>      (back up, then apply: see <code>docs/plans/CURRENT-PLAN.md</code>, section 5). Otherwise the first run adds one demo batch to <code>vidgen</code>.</p>
+<ul><li>[ ] Stop anything that already uses ports 8000 and 5173 (an old <code>dev_up.sh</code> run: <code>scripts/dev_down.sh</code>; the Docker app:</li></ul>
+<p>      <code>docker compose --profile app down</code>).</p>
+<ul><li>[ ] The weights are in <code>backend/spikes/m2_mac/work/local_ai_weights</code> (the default) with whisper, qwen, chatterbox, musetalk.</li></ul>
+<p>      Whisper there is the small size, which is what we recommend on the Mac.</p>
+<ul><li>[ ] The database is at migration 0003 (<code>vidgen</code> is). The first run adds one demo batch to <code>vidgen</code>. If you prefer a separate</li></ul>
+<p>      demo database, <code>vidgen_demo</code> first needs 0003 (back up, then apply: <code>docs/plans/CURRENT-PLAN.md</code>, section 5), and you start with       <code>DB_NAME=vidgen_demo</code>.</p>
 <h2>Steps</h2>
-<ol><li>[ ] <code>docker compose up -d</code> (PostgreSQL and Redis).</li><li>[ ] <code>python3 scripts/setup.py</code> and answer <strong>local</strong> (it keeps your existing keys; answer <code>n</code> to overwriting if <code>.env</code> is fine).</li></ol>
-<p>      Check <code>.env</code> has <code>VIDGEN_AI_MODE=local</code> and <code>VIDGEN_DOCKER_WORKERS=0</code> (no worker container).</p>
-<ol><li>[ ] <code>docker compose --profile app up -d</code> (API and dashboard in containers; no worker container).</li><li>[ ] Preview the native worker settings (changes nothing, secrets hidden):</li></ol>
-<p>      <code>python3 scripts/setup.py native-worker --print</code>. It must show <code>VIDGEN_AI_MODE=local</code>, <code>127.0.0.1</code> for the database and       Redis, your media folder as an absolute path, and <code>***</code> for the password.</p>
-<ol><li>[ ] In a <strong>second terminal</strong>, start the worker (it stays in the foreground, Ctrl+C stops it):</li></ol>
-<p>      <code>python3 scripts/setup.py native-worker</code>.       It first installs <code>chatterbox-tts==0.1.7</code> without its stale pins, then starts <code>python -m vidgen.worker</code>. Wait for the line       "local AI mode: development use only until licences are verified" and for the models to load on the first job.</p>
-<ol><li>[ ] Open http://localhost:5173, sign in, upload the <strong>neutral demo template</strong> (<code>backend/spikes/m2_mac/work/neutral_demo/demo_template.mp4</code>),</li></ol>
-<p>      type the name <code>Rahul</code>, analyse. Expect the slot to be found (name detection by sound); confirm it.</p>
+<ol><li>[ ] <code>docker compose up -d</code> (PostgreSQL and Redis only; no <code>--profile app</code>).</li><li>[ ] <code>VIDGEN_AI_MODE=local scripts/dev_up.sh</code>. It installs the <code>local-ai</code> extra and Chatterbox without its stale pins, sets the</li></ol>
+<p>      weights folder and one worker thread, then starts the API, the worker and the dashboard. The first run downloads       several GB of packages. If it says migrations are pending it asks y/N: do not answer <code>y</code> unless you mean to.</p>
+<ol><li>[ ] Check the worker started in local mode: <code>.dev/logs/worker.log</code> shows "local AI mode: development use only until licences are verified".</li><li>[ ] Open http://localhost:5173, sign in, upload the <strong>neutral demo template</strong> (<code>backend/spikes/m2_mac/work/neutral_demo/demo_template.mp4</code>),</li></ol>
+<p>      type the name <code>Rahul</code>, analyse. Expect the slot to be found (name detection by sound); confirm it. If it is not found, the       dashboard shows up to 3 closest words: pick one.</p>
 <ol><li>[ ] Upload <code>names_marketing.csv</code> (4 made-up rows), map the columns, press <strong>Generate preview</strong>. The first preview after a</li></ol>
-<p>      start is slow (models load and the GPU compiles). Watch the progress steps.</p>
+<p>      start is slow (models load and the GPU compiles). Watch the progress steps and the "first run is slow" note.</p>
 <ol><li>[ ] Confirm the spoken spelling, approve the preview, start the batch, wait for the 4 videos.</li></ol>
 <h2>What to check and write down</h2>
-<ul><li>[ ] Time of the first preview, of a warm preview, and per row. Peak memory (Activity Monitor "Memory", or <code>top -stats mem</code>) and swap used.</li><li>[ ] Output quality: voice says the new name, lips match, beard and face unchanged, no seam, music, AI label in the corner.</li><li>[ ] Did anything fail? Worker log is in the second terminal; API log: <code>docker compose logs api</code>.</li><li>[ ] The queue after a restart: stop the worker with Ctrl+C mid-batch, start it again; the stuck rows should be picked up again within about 5 minutes.</li></ul>
+<ul><li>[ ] Time of the first preview, of a warm preview, and per row. Peak memory (Activity Monitor "Memory", or <code>top -stats mem</code>) and swap used.</li><li>[ ] Output quality: voice says the new name, lips match, beard and face unchanged, no seam, music, AI label in the corner.</li><li>[ ] Did anything fail? Logs are in <code>.dev/logs/</code> (<code>api.log</code>, <code>worker.log</code>, <code>web.log</code>).</li><li>[ ] The queue after a restart: run <code>scripts/dev_down.sh</code> mid-batch and start again with the same command; the stuck rows should be picked up again within about 5 minutes.</li></ul>
 <h2>Stop and clean up</h2>
-<ul><li>Ctrl+C in the worker terminal, then <code>docker compose --profile app down</code> (your data stays in the Docker volumes and <code>./media</code>).</li><li>To go back to the hand-started dev stack: <code>scripts/dev_up.sh</code>.</li></ul>
+<ul><li><code>scripts/dev_down.sh</code> stops the API, worker and dashboard (PostgreSQL and Redis keep running in Docker).</li><li>To start again later, run step 2.</li></ul>
 <h2>If something goes wrong</h2>
-<ul><li>"Settings file not found" or "only for AI mode local": run <code>python3 scripts/setup.py</code> and choose local.</li><li>Port already in use: step "Stop the hand-started dev stack" was skipped.</li><li>The dashboard shows "The database needs migration ...": the database is behind; apply the migration (yours to run) and reload.</li><li>Out of memory or very slow: close other apps; try one row at a time.</li></ul>
-<p>Send me the numbers and any error text and I will record them in the plan.</p></div></body></html>
+<ul><li>Port already in use: a previous run or the Docker app is still up (see "Before you start").</li><li>The dashboard shows "The database needs migration ...": the database is behind; apply the migration (yours to run) and reload.</li><li>Out of memory or very slow: close other apps; try one row at a time.</li><li>Analyse says the slot was not found: check <code>.dev/logs/api.log</code> for <code>speech-to-text failed</code>; send me the error type.</li></ul>
+<p>Send me the numbers and any error text and I will record them in the plan.</p>
+<h2>Not ready: the Docker app with a native worker (do not use for the first run)</h2>
+<p><code>docker compose --profile app up -d</code> plus <code>python3 scripts/setup.py native-worker</code> starts the worker natively, but the API in the container would still have to run template analysis, and it cannot (no <code>faster-whisper</code>, no weights). To make it work one of these is needed, each a code or image change that needs your approval:</p>
+<ul><li><strong>A.</strong> Build the API image with the <code>local-ai</code> extra and mount the weights folder into it (a big image; the speech-to-text would run</li></ul>
+<p>  on CPU inside the container).</p>
+<ul><li><strong>B.</strong> Run the API natively and keep only PostgreSQL and Redis in Docker. This is what <code>scripts/dev_up.sh</code> already does; nothing to build.</li><li><strong>C.</strong> Move template analysis from the API to the worker (an architecture change).</li></ul>
+<p>Recommendation: <strong>B</strong> for now (this checklist), and decide A or C only if you need the API in Docker.</p></div></body></html>

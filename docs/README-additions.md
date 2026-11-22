@@ -37,10 +37,12 @@ mark the slot. You always confirm the slot yourself.
 admin applies the migration. The app never applies migrations by itself: run the guided start (it asks y/N) or the
 migration command, then reload. The page recovers within a few seconds.
 
-## 5. Local mode with the Docker app (already in README)
-
-The README already names `python3 scripts/setup.py native-worker`. Keep the honest status: only static and configuration
-checks were run; the first real run on a Mac (about 20 GB of RAM) is still to be done.
+## 5. Local mode: the Docker app does not work with local AI yet
+The README line that says to start the Docker app and then `python3 scripts/setup.py native-worker` is incomplete: template
+analysis runs in the **API process**, and the Docker image has no `local-ai` extra and no weights, so the Docker API cannot analyse a
+template in local mode. For local AI use `VIDGEN_AI_MODE=local scripts/dev_up.sh` (everything native; PostgreSQL and Redis in
+Docker). Replace the "Local mode" bullet in "Quick start with Docker and the installer" with that, and keep `native-worker` as
+"not ready". See `docs/checklists/NATIVE-WORKER-FIRST-RUN.md`.
 
 ## 6. Optional setting to mention
 

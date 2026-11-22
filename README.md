@@ -201,7 +201,7 @@ Open **http://localhost:5173**. The API answers at `http://127.0.0.1:8000/api/he
 - **Run it again** at any time. It asks before overwriting `.env`, and it keeps your encryption keys, so data that is already stored stays readable.
 - **Ports:** set `VIDGEN_API_PORT`, `VIDGEN_DASHBOARD_PORT`, `VIDGEN_DB_PORT` or `VIDGEN_REDIS_PORT` before `docker compose` to use other ones.
 - **Media** (templates and outputs) is kept in the host folder `./media` (change it with `VIDGEN_MEDIA_DIR`), not inside a container.
-- **Local mode:** the installer sets `VIDGEN_DOCKER_WORKERS=0`, so no worker container starts and the worker runs on your Mac. Start it with `python3 scripts/setup.py native-worker` (add `--print` to preview the settings with secrets hidden). So far this is covered by static checks only; the first real run is pending, so `scripts/dev_up.sh` (steps below) remains the tested route for local mode.
+- **Local mode:** the installer sets `VIDGEN_DOCKER_WORKERS=0`, so no worker container starts. But in local AI mode template analysis (speech-to-text) runs in the **API process**, and the Docker image is built without the `local-ai` extra and without the weights, so **the Docker API cannot analyse a template in local mode yet**. `python3 scripts/setup.py native-worker` (add `--print` to preview its settings with secrets hidden) only starts the worker on your Mac; it does not fix analysis. For local AI use `VIDGEN_AI_MODE=local scripts/dev_up.sh` (everything native; only PostgreSQL and Redis in Docker; the tested route, steps below). A first-run checklist is in `docs/checklists/NATIVE-WORKER-FIRST-RUN.md`.
 - **Stop:** `docker compose --profile app down`. Your data stays in Docker volumes and `./media`.
 
 ## Install on macOS

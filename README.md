@@ -118,6 +118,20 @@ Measured with `bench_stats.py` on a **demo database**:
 
 *This is a small sample, not a benchmark: one batch, four rows, one short template, on a 24 GB Mac that swaps under local AI (see [System requirements](#system-requirements)). Run the report on your own data for real figures. Fake mode has no AI cost, so its timings say nothing about real rendering.*
 
+Measured in the **dashboard** on 2026-11-22: a **demo run on 4 made-up names** (throwaway demo database, local AI, no real data), Apple M4 Pro with 24 GB RAM, the same 10.5 s, 1080×1300 demo template:
+
+| Step | Result |
+|---|---|
+| Template upload and analysis (name found automatically) | 4 s |
+| First preview (cold: models load, GPU compiles) | 109 s |
+| Warm preview (after confirming the spelling) | 45 s |
+| Render time per row | 14.7 s, 16.8 s, 16.1 s, and 85.4 s for the fourth row (the Mac was swapping) |
+| Batch of 4 videos | about 2 min 13 s |
+| Worker peak memory / API | 7.5 GB / about 1.0 GB |
+| Swap | 2.1 GB before, 15.3 GB at the peak (no freeze) |
+
+*One short demo run on a 24 GB Mac that swaps under local AI, not a benchmark. Close other apps for steady timings. Report: `docs/reports/FIRST-DASHBOARD-RUN-2026-11-22.md`.*
+
 Documented design figures (from the project's plans, **not measurements of a production run**):
 
 | Item | Figure | Source |

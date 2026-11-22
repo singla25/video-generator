@@ -2720,7 +2720,7 @@ dev = [
     { name = "mypy", specifier = ">=2.4.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
-    { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "pytest-xdist", specifier = "==3.8.0" },
     { name = "ruff", specifier = ">=0.17.1" },
     { name = "types-openpyxl", specifier = ">=3.1.5.20261017" },
     { name = "types-regex", specifier = ">=2026.9.29.20261017" },

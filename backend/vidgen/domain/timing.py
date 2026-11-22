@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from vidgen.domain.codes import DomainError, FailureCode
+from vidgen.domain.quality import OutputExpectation, SlotRegion
 
 MS_PER_SECOND = 1000
 MIN_CROSSFADE_MS = 20
@@ -121,3 +123,24 @@ def duration_within_tolerance(
 def expected_frame_count(duration_s: float, fps: float) -> int:
     """Number of frames for ``duration_s`` at ``fps``, rounded to the nearest frame."""
     return round(duration_s * fps)
+
+
+def expected_output(
+    slots: Sequence[tuple[float, float]], plans: Sequence[TimingPlan]
+) -> OutputExpectation:
+    """Where each slot sits in the template and in the output, and the total length change.
+
+    A slot's region grows by the pause it absorbed; in the output it also grows by the
+    extension and the gap, and every later slot moves by the deltas before it.
+    """
+    if len(slots) != len(plans):
+        raise ValueError("slots and plans must have the same length")
+    regions: list[SlotRegion] = []
+    shift_s = 0.0
+    for (start, end), plan in zip(slots, plans, strict=True):
+        template_end = end + plan.pause_absorbed_s
+        output_start = start + shift_s
+        output_end = output_start + (end - start) + plan.pause_absorbed_s + plan.duration_delta_s
+        regions.append(SlotRegion((start, template_end), (output_start, output_end)))
+        shift_s += plan.duration_delta_s
+    return OutputExpectation(delta_s=shift_s, regions=tuple(regions))

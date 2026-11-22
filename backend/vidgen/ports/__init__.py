@@ -32,7 +32,9 @@ from vidgen.ports.interfaces import (
 )
 from vidgen.ports.models import (
     AuditEntry,
+    OutputExpectation,
     SheetRow,
+    SlotRegion,
     TemplateRecord,
     VideoInfo,
     VideoLimits,
@@ -54,6 +56,7 @@ __all__ = [
     "LipSyncer",
     "MappingRecord",
     "NewBatchRow",
+    "OutputExpectation",
     "PreviewRecord",
     "PreviewSink",
     "QualityChecker",
@@ -61,6 +64,7 @@ __all__ = [
     "RowView",
     "SheetReader",
     "SheetRow",
+    "SlotRegion",
     "SpeechToText",
     "StageReporter",
     "Storage",

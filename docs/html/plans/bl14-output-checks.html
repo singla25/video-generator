@@ -1,0 +1,61 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Plan — BL-14 Output checks (OUTPUT_CHECK_FAILED made real)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Plan — BL-14 Output checks (OUTPUT_CHECK_FAILED made real)</h1>
+<h2>Goal</h2>
+<p>Today <code>backend/vidgen/worker/runner.py</code> builds <code>FakeQualityChecker</code>, so <code>OUTPUT_CHECK_FAILED</code> can never happen. Plan AC8 (duration, resolution, fps, video codec family and audio format match the template; duration = template + name delta within <code>duration_tolerance_ms</code> = 50) and AC9 (loudness of the spliced slot within <code>loudness_tolerance_lu</code> = 1.0 LU) are therefore not enforced. This plan adds a real checker and wires it into the worker. It also wires the existing <code>remove_stale_temp</code> helper into a periodic worker task.</p>
+<h2>Acceptance criteria</h2>
+<ol><li>In <code>local</code> and <code>modal</code> AI modes the worker uses the real checker; only <code>fake</code> mode uses the fake.</li><li>An output whose duration differs from template duration + name delta by more than <code>duration_tolerance_ms</code> fails with <code>OUTPUT_CHECK_FAILED</code>.</li><li>An output with a different resolution, fps, video codec family or audio format than the template fails.</li><li>For each slot, the loudness of the output region differs from the template region by more than <code>loudness_tolerance_lu</code> fails; silent audio fails.</li><li>Zero-length, unreadable or corrupt output returns issues. The checker never raises.</li><li>Issue codes come from a domain enum. Messages never contain names or paths.</li><li><code>render_row</code> raises <code>DomainError(OUTPUT_CHECK_FAILED)</code> with a fixed message that contains no names.</li><li>Stale temp files are cleaned by a periodic worker task (<code>temp_cleanup_interval_seconds</code> default 3600, <code>temp_max_age_seconds</code> default 3600). Errors are logged, never fatal.</li><li>Existing tests still pass. <code>ruff</code> and <code>mypy --strict</code> are clean.</li></ol>
+<h2>Requirement tree</h2>
+<pre><code>BL-14
+├── Functional
+│   ├── R1 Real QualityChecker (ffprobe + ebur128) for AC8 and AC9
+│   ├── R2 Expectation built from slots and plans (pure domain function)
+│   ├── R3 Worker wiring by ai_mode
+│   ├── R4 render_row passes the expectation and raises OUTPUT_CHECK_FAILED
+│   └── R5 Periodic temp cleanup in the worker
+├── Non-functional
+│   ├── No names or paths in messages or logs
+│   └── Checker never raises; cost: one extra ffmpeg pass
+├── Constraints
+│   ├── Port change is additive and backward compatible
+│   └── Reuse loudness.parse_integrated_lufs and domain timing.duration_within_tolerance
+├── Out of scope
+│   └── No migration, no new dependency, helpers and settings are not deleted
+└── Open questions (none)</code></pre>
+<h2>Design</h2>
+<ol><li><strong>Port change (NEEDS CEO/ADMIN REVIEW, gate 7; additive only).</strong> <code>QualityChecker.check(template, output, expected: OutputExpectation | None = None) -&gt; list[str]</code>. Existing callers and the fake keep working because <code>expected</code> defaults to <code>None</code>.</li><li><code>OutputExpectation</code> is a frozen dataclass in <code>ports/models.py</code>. It holds <code>delta_s</code> (sum of <code>plan.duration_delta_s</code>) and per-slot <code>SlotRegion(template=(start, end), output=(start, end))</code>.</li><li>A pure domain function builds it from slots and plans. The output region of slot i starts at <code>start_i</code> plus the sum of deltas of earlier slots. Its length is slot length + <code>pause_absorbed</code> + extension + gap.</li><li><strong>New <code>infrastructure/ffmpeg/quality.py</code>: <code>OutputQualityChecker</code>.</strong> Uses ffprobe and ebur128 and returns codes from a domain enum. Unreadable or zero-length output returns issues. It never raises and never prints names or paths.</li><li><strong>Worker wiring.</strong> <code>build_quality_checker(settings)</code> in <code>worker/runner.py</code>: real checker for <code>ai_mode</code> local and modal, fake only for fake mode. It reads the two tolerance settings.</li><li><strong>render_row</strong> passes the expectation. A failure raises <code>DomainError(OUTPUT_CHECK_FAILED)</code> with a fixed, name-free message.</li><li><strong>Temp cleanup.</strong> <code>remove_stale_temp</code> runs in a <code>PeriodicTask</code> in the worker. New settings: <code>temp_cleanup_interval_seconds</code> (3600) and <code>temp_max_age_seconds</code> (3600).</li></ol>
+<h2>Test tree outline</h2>
+<p>See docs/test-tree/bl14-output-checks.md (tester writes it).</p>
+<pre><code>Output checks
+├── Single slot
+│   ├── Positive: matching output passes (duration, fps, codec, audio, loudness within 1 LU)
+│   ├── Negative: wrong duration; wrong fps; wrong codec; silent audio; loudness 2 LU off
+│   └── Edge: duration exactly at tolerance; zero-length output; corrupt file; missing file
+├── Multi-slot
+│   ├── Positive: regions shifted by earlier deltas pass
+│   └── Negative/Edge: only the second slot is off; negative delta
+├── Wiring
+│   ├── Positive: local/modal get the real checker, fake gets the fake
+│   └── Negative: failure raises OUTPUT_CHECK_FAILED, message has no names
+└── Temp cleanup
+    ├── Positive: old files removed, new kept
+    └── Edge: cleanup error is logged, worker keeps running</code></pre>
+<h2>Tasks</h2>
+<table><tr><th>ID</th><th>Task</th><th>Agent</th><th>Why this agent</th><th>Depends on</th><th>Model</th><th>Worktree?</th><th>Done when</th></tr><tr><td>BL14-T1</td><td>Test tree and red tests</td><td>tester</td><td>Owns tests/</td><td>Plan approved</td><td>sonnet</td><td>Yes (this one)</td><td>Tests fail for the right reasons</td></tr><tr><td>BL14-T2</td><td>Port, domain function, checker, wiring, cleanup task</td><td>backend-dev</td><td>Owns backend/</td><td>BL14-T1</td><td>sonnet</td><td>Yes (this one)</td><td>Tests green, ruff and mypy clean</td></tr><tr><td>BL14-T3</td><td>Verify, coverage, edge cases</td><td>tester</td><td>Independent check</td><td>BL14-T2</td><td>sonnet</td><td>Yes (this one)</td><td>Full suite green, coverage &gt;= 85 % (100 % on pipeline logic)</td></tr></table>
+<h2>Order (TDD)</h2>
+<p>tester (red) → backend-dev (green + refactor) → tester (verify) → CEO review → Admin approves merge</p>
+<h2>Risks</h2>
+<ul><li>False failures on real templates because of codec padding. Mitigation: tolerances are settings; test with real demo templates before merge.</li><li>Extra ffmpeg pass costs time per row. Mitigation: ebur128 only on slot regions; measure once.</li><li>Port change touches a shared interface. Mitigation: additive default, flagged for review.</li></ul>
+<h2>Migrations / dependencies (need separate approval)</h2>
+<p>None. No migration, no new dependency.</p>
+<h2>Admin approval</h2>
+<ul><li>[ ] Plan approved</li><li>[ ] Port change reviewed (gate 7)</li><li>[ ] Task assignment approved</li><li>[ ] Merge approved</li></ul></div></body></html>

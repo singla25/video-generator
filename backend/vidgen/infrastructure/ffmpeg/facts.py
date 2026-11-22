@@ -10,6 +10,14 @@ from typing import Any
 from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.infrastructure.ffmpeg.runner import run_tool
 
+DEFAULT_FFPROBE = "ffprobe"
+
+
+def sibling_ffprobe(ffmpeg_path: str) -> str:
+    """ffprobe next to ffmpeg if present, else the one on PATH."""
+    sibling = Path(ffmpeg_path).with_name(DEFAULT_FFPROBE)
+    return str(sibling) if sibling.is_file() else DEFAULT_FFPROBE
+
 
 @dataclass(frozen=True)
 class TemplateFacts:
@@ -43,14 +51,22 @@ def parse_facts(data: dict[str, Any]) -> TemplateFacts:
         raise DomainError(FailureCode.INTERNAL_ERROR) from exc
 
 
-def read_template_facts(ffprobe: str, template: Path, timeout_seconds: float) -> TemplateFacts:
-    """Probe ``template``; unreadable files raise a coded DomainError."""
+def probe_json(ffprobe: str, path: Path, timeout_seconds: float) -> dict[str, Any]:
+    """Run ffprobe on ``path``; a failed run or unparsable output raises a coded DomainError."""
     output = run_tool(
         [ffprobe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams",
-         "-i", str(template)],
+         "-i", str(path)],
         timeout_seconds,
     )  # fmt: skip
     try:
-        return parse_facts(json.loads(output.stdout))
+        data = json.loads(output.stdout)
     except json.JSONDecodeError as exc:
         raise DomainError(FailureCode.INTERNAL_ERROR) from exc
+    if not isinstance(data, dict):
+        raise DomainError(FailureCode.INTERNAL_ERROR)
+    return data
+
+
+def read_template_facts(ffprobe: str, template: Path, timeout_seconds: float) -> TemplateFacts:
+    """Probe ``template``; unreadable files raise a coded DomainError."""
+    return parse_facts(probe_json(ffprobe, template, timeout_seconds))

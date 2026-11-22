@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import re
+
+from vidgen.infrastructure.ffmpeg.runner import run_tool
 
 SILENCE_FLOOR_LUFS = -70.0  # ebur128 reports this for silence or too-short input
 MAX_GAIN_DB = 24.0  # a safety bound; larger corrections mean something is wrong upstream
+_MEASURE_FLAGS = ["-hide_banner", "-nostats", "-nostdin"]
 _INTEGRATED = re.compile(r"I:\s+(-?\d+(?:\.\d+)?)\s+LUFS")
 
 
@@ -23,3 +27,14 @@ def gain_db(template_lufs: float | None, new_lufs: float | None) -> float:
     if template_lufs is None or new_lufs is None:
         return 0.0
     return max(-MAX_GAIN_DB, min(MAX_GAIN_DB, template_lufs - new_lufs))
+
+
+def measure_lufs(
+    ffmpeg: str, input_args: list[str], prefilter: str, timeout_seconds: float
+) -> float | None:
+    """Integrated loudness of an input after ``prefilter``; None if silent or unmeasurable."""
+    command = [
+        ffmpeg, *_MEASURE_FLAGS, *input_args, "-vn",
+        "-af", f"{prefilter},ebur128", "-f", "null", os.devnull,
+    ]  # fmt: skip
+    return parse_integrated_lufs(run_tool(command, timeout_seconds).stderr)

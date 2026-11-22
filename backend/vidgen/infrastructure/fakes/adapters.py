@@ -12,6 +12,7 @@ import wave
 from pathlib import Path
 
 from vidgen.domain.values import Word
+from vidgen.ports.models import OutputExpectation
 
 SAMPLE_RATE = 16000
 BASE_SECONDS = 0.30
@@ -79,6 +80,8 @@ class FakeLipSyncer:
 class FakeQualityChecker:
     """Accepts every output (the real checks Q1-Q6 come in M2)."""
 
-    def check(self, template: Path, output: Path) -> list[str]:
+    def check(
+        self, template: Path, output: Path, expected: OutputExpectation | None = None
+    ) -> list[str]:
         """Return no failures."""
         return []

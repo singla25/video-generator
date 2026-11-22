@@ -137,7 +137,9 @@ def test_status_reports_the_schema_block(build: Build) -> None:
         "expected": "0003",
         "message": BEHIND_MESSAGE,
     }
-    assert {"worker_alive", "queue_depth", "redis_ok", "ai_mode"} <= set(body)  # unchanged keys
+    assert {"worker_alive", "queue_depth", "redis_ok", "ai_mode", "spoken_suffix"} <= set(
+        body
+    )  # unchanged keys
 
 
 def test_status_for_empty_database_has_null_current(build: Build) -> None:

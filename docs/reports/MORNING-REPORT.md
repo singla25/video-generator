@@ -63,7 +63,9 @@ Skipped as you said: lip sync on Modal (licence), the CUDA image (G6), G8.
 6. Move `vidgen-backup-before-0003.sql` out of the project (it is not git-ignored and holds data).
 7. Migration 0003 on `vidgen_demo` is optional (only for new screenshots).
 
-## 6. Morning checklist for the Modal spike
+## 6. Morning checklist for the Modal spike (PARKED: not needed now)
+**Update 2026-11-22: the Admin parked Modal (budget, DD-53). Do not follow this checklist.** It is kept in case Modal is resumed. The manual Kaggle trial replaces it.
+
 1. In the Modal dashboard add a **payment method** or credits to the workspace you will use (the spike failed on 2026-11-17 with "Please add a payment method to use L4 GPU functions").
 2. Set that workspace's **spending limit to $5**. The app's own cap is a soft limit: the workspace limit is the hard stop.
 3. **Switch the Modal profile** to that workspace. Check with `uv run --with modal modal profile current`; list and switch with `modal profile list` and `modal profile activate <name>` (check `modal profile --help` if a name differs).

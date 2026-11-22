@@ -1,0 +1,133 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Kaggle trial on 2x Tesla T4 (one GPU used)</title><style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d8a;--code:#f1efe9}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ecebe6;--muted:#a09e97;--line:#2e2d2a;--accent:#8db6e0;--code:#22211f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+nav{font-size:14px;margin-bottom:24px}nav a{color:var(--accent)}
+h1{font-size:28px;margin:8px 0 16px}h2{font-size:21px;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px}
+a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-size:14px}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+.meta{color:var(--muted);font-size:13px}.group{margin:24px 0}.group h2{border:none}ul.files{padding-left:18px}
+</style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Kaggle trial on 2x Tesla T4 (one GPU used)</h1>
+<p>Try the speech-to-text and voice-cloning models by hand on a free Kaggle GPU. <strong>Kaggle is a third party: use only made-up demo data</strong> (the notebook makes its own test audio with the default made-up voice). No voter data, no real person's voice, no tokens or passwords in the notebook (C5). This is a measurement trial, not a render worker: the app never connects to Kaggle.</p>
+<p>Settings in the notebook: <strong>Accelerator = GPU T4 x2</strong> (the code uses only GPU 0), <strong>Internet = On</strong>. Nothing here was run by me; it is untested on your machine. Paste the printed summary back to me. No upload is needed: Cell 5 makes its own test audio with the default made-up voice and Cell 4 listens to it.</p>
+<h2>Run order</h2>
+<p><strong>Cell 1, Cell 2, restart the kernel, Cell 1, Cell 3a, Cell 3b, Cell 5, Cell 4, Cell 6.</strong> (Cell 1 runs twice because the restart forgets the one-GPU setting. Cell 5 comes before Cell 4 because Cell 4 reads the audio file that Cell 5 writes.)</p>
+<h2>Cell 1: pick ONE GPU (run this first in a fresh session)</h2>
+<pre><code>import os
+os.environ[&quot;CUDA_VISIBLE_DEVICES&quot;] = &quot;0&quot;      # one T4; must be set before torch or ctranslate2 are imported
+os.environ[&quot;TOKENIZERS_PARALLELISM&quot;] = &quot;false&quot;
+import subprocess
+print(subprocess.run([&quot;nvidia-smi&quot;, &quot;--query-gpu=index,name,memory.total,driver_version&quot;, &quot;--format=csv&quot;],
+                     capture_output=True, text=True).stdout)
+import torch
+print(&quot;torch&quot;, torch.__version__, &quot;| gpus visible:&quot;, torch.cuda.device_count(), &quot;|&quot;, torch.cuda.get_device_name(0))
+print(&quot;arch list:&quot;, torch.cuda.get_arch_list())   # must contain sm_75 (T4)
+print(torch.zeros(1).cuda() + 1)                  # a real kernel runs</code></pre>
+<h2>Cell 2: install, KEEP the preinstalled torch (no torch install)</h2>
+<p>Chatterbox 0.1.7 pins an old torch and <code>transformers==5.2.0</code>; those pins are stale. We install its dependencies at the versions we tested, then add Chatterbox with <code>--no-deps</code>, so pip never replaces the preinstalled <code>torch 2.11.0+cu130</code>.</p>
+<pre><code>%%bash
+set -e
+python -c &quot;import torch, torchaudio; print(&#x27;before:&#x27;, torch.__version__, torchaudio.__version__)&quot;
+pip install -q &quot;faster-whisper==1.2.1&quot; &quot;transformers==5.20.2&quot; &quot;accelerate==1.15.0&quot; &quot;librosa==0.11.0&quot; \
+  &quot;s3tokenizer==0.3.0&quot; &quot;diffusers==0.29.0&quot; &quot;resemble-perth==1.0.1&quot; &quot;conformer==0.3.2&quot; &quot;safetensors==0.8.0&quot; \
+  &quot;pykakasi==2.3.0&quot; &quot;pyloudnorm==0.2.0&quot; &quot;omegaconf==2.0.6&quot; &quot;numpy==1.26.4&quot; &quot;soundfile==0.14.0&quot; &quot;huggingface_hub==2.3.0&quot;
+pip install -q --no-deps &quot;chatterbox-tts==0.1.7&quot;
+python -c &quot;import torch; print(&#x27;after: &#x27;, torch.__version__)&quot;   # must be unchanged</code></pre>
+<p><strong>Then restart the kernel</strong> (Run menu, Restart session) because numpy was changed, and run Cell 1 again before Cell 3a. If <code>after:</code> shows a different torch, stop and send me the output.</p>
+<h2>Cell 3a: install the CUDA 12 and cuDNN 9 libraries (pip only)</h2>
+<p>faster-whisper runs on CTranslate2, which needs CUDA 12 cuBLAS and cuDNN 9. The machine has CUDA 13, so add the CUDA 12 libraries as pip wheels.</p>
+<pre><code>%%bash
+pip install -q &quot;nvidia-cublas-cu12&quot; &quot;nvidia-cudnn-cu12==9.*&quot;</code></pre>
+<h2>Cell 3b: load those libraries (plain Python, no %%bash)</h2>
+<p>Run this in its own cell, after 3a and before anything uses faster-whisper.</p>
+<pre><code>import ctypes, glob, os, sysconfig
+site = sysconfig.get_paths()[&quot;purelib&quot;]
+libdirs = sorted(glob.glob(os.path.join(site, &quot;nvidia&quot;, &quot;*&quot;, &quot;lib&quot;)))
+os.environ[&quot;LD_LIBRARY_PATH&quot;] = &quot;:&quot;.join(libdirs + [os.environ.get(&quot;LD_LIBRARY_PATH&quot;, &quot;&quot;)])   # for any subprocess
+for pat in [&quot;cublas/lib/libcublasLt.so.12&quot;, &quot;cublas/lib/libcublas.so.12&quot;, &quot;cudnn/lib/libcudnn*.so.9&quot;]:
+    for path in sorted(glob.glob(os.path.join(site, &quot;nvidia&quot;, pat))):
+        ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)       # load now, before ctranslate2 asks for them
+print(&quot;preloaded from&quot;, len(libdirs), &quot;nvidia lib folders&quot;)</code></pre>
+<h2>Cell 4: speech-to-text, small and medium, float16 on the GPU (run after Cell 5)</h2>
+<p>It listens to the file Cell 5 wrote (made-up default voice, no upload). Success looks like a word list that contains <code>राहुल</code> with a time inside the clip; note which size writes it correctly.</p>
+<pre><code>import gc, subprocess, time
+import torch
+from faster_whisper import WhisperModel
+
+AUDIO = &quot;/kaggle/working/default_warm.wav&quot;        # written by Cell 5 (made-up default voice)
+NAME = &quot;Rahul&quot;                                    # the name typed in the template (used as a hint)
+
+def gpu_mib():
+    out = subprocess.run([&quot;nvidia-smi&quot;, &quot;--query-gpu=memory.used&quot;, &quot;--format=csv,noheader,nounits&quot;],
+                         capture_output=True, text=True).stdout.split()[0]
+    return int(out)
+
+stt_rows = []
+for size in (&quot;small&quot;, &quot;medium&quot;):
+    t = time.time()
+    model = WhisperModel(size, device=&quot;cuda&quot;, compute_type=&quot;float16&quot;)   # T4: float16, no fast bf16
+    load_s = time.time() - t
+    used = gpu_mib()
+    t = time.time()
+    segments, _ = model.transcribe(AUDIO, language=&quot;hi&quot;, word_timestamps=True, hotwords=NAME)
+    words = [(w.word.strip(), round(w.start, 2), round(w.end, 2), round(w.probability, 2))
+             for s in segments for w in (s.words or [])]
+    run_s = time.time() - t
+    stt_rows.append((size, round(load_s, 1), round(run_s, 2), used))
+    print(size, &quot;load&quot;, round(load_s, 1), &quot;s | run&quot;, round(run_s, 2), &quot;s | GPU used&quot;, used, &quot;MiB&quot;)
+    print(words)
+    del model; gc.collect(); torch.cuda.empty_cache()</code></pre>
+<p>Run it a second time to see the warm run time (the first run includes CUDA start-up).</p>
+<h2>Cell 5: Chatterbox voice on the GPU (run before Cell 4)</h2>
+<p>Uses the default made-up voice (<code>VOICE = None</code>), so there is nothing to upload. It writes <code>default_first.wav</code> and <code>default_warm.wav</code>, then frees the voice model so Cell 4 has the whole GPU.</p>
+<pre><code>import time, gc
+import soundfile as sf
+import torch
+from huggingface_hub import snapshot_download
+from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+from IPython.display import Audio, display
+
+VOICE = None   # default made-up voice; nothing to upload
+TEXT = &quot;नमस्ते राहुल जी, आपका स्वागत है।&quot;
+FILES = [&quot;ve.pt&quot;, &quot;t3_mtl23ls_v2.safetensors&quot;, &quot;s3gen.pt&quot;, &quot;grapheme_mtl_merged_expanded_v1.json&quot;,
+         &quot;conds.pt&quot;, &quot;Cangjie5_TC.json&quot;]
+ckpt = snapshot_download(&quot;ResembleAI/chatterbox&quot;, allow_patterns=FILES, local_dir=&quot;/kaggle/working/chatterbox&quot;)
+
+t = time.time()
+tts = ChatterboxMultilingualTTS.from_local(ckpt, torch.device(&quot;cuda&quot;))
+print(&quot;load&quot;, round(time.time() - t, 1), &quot;s | t3 dtype:&quot;, next(tts.t3.parameters()).dtype)
+
+def speak(label, autocast=False):
+    torch.cuda.reset_peak_memory_stats(); torch.cuda.synchronize(); t0 = time.time()
+    kw = dict(language_id=&quot;hi&quot;)
+    if VOICE:
+        kw[&quot;audio_prompt_path&quot;] = VOICE
+    if autocast:
+        with torch.autocast(&quot;cuda&quot;, dtype=torch.float16):
+            wav = tts.generate(TEXT, **kw)
+    else:
+        wav = tts.generate(TEXT, **kw)
+    torch.cuda.synchronize()
+    secs = time.time() - t0
+    peak = torch.cuda.max_memory_allocated() // (1 &lt;&lt; 20)
+    print(label, &quot;| time&quot;, round(secs, 2), &quot;s | audio&quot;, round(wav.shape[-1] / tts.sr, 2), &quot;s | peak&quot;, peak, &quot;MiB&quot;)
+    sf.write(f&quot;/kaggle/working/{label}.wav&quot;, wav.cpu().squeeze().numpy(), int(tts.sr))
+    display(Audio(f&quot;/kaggle/working/{label}.wav&quot;))
+    return secs, peak
+
+speak(&quot;default_first&quot;)     # includes warm-up
+speak(&quot;default_warm&quot;)      # this file is the input of Cell 4
+# optional experiment, only if the two runs above work: speak(&quot;fp16_autocast&quot;, autocast=True)
+
+del tts                    # free the voice model before the speech-to-text cell
+gc.collect()
+torch.cuda.empty_cache()</code></pre>
+<p>Optional experiment: <code>speak("fp16_autocast", autocast=True)</code> (run it before the <code>del tts</code> lines). T4 has no fast bf16, so check that the dtype line above is not bfloat16, and compare time and listen to the audio (float16 can change quality or fail).</p>
+<h2>Cell 6: summary to paste back</h2>
+<pre><code>print(&quot;STT (size, load s, run s, GPU MiB):&quot;, stt_rows)
+print(subprocess.run([&quot;nvidia-smi&quot;, &quot;--query-gpu=name,memory.used,memory.total&quot;, &quot;--format=csv&quot;], capture_output=True, text=True).stdout)</code></pre>
+<p>Send me this output, the printed word lists from Cell 4, the dtype line and the Chatterbox timing lines.</p>
+<h2>Afterwards</h2>
+<p>Delete the uploaded dataset and the outputs, and turn Internet off. Nothing from this notebook goes into the project database.</p></div></body></html>

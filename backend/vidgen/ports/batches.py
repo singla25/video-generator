@@ -264,6 +264,10 @@ class JobQueue(Protocol):
         """Queue one render job per row on ``queue_name`` (None = the default queue)."""
         ...
 
+    def enqueue_spellings(self, batch_id: UUID) -> None:
+        """Queue one job that suggests the spoken spelling of the batch's rows."""
+        ...
+
     def depth(self, queue_name: str | None = None) -> int:
         """Messages waiting in the queue (None = the default queue)."""
         ...

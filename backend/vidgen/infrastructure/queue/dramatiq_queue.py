@@ -14,6 +14,7 @@ from dramatiq import Broker
 
 ROW_ACTOR_NAME = "render_row"
 PREVIEW_ACTOR_NAME = "render_preview"
+SPELLING_ACTOR_NAME = "spell_rows"
 DEFAULT_QUEUE = "vidgen"
 REDIS_NAMESPACE = "dramatiq"
 LIVE_KEY_PREFIX = "vidgen:job:"
@@ -39,6 +40,18 @@ class DramatiqJobQueue:
         """Queue one render job per row on ``queue_name`` (None = own queue)."""
         for row_id in row_ids:
             self._send(ROW_ACTOR_NAME, batch_id, row_id, queue_name)
+
+    def enqueue_spellings(self, batch_id: UUID) -> None:
+        """Queue the spelling job of a batch on the default queue (the batch id only)."""
+        self._broker.declare_queue(self._queue)
+        message: dramatiq.Message[Any] = dramatiq.Message(
+            queue_name=self._queue,
+            actor_name=SPELLING_ACTOR_NAME,
+            args=(),
+            kwargs={"batch_id": str(batch_id)},
+            options={},
+        )
+        self._broker.enqueue(message)
 
     def depth(self, queue_name: str | None = None) -> int:
         """Messages waiting in a queue (the queue-depth metric); None = own queue."""

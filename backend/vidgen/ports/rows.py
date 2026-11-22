@@ -160,6 +160,29 @@ class RowStore(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class MissingSpelling:
+    """A QUEUED row that has no spoken name yet. ``name`` is decrypted: never log it."""
+
+    row_id: UUID
+    row_number: int
+    name: str
+
+
+class SpellingStore(Protocol):
+    """Reads and writes the spoken spellings the spelling job suggests (BL-11)."""
+
+    def rows_missing_spoken_name(
+        self, batch_id: UUID, after: int, limit: int
+    ) -> list[MissingSpelling]:
+        """QUEUED rows without a spoken name, row number above ``after``, ascending."""
+        ...
+
+    def set_spoken_name(self, row_id: UUID, spoken: str) -> bool:
+        """Store ``spoken`` encrypted if the row is still QUEUED and has none; True if stored."""
+        ...
+
+
 class PreviewSink(Protocol):
     """Receives the result of a preview render."""
 

@@ -14,7 +14,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from vidgen.domain.outcomes import RowOutcomeKind
@@ -31,6 +31,7 @@ from vidgen.ports.rows import (
     ClaimSnapshot,
     Completion,
     ManifestInput,
+    MissingSpelling,
     ProviderGate,
     RowJob,
     RowUpdate,
@@ -121,6 +122,42 @@ class SqlRowStore:
                 manifest = self._complete(session, batch, now, decide_completion)
             session.commit()
             return manifest
+
+    def rows_missing_spoken_name(
+        self, batch_id: UUID, after: int, limit: int
+    ) -> list[MissingSpelling]:
+        """QUEUED rows of the batch without a spoken name, ascending, after a row number."""
+        with self._factory() as session:
+            rows = session.execute(
+                select(BatchRow)
+                .where(
+                    BatchRow.batch_id == batch_id,
+                    BatchRow.status == "QUEUED",
+                    BatchRow.spoken_name_enc.is_(None),
+                    BatchRow.row_number > after,
+                )
+                .order_by(BatchRow.row_number)
+                .limit(limit)
+            ).scalars()
+            return [
+                MissingSpelling(r.id, r.row_number, self._cipher.decrypt(bytes(r.name_enc)))
+                for r in rows
+            ]
+
+    def set_spoken_name(self, row_id: UUID, spoken: str) -> bool:
+        """Compare-and-set: store the encrypted spelling only for a QUEUED row that has none."""
+        with self._factory() as session:
+            result = session.execute(
+                update(BatchRow)
+                .where(
+                    BatchRow.id == row_id,
+                    BatchRow.status == "QUEUED",
+                    BatchRow.spoken_name_enc.is_(None),
+                )
+                .values(spoken_name_enc=self._cipher.encrypt(spoken))
+            )
+            session.commit()
+            return bool(getattr(result, "rowcount", 0))
 
     # ---- helpers -----------------------------------------------------------------------
 

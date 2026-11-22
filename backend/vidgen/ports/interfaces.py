@@ -14,7 +14,13 @@ from uuid import UUID
 from vidgen.domain.timing import TimingPlan
 from vidgen.domain.values import TextRegion, Word
 from vidgen.ports.batches import BatchStore
-from vidgen.ports.models import AuditEntry, SheetRow, TemplateRecord, VideoInfo
+from vidgen.ports.models import (
+    AuditEntry,
+    OutputExpectation,
+    SheetRow,
+    TemplateRecord,
+    VideoInfo,
+)
 
 
 class SpeechToText(Protocol):
@@ -115,8 +121,13 @@ class VideoEncoder(Protocol):
 class QualityChecker(Protocol):
     """Checks a rendered output against quality rules."""
 
-    def check(self, template: Path, output: Path) -> list[str]:
-        """Return failure codes; an empty list means the output passed."""
+    def check(
+        self, template: Path, output: Path, expected: OutputExpectation | None = None
+    ) -> list[str]:
+        """Return failure codes; an empty list means the output passed.
+
+        Without ``expected`` only the format is compared; with it also length and loudness.
+        """
         ...
 
 

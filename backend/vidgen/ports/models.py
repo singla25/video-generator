@@ -7,7 +7,18 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from vidgen.domain.quality import OutputExpectation, SlotRegion
 from vidgen.domain.slot_match import Slot, all_slots
+
+__all__ = [
+    "AuditEntry",
+    "OutputExpectation",
+    "SheetRow",
+    "SlotRegion",
+    "TemplateRecord",
+    "VideoInfo",
+    "VideoLimits",
+]
 
 
 @dataclass(frozen=True)

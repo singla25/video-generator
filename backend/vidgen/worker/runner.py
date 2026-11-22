@@ -32,7 +32,6 @@ from vidgen.infrastructure.crypto.aesgcm import AesGcmCipher
 from vidgen.infrastructure.db.row_store import SqlRowStore
 from vidgen.infrastructure.db.schema_reader import SqlSchemaVersionReader
 from vidgen.infrastructure.db.uow import SqlUnitOfWork, get_engine, uow_factory
-from vidgen.infrastructure.fakes import FakeQualityChecker
 from vidgen.infrastructure.ffmpeg.encoder import FfmpegVideoEncoder
 from vidgen.infrastructure.ffmpeg.label import build_label_renderer
 from vidgen.infrastructure.local_ai.factory import (
@@ -59,15 +58,17 @@ from vidgen.services.requeue import requeue_stuck_rows
 from vidgen.services.schema_check import SchemaCheck
 from vidgen.services.spelling_filler import SpellingFiller
 from vidgen.settings import Settings, get_settings
+from vidgen.worker import quality_wiring
 from vidgen.worker.actors import WorkerConfig, register_actors
 from vidgen.worker.periodic import PeriodicTask
+from vidgen.worker.quality_wiring import build_quality_checker, build_temp_cleanup_job
 from vidgen.worker.schema_log import report_schema_at_start
 from vidgen.worker.warm_up import warm_up_if_enabled
 
 FONT_DIR = Path(vidgen.__file__).parent / "assets" / "fonts"
 DEVANAGARI_FONT = "NotoSansDevanagari-Bold.ttf"
 LATIN_FONT = "NotoSans-Bold.ttf"
-FFMPEG = "ffmpeg"
+FFMPEG = quality_wiring.FFMPEG
 
 
 def render_config(settings: Settings) -> RenderConfig:
@@ -119,7 +120,7 @@ def build_renderer(
             timeout_seconds=settings.row_timeout_seconds,
             crossfade_ms=settings.crossfade_ms,
         ),
-        quality=FakeQualityChecker(),
+        quality=build_quality_checker(settings),
         labels=build_label_renderer(
             settings.label_style,
             devanagari_font=FONT_DIR / DEVANAGARI_FONT,
@@ -241,9 +242,12 @@ def run() -> None:  # pragma: no cover
     beat.start()
     recovery = PeriodicTask(build_requeue_job(settings, broker), settings.requeue_interval_seconds)
     recovery.start()
+    cleanup = PeriodicTask(build_temp_cleanup_job(settings), settings.temp_cleanup_interval_seconds)
+    cleanup.start()
     try:
         stop.wait()
     finally:
+        cleanup.stop()
         recovery.stop()
         beat.stop()
         worker.stop()

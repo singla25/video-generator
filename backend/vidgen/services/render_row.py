@@ -21,7 +21,7 @@ from vidgen.domain.codes import DomainError, FailureCode
 from vidgen.domain.naming import output_file_name
 from vidgen.domain.outcomes import RowOutcomeKind
 from vidgen.domain.slot_match import Slot
-from vidgen.domain.timing import TimingPlan, plan_timing
+from vidgen.domain.timing import TimingPlan, expected_output, plan_timing
 from vidgen.domain.validation import effective_spoken_name
 from vidgen.logging import log_event
 from vidgen.ports import (
@@ -263,7 +263,12 @@ class RowRenderer:
                 self._encoder, synced, speech, slots, plans, label, metadata, folder, output
             )
         with run.stage("check"):
-            if self._quality.check(template, output):
+            issues = self._quality.check(template, output, expected_output(slots, plans))
+            if issues:
+                # Only the codes are logged: they never contain names or paths.
+                log_event(
+                    logger, "output check failed", level=logging.WARNING, code=",".join(issues)
+                )
                 raise DomainError(FailureCode.OUTPUT_CHECK_FAILED)
         return output
 

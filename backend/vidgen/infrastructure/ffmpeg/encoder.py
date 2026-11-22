@@ -18,15 +18,13 @@ from typing import TYPE_CHECKING
 
 from vidgen.domain.timing import TimingPlan, TimingRules
 from vidgen.infrastructure.ffmpeg import graph, loudness
-from vidgen.infrastructure.ffmpeg.facts import TemplateFacts, read_template_facts
+from vidgen.infrastructure.ffmpeg.facts import TemplateFacts, read_template_facts, sibling_ffprobe
 from vidgen.infrastructure.ffmpeg.runner import run_tool
 
-DEFAULT_FFPROBE = "ffprobe"
 DEFAULT_TIMEOUT_S = 600.0
 DEFAULT_MAX_STRETCH_RATIO = 0.15
 OUTPUT_FORMAT = "mp4"
 PART_SUFFIX = ".part"
-_MEASURE_FLAGS = ["-hide_banner", "-nostats", "-nostdin"]
 
 
 class FfmpegVideoEncoder:
@@ -42,7 +40,7 @@ class FfmpegVideoEncoder:
         max_stretch_ratio: float = DEFAULT_MAX_STRETCH_RATIO,
     ) -> None:
         self._ffmpeg = ffmpeg_path
-        self._ffprobe = ffprobe_path or _sibling_ffprobe(ffmpeg_path)
+        self._ffprobe = ffprobe_path or sibling_ffprobe(ffmpeg_path)
         self._timeout = timeout_seconds
         self._crossfade_s = TimingRules(crossfade_ms=crossfade_ms).crossfade_s  # validates 20-50
         self._max_stretch = max_stretch_ratio
@@ -85,20 +83,16 @@ class FfmpegVideoEncoder:
     ) -> float:
         """Gain that matches the new name's loudness to the template slot's."""
         start, end = slot
-        template_lufs = self._measure(
+        template_lufs = loudness.measure_lufs(
+            self._ffmpeg,
             ["-ss", graph.seconds(start), "-t", graph.seconds(end - start), "-i", str(template)],
             "anull",
+            self._timeout,
         )
-        new_lufs = self._measure(["-i", str(audio)], graph.stretch_chain(facts, plan))
+        new_lufs = loudness.measure_lufs(
+            self._ffmpeg, ["-i", str(audio)], graph.stretch_chain(facts, plan), self._timeout
+        )
         return loudness.gain_db(template_lufs, new_lufs)
-
-    def _measure(self, input_args: list[str], prefilter: str) -> float | None:
-        """Integrated loudness of an input after ``prefilter``."""
-        command = [
-            self._ffmpeg, *_MEASURE_FLAGS, *input_args, "-vn",
-            "-af", f"{prefilter},ebur128", "-f", "null", os.devnull,
-        ]  # fmt: skip
-        return loudness.parse_integrated_lufs(run_tool(command, self._timeout).stderr)
 
     def _command(
         self,
@@ -127,12 +121,6 @@ class FfmpegVideoEncoder:
             "-map_metadata", "-1", "-map_chapters", "-1", *graph.metadata_args(metadata),
             "-movflags", "+faststart+use_metadata_tags", "-f", OUTPUT_FORMAT,
         ]  # fmt: skip
-
-
-def _sibling_ffprobe(ffmpeg_path: str) -> str:
-    """ffprobe next to ffmpeg if present, else the one on PATH."""
-    sibling = Path(ffmpeg_path).with_name(DEFAULT_FFPROBE)
-    return str(sibling) if sibling.is_file() else DEFAULT_FFPROBE
 
 
 @contextlib.contextmanager

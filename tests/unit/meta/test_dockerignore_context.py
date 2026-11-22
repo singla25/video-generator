@@ -129,6 +129,9 @@ MUST_BE_IGNORED = [
     "backend/vidgen/__pycache__/app.cpython-311.pyc",
     "backend/migrations/__pycache__/x.pyc",
     "backend/vidgen/x/.DS_Store",
+    ".venv-m2/lib/python3.11/site-packages/x.py",
+    ".venv-py314-old/bin/python",
+    ".venv/bin/python",
     ".DS_Store",
     DOTENV_NAME,
     f"{DOTENV_NAME}.local",
@@ -148,6 +151,7 @@ MEDIA_PATHS = [
 
 MUST_BE_INCLUDED = [
     "backend/vidgen/api/app.py",
+    "backend/vidgen/venv_utils.py",  # merely named like a venv: no over-broad glob
     "backend/vidgen/assets/fonts/NotoSansDevanagari-Bold.ttf",
     "backend/migrations/versions/0003_render_providers.py",
     "backend/alembic.ini",

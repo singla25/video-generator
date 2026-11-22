@@ -45,6 +45,19 @@ spend cap (phase a). #25 Modal adapters (phase b). **Built overnight, waiting in
 5. Licence gate (G8), once you approve the plan; needed before any production run.
 6. **Modal is parked (budget).** Instead: a manual measurement on Kaggle's free GPU (`docs/kaggle/KAGGLE-T4-TRIAL.md`, made-up data only). When the results come back they are recorded here and we decide which cloud option, if any, still makes sense.
 
+## Kaggle GPU trial (2026-11-22, free, no cloud cost)
+On one T4 (Python 3.13, torch 2.11.0+cu130): Chatterbox load 17.9 s, warm generation 4.24 s for 3.84 s of audio, peak 3.2 GB,
+float32. Whisper small: load 0.6 s, run 0.69 s, 743 MiB. Whisper medium: load 11.1 s, run 0.71 s, 1963 MiB, higher word confidence
+(about 0.91 vs 0.65 on the first word). Whether both found the name is **not yet confirmed** by the Admin. MuseTalk was **not tested**.
+Details and caveats: `docs/kaggle/KAGGLE-T4-TRIAL.md`.
+
+- **Recommendation:** Whisper **medium on a GPU**, **small on the Mac**.
+- **Which cloud option still makes sense:** GPU speed is not the blocker (voice about 1.1 times real time warm, speech-to-text under
+  one second on a T4-class card). So if a cloud worker is ever resumed, a single T4 or L4 class GPU, pay per use, is enough for
+  speech and voice. The open question is lip sync (MuseTalk), which was not measured and has the licence decision (BL-7, G8).
+  Modal stays parked. The next cloud-related step costs nothing: run MuseTalk on Kaggle by hand the same way, made-up data only.
+  Kaggle stays a manual measuring tool, never a render worker.
+
 ## 5. What you do yourself
 1. ~~Merge PR #25~~ **Done.** Next: review and merge the overnight PR (`integration/overnight`), then PR #26 if it is still open.
 2. ~~Migration 0003 on the real database~~ **Done:** `vidgen` is at `0003`.

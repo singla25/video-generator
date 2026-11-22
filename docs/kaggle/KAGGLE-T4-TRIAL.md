@@ -8,6 +8,10 @@ Settings in the notebook: **Accelerator = GPU T4 x2** (the code uses only GPU 0)
 Nothing here was run by me; it is untested on your machine. Paste the printed summary back to me.
 No upload is needed: Cell 5 makes its own test audio with the default made-up voice and Cell 4 listens to it.
 
+**Reading the cell names:** Kaggle numbers cells by the order you run them (`[1]`, `[2]`, ...), not by the names used here. Our
+**Cell 5 (voice) runs before Cell 4 (Whisper)**, so the Kaggle number shown next to a cell will not match its name here. Follow the
+run order below, not the numbers on the screen.
+
 ## Run order
 **Cell 1, Cell 2, restart the kernel, Cell 1, Cell 3a, Cell 3b, Cell 5, Cell 4, Cell 6.**
 (Cell 1 runs twice because the restart forgets the one-GPU setting. Cell 5 comes before Cell 4 because Cell 4 reads the
@@ -28,20 +32,26 @@ print(torch.zeros(1).cuda() + 1)                  # a real kernel runs
 ```
 
 ## Cell 2: install, KEEP the preinstalled torch (no torch install)
-Chatterbox 0.1.7 pins an old torch and `transformers==5.2.0`; those pins are stale. We install its dependencies at the
-versions we tested, then add Chatterbox with `--no-deps`, so pip never replaces the preinstalled `torch 2.11.0+cu130`.
+**Kaggle runs Python 3.13.** The old exact pins (`omegaconf==2.0.6`, `numpy==1.26.4` and the others) were for the MuseTalk
+setup and the Mac. Python 3.13's pip refuses `omegaconf==2.0.6` (invalid metadata) and numpy 1.26.4 has no Python 3.13 build, so
+they are gone. Only three pins stay: `faster-whisper==1.2.1`, `transformers==5.20.2` and `chatterbox-tts==0.1.7`. Everything
+else is installed unpinned, so pip picks versions that work on 3.13 and keeps Kaggle's own numpy.
+Chatterbox 0.1.7 pins an old torch and `transformers==5.2.0`; those pins are stale, so we add Chatterbox with `--no-deps`.
+pip then never replaces the preinstalled `torch 2.11.0+cu130`.
 ```python
 %%bash
-set -e
-python -c "import torch, torchaudio; print('before:', torch.__version__, torchaudio.__version__)"
-pip install -q "faster-whisper==1.2.1" "transformers==5.20.2" "accelerate==1.15.0" "librosa==0.11.0" \
-  "s3tokenizer==0.3.0" "diffusers==0.29.0" "resemble-perth==1.0.1" "conformer==0.3.2" "safetensors==0.8.0" \
-  "pykakasi==2.3.0" "pyloudnorm==0.2.0" "omegaconf==2.0.6" "numpy==1.26.4" "soundfile==0.14.0" "huggingface_hub==2.3.0"
+python --version
+python -c "import torch, torchaudio, numpy; print('before:', torch.__version__, torchaudio.__version__, 'numpy', numpy.__version__)"
+pip install -q "faster-whisper==1.2.1" "transformers==5.20.2"
+# Chatterbox's own dependencies, unpinned. Each one separately, so one failure does not hide the others.
+for p in accelerate librosa s3tokenizer diffusers resemble-perth conformer safetensors pykakasi pyloudnorm omegaconf soundfile huggingface_hub; do
+  pip install -q "$p" || echo "FAILED: $p"
+done
 pip install -q --no-deps "chatterbox-tts==0.1.7"
-python -c "import torch; print('after: ', torch.__version__)"   # must be unchanged
+python -c "import torch, numpy; print('after: ', torch.__version__, 'numpy', numpy.__version__)"   # torch must be unchanged
 ```
-**Then restart the kernel** (Run menu, Restart session) because numpy was changed, and run Cell 1 again before Cell 3a.
-If `after:` shows a different torch, stop and send me the output.
+**Then restart the kernel** (Run menu, Restart session) to be safe, and run Cell 1 again before Cell 3a.
+If `after:` shows a different torch, or any line says `FAILED: <package>`, stop and send me the output.
 
 ## Cell 3a: install the CUDA 12 and cuDNN 9 libraries (pip only)
 faster-whisper runs on CTranslate2, which needs CUDA 12 cuBLAS and cuDNN 9. The machine has CUDA 13, so add the CUDA 12
@@ -69,11 +79,16 @@ It listens to the file Cell 5 wrote (made-up default voice, no upload). Success 
 `राहुल` with a time inside the clip; note which size writes it correctly.
 ```python
 import gc, subprocess, time
+import librosa
 import torch
 from faster_whisper import WhisperModel
 
 AUDIO = "/kaggle/working/default_warm.wav"        # written by Cell 5 (made-up default voice)
 NAME = "Rahul"                                    # the name typed in the template (used as a hint)
+
+# Workaround for the Kaggle PyAV mismatch: faster-whisper 1.2.1 would decode the file itself through PyAV and fail with
+# "TypeError: open() got an unexpected keyword argument 'metadata_errors'". Load the samples with librosa and pass the array.
+audio, _ = librosa.load(AUDIO, sr=16000, mono=True)
 
 def gpu_mib():
     out = subprocess.run(["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
@@ -87,7 +102,7 @@ for size in ("small", "medium"):
     load_s = time.time() - t
     used = gpu_mib()
     t = time.time()
-    segments, _ = model.transcribe(AUDIO, language="hi", word_timestamps=True, hotwords=NAME)
+    segments, _ = model.transcribe(audio, language="hi", word_timestamps=True, hotwords=NAME)
     words = [(w.word.strip(), round(w.start, 2), round(w.end, 2), round(w.probability, 2))
              for s in segments for w in (s.words or [])]
     run_s = time.time() - t
@@ -154,6 +169,48 @@ print("STT (size, load s, run s, GPU MiB):", stt_rows)
 print(subprocess.run(["nvidia-smi", "--query-gpu=name,memory.used,memory.total", "--format=csv"], capture_output=True, text=True).stdout)
 ```
 Send me this output, the printed word lists from Cell 4, the dtype line and the Chatterbox timing lines.
+
+## Results of the first successful run (2026-11-22)
+Kaggle, **one Tesla T4** (the other was hidden), Python 3.13, torch 2.11.0+cu130, float16 for Whisper. **Cost: 0** (free tier).
+Reported by the Admin from the notebook output.
+
+| Model | Load | Run | Memory | Notes |
+|-------|------|-----|--------|-------|
+| Chatterbox (voice), warm | 17.9 s | 4.24 s for 3.84 s of audio (about 1.1 times the audio length) | peak 3.2 GB | dtype float32 (not bfloat16, good for the T4) |
+| Whisper small | 0.6 s | 0.69 s | 743 MiB | word confidence about 0.65 on the first word |
+| Whisper medium | 11.1 s | 0.71 s | 1963 MiB | word confidence about 0.91 on the first word |
+
+- **Did both sizes find the name?** The Admin's note says both did but marks it "confirm after you zoom in". **Not yet confirmed**:
+  I have not recorded it as a fact. Admin: please confirm from the screenshot, then this line is updated.
+- **MuseTalk (lip sync) was not tested.** It is the heaviest step on the Mac, so the real cloud question is still open.
+- **First (cold) Chatterbox generation time** was not reported.
+- **Fixes the notebook needed on Kaggle:** unpinned dependencies (only `faster-whisper`, `transformers`, `chatterbox-tts` are
+  pinned), no `numpy` or `omegaconf` pins (Python 3.13), and the audio loaded with `librosa` because of the PyAV mismatch.
+- **Caveats:** one short clip, and it is Chatterbox's own clean synthetic speech, so the confidence numbers are likely better than
+  on real recorded speech. The Mac numbers in `docs/reports/WHISPER-SIZE-TEST-2026-11-22.md` (CPU, load included, a 10.5 s clip)
+  are not like-for-like with these.
+
+**Recommendation:** use **Whisper medium on a GPU** (clearly higher word confidence, the same run time, and 2 GB is nothing on a
+15 GB card) and **Whisper small on the Mac** (the Mac is tight on RAM and small was enough there: the sound matching accepted its
+output on the demo template). Not applied in code yet: today the size is whatever weights sit in the `whisper` folder.
+
+## Where it could fail
+- **PyAV mismatch (found in the second trial):** faster-whisper 1.2.1 on Kaggle (Python 3.13) fails with
+  `TypeError: open() got an unexpected keyword argument 'metadata_errors'` (from `av.container.core.open` via
+  `faster_whisper.audio.decode_audio`): the installed PyAV does not match what faster-whisper expects. Cell 4 works around it by
+  loading the audio with `librosa.load(..., sr=16000, mono=True)` and passing the numpy array to `model.transcribe`.
+  **A future GPU image (for any cloud option) must pin a PyAV (`av`) version that is compatible with the pinned faster-whisper**,
+  or load audio the same way, because file decoding is on the real path there.
+- **Python 3.13 (found in the first trial):** Kaggle's Python is 3.13. Exact old pins can be refused by its pip or have no 3.13
+  build (`omegaconf==2.0.6`, `numpy==1.26.4` did), so Cell 2 pins only faster-whisper, transformers and Chatterbox. An unpinned
+  package may still fail on 3.13 (the likely suspects are `resemble-perth`, `s3tokenizer`, `pykakasi`): Cell 2 prints
+  `FAILED: <package>` and goes on. Send me that line.
+- **numpy 2:** Kaggle keeps its own numpy (version printed before and after). Chatterbox's metadata asks for an old numpy, which
+  we ignore with `--no-deps`; if an import then fails with a numpy error, send me the message.
+- **Chatterbox on the preinstalled torch:** untested. We only tested it on torch 2.14.1 on the Mac. If Cell 5 fails on import
+  or on the first generate, send me the full error.
+- **bfloat16:** if the `t3 dtype` line says bfloat16, the T4 runs it slowly. Tell me and I will adjust.
+- **cuDNN preload:** if Cell 3b loads but Whisper still cannot find cuDNN, send me the exact error.
 
 ## Afterwards
 Delete the uploaded dataset and the outputs, and turn Internet off. Nothing from this notebook goes into the project database.

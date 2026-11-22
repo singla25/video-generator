@@ -12,6 +12,7 @@ table{border-collapse:collapse;width:100%;display:block;overflow-x:auto;font-siz
 </style></head><body><div class='wrap'><nav><a href='../index.html'>← All docs</a></nav><h1>Kaggle trial on 2x Tesla T4 (one GPU used)</h1>
 <p>Try the speech-to-text and voice-cloning models by hand on a free Kaggle GPU. <strong>Kaggle is a third party: use only made-up demo data</strong> (the notebook makes its own test audio with the default made-up voice). No voter data, no real person's voice, no tokens or passwords in the notebook (C5). This is a measurement trial, not a render worker: the app never connects to Kaggle.</p>
 <p>Settings in the notebook: <strong>Accelerator = GPU T4 x2</strong> (the code uses only GPU 0), <strong>Internet = On</strong>. Nothing here was run by me; it is untested on your machine. Paste the printed summary back to me. No upload is needed: Cell 5 makes its own test audio with the default made-up voice and Cell 4 listens to it.</p>
+<p><strong>Reading the cell names:</strong> Kaggle numbers cells by the order you run them (<code>[1]</code>, <code>[2]</code>, ...), not by the names used here. Our <strong>Cell 5 (voice) runs before Cell 4 (Whisper)</strong>, so the Kaggle number shown next to a cell will not match its name here. Follow the run order below, not the numbers on the screen.</p>
 <h2>Run order</h2>
 <p><strong>Cell 1, Cell 2, restart the kernel, Cell 1, Cell 3a, Cell 3b, Cell 5, Cell 4, Cell 6.</strong> (Cell 1 runs twice because the restart forgets the one-GPU setting. Cell 5 comes before Cell 4 because Cell 4 reads the audio file that Cell 5 writes.)</p>
 <h2>Cell 1: pick ONE GPU (run this first in a fresh session)</h2>
@@ -26,16 +27,18 @@ print(&quot;torch&quot;, torch.__version__, &quot;| gpus visible:&quot;, torch.c
 print(&quot;arch list:&quot;, torch.cuda.get_arch_list())   # must contain sm_75 (T4)
 print(torch.zeros(1).cuda() + 1)                  # a real kernel runs</code></pre>
 <h2>Cell 2: install, KEEP the preinstalled torch (no torch install)</h2>
-<p>Chatterbox 0.1.7 pins an old torch and <code>transformers==5.2.0</code>; those pins are stale. We install its dependencies at the versions we tested, then add Chatterbox with <code>--no-deps</code>, so pip never replaces the preinstalled <code>torch 2.11.0+cu130</code>.</p>
+<p><strong>Kaggle runs Python 3.13.</strong> The old exact pins (<code>omegaconf==2.0.6</code>, <code>numpy==1.26.4</code> and the others) were for the MuseTalk setup and the Mac. Python 3.13's pip refuses <code>omegaconf==2.0.6</code> (invalid metadata) and numpy 1.26.4 has no Python 3.13 build, so they are gone. Only three pins stay: <code>faster-whisper==1.2.1</code>, <code>transformers==5.20.2</code> and <code>chatterbox-tts==0.1.7</code>. Everything else is installed unpinned, so pip picks versions that work on 3.13 and keeps Kaggle's own numpy. Chatterbox 0.1.7 pins an old torch and <code>transformers==5.2.0</code>; those pins are stale, so we add Chatterbox with <code>--no-deps</code>. pip then never replaces the preinstalled <code>torch 2.11.0+cu130</code>.</p>
 <pre><code>%%bash
-set -e
-python -c &quot;import torch, torchaudio; print(&#x27;before:&#x27;, torch.__version__, torchaudio.__version__)&quot;
-pip install -q &quot;faster-whisper==1.2.1&quot; &quot;transformers==5.20.2&quot; &quot;accelerate==1.15.0&quot; &quot;librosa==0.11.0&quot; \
-  &quot;s3tokenizer==0.3.0&quot; &quot;diffusers==0.29.0&quot; &quot;resemble-perth==1.0.1&quot; &quot;conformer==0.3.2&quot; &quot;safetensors==0.8.0&quot; \
-  &quot;pykakasi==2.3.0&quot; &quot;pyloudnorm==0.2.0&quot; &quot;omegaconf==2.0.6&quot; &quot;numpy==1.26.4&quot; &quot;soundfile==0.14.0&quot; &quot;huggingface_hub==2.3.0&quot;
+python --version
+python -c &quot;import torch, torchaudio, numpy; print(&#x27;before:&#x27;, torch.__version__, torchaudio.__version__, &#x27;numpy&#x27;, numpy.__version__)&quot;
+pip install -q &quot;faster-whisper==1.2.1&quot; &quot;transformers==5.20.2&quot;
+# Chatterbox&#x27;s own dependencies, unpinned. Each one separately, so one failure does not hide the others.
+for p in accelerate librosa s3tokenizer diffusers resemble-perth conformer safetensors pykakasi pyloudnorm omegaconf soundfile huggingface_hub; do
+  pip install -q &quot;$p&quot; || echo &quot;FAILED: $p&quot;
+done
 pip install -q --no-deps &quot;chatterbox-tts==0.1.7&quot;
-python -c &quot;import torch; print(&#x27;after: &#x27;, torch.__version__)&quot;   # must be unchanged</code></pre>
-<p><strong>Then restart the kernel</strong> (Run menu, Restart session) because numpy was changed, and run Cell 1 again before Cell 3a. If <code>after:</code> shows a different torch, stop and send me the output.</p>
+python -c &quot;import torch, numpy; print(&#x27;after: &#x27;, torch.__version__, &#x27;numpy&#x27;, numpy.__version__)&quot;   # torch must be unchanged</code></pre>
+<p><strong>Then restart the kernel</strong> (Run menu, Restart session) to be safe, and run Cell 1 again before Cell 3a. If <code>after:</code> shows a different torch, or any line says <code>FAILED: &lt;package&gt;</code>, stop and send me the output.</p>
 <h2>Cell 3a: install the CUDA 12 and cuDNN 9 libraries (pip only)</h2>
 <p>faster-whisper runs on CTranslate2, which needs CUDA 12 cuBLAS and cuDNN 9. The machine has CUDA 13, so add the CUDA 12 libraries as pip wheels.</p>
 <pre><code>%%bash
@@ -53,11 +56,16 @@ print(&quot;preloaded from&quot;, len(libdirs), &quot;nvidia lib folders&quot;)<
 <h2>Cell 4: speech-to-text, small and medium, float16 on the GPU (run after Cell 5)</h2>
 <p>It listens to the file Cell 5 wrote (made-up default voice, no upload). Success looks like a word list that contains <code>राहुल</code> with a time inside the clip; note which size writes it correctly.</p>
 <pre><code>import gc, subprocess, time
+import librosa
 import torch
 from faster_whisper import WhisperModel
 
 AUDIO = &quot;/kaggle/working/default_warm.wav&quot;        # written by Cell 5 (made-up default voice)
 NAME = &quot;Rahul&quot;                                    # the name typed in the template (used as a hint)
+
+# Workaround for the Kaggle PyAV mismatch: faster-whisper 1.2.1 would decode the file itself through PyAV and fail with
+# &quot;TypeError: open() got an unexpected keyword argument &#x27;metadata_errors&#x27;&quot;. Load the samples with librosa and pass the array.
+audio, _ = librosa.load(AUDIO, sr=16000, mono=True)
 
 def gpu_mib():
     out = subprocess.run([&quot;nvidia-smi&quot;, &quot;--query-gpu=memory.used&quot;, &quot;--format=csv,noheader,nounits&quot;],
@@ -71,7 +79,7 @@ for size in (&quot;small&quot;, &quot;medium&quot;):
     load_s = time.time() - t
     used = gpu_mib()
     t = time.time()
-    segments, _ = model.transcribe(AUDIO, language=&quot;hi&quot;, word_timestamps=True, hotwords=NAME)
+    segments, _ = model.transcribe(audio, language=&quot;hi&quot;, word_timestamps=True, hotwords=NAME)
     words = [(w.word.strip(), round(w.start, 2), round(w.end, 2), round(w.probability, 2))
              for s in segments for w in (s.words or [])]
     run_s = time.time() - t
@@ -129,5 +137,25 @@ torch.cuda.empty_cache()</code></pre>
 <pre><code>print(&quot;STT (size, load s, run s, GPU MiB):&quot;, stt_rows)
 print(subprocess.run([&quot;nvidia-smi&quot;, &quot;--query-gpu=name,memory.used,memory.total&quot;, &quot;--format=csv&quot;], capture_output=True, text=True).stdout)</code></pre>
 <p>Send me this output, the printed word lists from Cell 4, the dtype line and the Chatterbox timing lines.</p>
+<h2>Results of the first successful run (2026-11-22)</h2>
+<p>Kaggle, <strong>one Tesla T4</strong> (the other was hidden), Python 3.13, torch 2.11.0+cu130, float16 for Whisper. <strong>Cost: 0</strong> (free tier). Reported by the Admin from the notebook output.</p>
+<table><tr><th>Model</th><th>Load</th><th>Run</th><th>Memory</th><th>Notes</th></tr><tr><td>Chatterbox (voice), warm</td><td>17.9 s</td><td>4.24 s for 3.84 s of audio (about 1.1 times the audio length)</td><td>peak 3.2 GB</td><td>dtype float32 (not bfloat16, good for the T4)</td></tr><tr><td>Whisper small</td><td>0.6 s</td><td>0.69 s</td><td>743 MiB</td><td>word confidence about 0.65 on the first word</td></tr><tr><td>Whisper medium</td><td>11.1 s</td><td>0.71 s</td><td>1963 MiB</td><td>word confidence about 0.91 on the first word</td></tr></table>
+<ul><li><strong>Did both sizes find the name?</strong> The Admin's note says both did but marks it "confirm after you zoom in". <strong>Not yet confirmed</strong>:</li></ul>
+<p>  I have not recorded it as a fact. Admin: please confirm from the screenshot, then this line is updated.</p>
+<ul><li><strong>MuseTalk (lip sync) was not tested.</strong> It is the heaviest step on the Mac, so the real cloud question is still open.</li><li><strong>First (cold) Chatterbox generation time</strong> was not reported.</li><li><strong>Fixes the notebook needed on Kaggle:</strong> unpinned dependencies (only <code>faster-whisper</code>, <code>transformers</code>, <code>chatterbox-tts</code> are</li></ul>
+<p>  pinned), no <code>numpy</code> or <code>omegaconf</code> pins (Python 3.13), and the audio loaded with <code>librosa</code> because of the PyAV mismatch.</p>
+<ul><li><strong>Caveats:</strong> one short clip, and it is Chatterbox's own clean synthetic speech, so the confidence numbers are likely better than</li></ul>
+<p>  on real recorded speech. The Mac numbers in <code>docs/reports/WHISPER-SIZE-TEST-2026-11-22.md</code> (CPU, load included, a 10.5 s clip)   are not like-for-like with these.</p>
+<p><strong>Recommendation:</strong> use <strong>Whisper medium on a GPU</strong> (clearly higher word confidence, the same run time, and 2 GB is nothing on a 15 GB card) and <strong>Whisper small on the Mac</strong> (the Mac is tight on RAM and small was enough there: the sound matching accepted its output on the demo template). Not applied in code yet: today the size is whatever weights sit in the <code>whisper</code> folder.</p>
+<h2>Where it could fail</h2>
+<ul><li><strong>PyAV mismatch (found in the second trial):</strong> faster-whisper 1.2.1 on Kaggle (Python 3.13) fails with</li></ul>
+<p>  <code>TypeError: open() got an unexpected keyword argument 'metadata_errors'</code> (from <code>av.container.core.open</code> via   <code>faster_whisper.audio.decode_audio</code>): the installed PyAV does not match what faster-whisper expects. Cell 4 works around it by   loading the audio with <code>librosa.load(..., sr=16000, mono=True)</code> and passing the numpy array to <code>model.transcribe</code>.   <strong>A future GPU image (for any cloud option) must pin a PyAV (<code>av</code>) version that is compatible with the pinned faster-whisper</strong>,   or load audio the same way, because file decoding is on the real path there.</p>
+<ul><li><strong>Python 3.13 (found in the first trial):</strong> Kaggle's Python is 3.13. Exact old pins can be refused by its pip or have no 3.13</li></ul>
+<p>  build (<code>omegaconf==2.0.6</code>, <code>numpy==1.26.4</code> did), so Cell 2 pins only faster-whisper, transformers and Chatterbox. An unpinned   package may still fail on 3.13 (the likely suspects are <code>resemble-perth</code>, <code>s3tokenizer</code>, <code>pykakasi</code>): Cell 2 prints   <code>FAILED: &lt;package&gt;</code> and goes on. Send me that line.</p>
+<ul><li><strong>numpy 2:</strong> Kaggle keeps its own numpy (version printed before and after). Chatterbox's metadata asks for an old numpy, which</li></ul>
+<p>  we ignore with <code>--no-deps</code>; if an import then fails with a numpy error, send me the message.</p>
+<ul><li><strong>Chatterbox on the preinstalled torch:</strong> untested. We only tested it on torch 2.14.1 on the Mac. If Cell 5 fails on import</li></ul>
+<p>  or on the first generate, send me the full error.</p>
+<ul><li><strong>bfloat16:</strong> if the <code>t3 dtype</code> line says bfloat16, the T4 runs it slowly. Tell me and I will adjust.</li><li><strong>cuDNN preload:</strong> if Cell 3b loads but Whisper still cannot find cuDNN, send me the exact error.</li></ul>
 <h2>Afterwards</h2>
 <p>Delete the uploaded dataset and the outputs, and turn Internet off. Nothing from this notebook goes into the project database.</p></div></body></html>

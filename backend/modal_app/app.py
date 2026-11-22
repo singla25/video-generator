@@ -34,7 +34,20 @@ SCALEDOWN_S = 60
 MODELS_DIR = "/models"
 SAMPLES_DIR = "/samples"
 VOLUME_NAME = "vidgen-voice-samples"
-WHISPER_REPO = "Systran/faster-whisper-small"
+WHISPER_SIZE_ENV = "VIDGEN_MODAL_WHISPER_SIZE"
+WHISPER_SIZES = ("small", "medium")
+DEFAULT_WHISPER_SIZE = "medium"
+
+
+def whisper_repo_from_env() -> str:
+    """Hugging Face repo for the size in ``VIDGEN_MODAL_WHISPER_SIZE`` (read at import)."""
+    size = os.environ.get(WHISPER_SIZE_ENV, DEFAULT_WHISPER_SIZE)
+    if size not in WHISPER_SIZES:
+        raise ValueError(f"{WHISPER_SIZE_ENV} must be one of {WHISPER_SIZES}, got {size!r}")
+    return f"Systran/faster-whisper-{size}"
+
+
+WHISPER_REPO = whisper_repo_from_env()
 CHATTERBOX_REPO = "ResembleAI/chatterbox"
 CHATTERBOX_FILES = [
     "ve.pt",

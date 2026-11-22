@@ -6,6 +6,7 @@ import logging
 import math
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from vidgen.infrastructure.fakes import (
     FakeLipSyncer,
@@ -32,13 +33,29 @@ OFFLINE_ENV = {
     "TRANSFORMERS_OFFLINE": "1",
     "PYTORCH_ENABLE_MPS_FALLBACK": "1",
 }
-WHISPER_DIR, QWEN_DIR, CHATTERBOX_DIR, MUSETALK_DIR = "whisper", "qwen", "chatterbox", "musetalk"
+LEGACY_WHISPER_DIR = "whisper"
+WHISPER_DIRS = {"small": "whisper-small", "medium": "whisper-medium"}
+QWEN_DIR, CHATTERBOX_DIR, MUSETALK_DIR = "qwen", "chatterbox", "musetalk"
 FAKE_BANNER = "Fake AI: beep stands in"
 LOCAL_BANNER = "Local AI"
 UNVERIFIED_WEIGHTS = (
     "S3FD face-detector weights (no licence stated)",
     "face-parse-bisent weights (no terms; research-oriented training data)",
 )
+
+
+def whisper_weights_dir(weights_root: Path, size: str) -> Path:
+    """Folder holding the Whisper weights for ``size``; creates nothing.
+
+    ``small`` falls back to the legacy ``whisper`` folder when ``whisper-small`` is absent.
+    """
+    name = WHISPER_DIRS.get(size)
+    if name is None:
+        raise ValueError(f"unknown whisper size {size!r}; use one of {sorted(WHISPER_DIRS)}")
+    folder = weights_root / name
+    if size == "small" and not folder.exists():
+        return weights_root / LEGACY_WHISPER_DIR
+    return folder
 
 
 @dataclass(frozen=True)
@@ -63,7 +80,7 @@ def build_ai_adapters(settings: Settings) -> AiAdapters:
     os.environ.update(OFFLINE_ENV)
     root = settings.local_ai_weights_dir
     return AiAdapters(
-        stt=FasterWhisperSpeechToText(root / WHISPER_DIR),
+        stt=FasterWhisperSpeechToText(whisper_weights_dir(root, settings.whisper_size)),
         transliterator=QwenTransliterator(root / QWEN_DIR),
         voice=ChatterboxVoiceCloner(root / CHATTERBOX_DIR),
         lipsync=MuseTalkLipSyncer(root / MUSETALK_DIR, guard=SingleRenderGuard()),

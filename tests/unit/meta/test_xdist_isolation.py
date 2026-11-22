@@ -290,6 +290,53 @@ def test_the_environment_scan_catches_an_injected_violation(tmp_path: Path) -> N
     assert env_mutations(ast.parse(bad.read_text(encoding="utf-8"))) == [2, 3, 4]
 
 
+def shared_temp_reads(tree: ast.Module) -> list[int]:
+    """Lines of ``gettempdir()`` calls in functions that never redirect ``tempfile.tempdir``.
+
+    The machine-wide temp folder is shared by every xdist worker, so listing it (or counting
+    files in it) sees other workers' directories.
+    """
+    lines: set[int] = set()
+    for func in ast.walk(tree):
+        if not isinstance(func, ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        reads = [
+            n.lineno
+            for n in ast.walk(func)
+            if isinstance(n, ast.Call)
+            and (
+                (isinstance(n.func, ast.Attribute) and n.func.attr == "gettempdir")
+                or (isinstance(n.func, ast.Name) and n.func.id == "gettempdir")
+            )
+        ]
+        redirected = any(
+            isinstance(n, ast.Constant) and n.value in ("tempdir", "TMPDIR") for n in ast.walk(func)
+        )
+        if reads and not redirected:
+            lines.update(reads)
+    return sorted(lines)
+
+
+def test_no_test_reads_the_shared_temp_folder_without_redirecting_it() -> None:
+    offenders = [
+        f"{rel(path)}:{line}"
+        for path in repo_test_files()
+        if path.name != "test_xdist_isolation.py"
+        for line in shared_temp_reads(parsed(path)[1])
+    ]
+    assert not offenders, offenders
+
+
+def test_the_shared_temp_scan_catches_an_injected_violation() -> None:
+    bad = (
+        "import tempfile\n"
+        "def test_a():\n    return set(tempfile.gettempdir())\n"
+        "def test_b(monkeypatch):\n"
+        "    monkeypatch.setattr(tempfile, 'tempdir', 'x')\n    return tempfile.gettempdir()\n"
+    )
+    assert shared_temp_reads(ast.parse(bad)) == [3]
+
+
 # --- wall-clock assertions ---------------------------------------------------------------------
 
 

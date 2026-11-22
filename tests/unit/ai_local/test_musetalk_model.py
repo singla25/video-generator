@@ -330,7 +330,11 @@ def test_temp_work_folder_is_removed_after_a_failed_render(
     install(monkeypatch, world)
     model = loaders.load_musetalk(repo_for(tmp_path))
     video, audio, out = files(tmp_path)
-    before = set(Path(tempfile.gettempdir()).glob("musetalk-*"))
+    # Private temp folder: the machine-wide one is shared with other xdist workers' musetalk-* dirs.
+    scratch = tmp_path / "scratch-tmp"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    before = set(scratch.glob("musetalk-*"))
     with pytest.raises(LocalAiError):
         model.run(video, audio, out)
-    assert set(Path(tempfile.gettempdir()).glob("musetalk-*")) == before
+    assert set(scratch.glob("musetalk-*")) == before == set()

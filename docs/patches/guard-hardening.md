@@ -5,9 +5,18 @@ Admin action: copy the proposed file over the hook.
     cp docs/patches/guard.hardened.py .claude/hooks/guard.py
 
 Nothing under `.claude/` was changed by the optimizer. The proposal is tested by
-`tests/unit/meta/test_guard_hardened.py` (82 cases: 33 bypass variants that the current guard allows, 22 old protections that must stay,
-25 ordinary commands that must still pass, plus the GitHub tool rule). One ordinary command, a safe branch delete,
-is wrongly blocked by the current guard. The counts were checked by running the current guard on every case.
+`tests/unit/meta/test_guard_hardened.py` (122 cases: 33 bypass variants that the current guard allows, 22 old protections that must stay,
+15 dangerous commands hidden in substitutions, wrappers, later commands and `-c` strings,
+50 ordinary commands that must still pass, plus the GitHub tool rule). One ordinary command, a safe branch delete,
+is wrongly blocked by the current guard. The bypass counts were checked by running the current guard on every case.
+
+Revision after the CEO review of this PR: the first version cut the command at `;`, `&&` and newlines even inside
+quotes, so commit messages with a body, trailers, `;` or `&&` in the text, heredoc messages, and searches such as
+`grep -rn sudo scripts` were blocked. The command is now scanned quote-aware: operators split only outside quotes,
+`$( )` and backtick substitutions are judged as commands of their own, here-document bodies are data, shell `-c`
+strings are judged recursively, and the danger rules look at the command, its flags and inline scripts (`python -c`,
+SQL clients), not at quoted text handed to `grep`, `echo` or `git commit`. 18 more everyday commands from this
+session (loops, `$(date)`, pipes, `2>&1`, worktrees, `uv export`) were also checked and all pass.
 
 What changes in behaviour:
 

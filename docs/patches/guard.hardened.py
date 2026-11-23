@@ -25,24 +25,6 @@ PROJECT = Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()).resolve()
 # Agents work in git worktrees under .worktrees/<name>/; judge their paths as if at the repo root.
 WORKTREE = re.compile(r"^\.worktrees/[^/]+/")
 
-# Regex rules over the whole command text (kept from the old guard; they catch plain forms).
-DESTRUCTIVE = [
-    r"\bshred\b", r"\bmkfs\b", r"\bdd\s+if=", r"\btruncate\b",
-    r">\s*/dev/sd", r"\bchmod\s+-R\s+777\b", r"\bchown\s+-R\b", r"\bsudo\b",
-    r"\bDROP\s+(TABLE|DATABASE|SCHEMA)\b", r"\bTRUNCATE\s+TABLE\b",
-    r"\balembic\s+(upgrade|downgrade)\b",
-    r"\b(manage\.py|django-admin)\s+migrate\b",
-    r"\bfind\b.*-delete\b", r"\bfind\b.*-exec\s+rm\b",
-    r"\bshutil\.rmtree\b", r"\bos\.(remove|unlink|rmdir)\b", r"\bperl\b.*\bunlink\b",
-    r"\bPath\([^)]*\)\.(unlink|rmdir)\b",
-]
-NETWORK_EXFIL = [
-    r"\bcurl\b.*(\s-d\b|--data|-F\b|--form|-T\b|--upload-file|-X\s*(POST|PUT|PATCH))",
-    r"\bwget\b.*--post",
-    r"\b(curl|wget)\b.*\|\s*(ba|z)?sh\b",
-    r"\b(nc|ncat|netcat|scp|rsync|sftp|ftp)\b",
-    r"\b(urlopen|requests\.(post|put|patch)|httpx\.(post|put|patch))\b",
-]
 SECRET_NAMES = re.compile(
     r"(^|/)(\.env(\.[^/]*)?|.*\.pem|.*\.key|id_rsa.*|id_ed25519.*|.*credentials.*|"
     r".*secrets?\.(json|ya?ml|toml|txt)|\.netrc|\.pgpass|\.npmrc|\.pypirc)$",
@@ -61,12 +43,12 @@ PROTECTED = re.compile(r"(^|/)(\.claude(/|$)|CLAUDE\.md$|\.git(/|$))")
 WRITERS = frozenset({"cp", "mv", "tee", "install", "ln", "dd", "rsync", "patch", "touch", "chmod"})
 INTERPRETERS = re.compile(r"^(python[0-9.]*|perl|ruby|node|bash|sh|zsh)$")
 SAFE_ABSOLUTE = ("/dev/null", "/tmp/", "/usr/bin/", "/bin/")
-SEPARATORS = re.compile(r"\|\||&&|;|\||\n|&(?!>)")
 MAIN_BRANCHES = frozenset({"main", "master"})
 
 DOMAINS = {
     "backend-dev": ["backend/", "docs/agents/backend-dev/", "docs/html/",
-                    "scripts/setup.py", "Dockerfile.backend", ".dockerignore", "docker-compose.yml"],
+                    "scripts/setup.py", "Dockerfile.backend", ".dockerignore",
+                    "docker-compose.yml"],
     "frontend-dev": ["frontend/", "docs/agents/frontend-dev/", "docs/html/", "Dockerfile.frontend"],
     "tester": ["tests/", "docs/test-tree/", "docs/agents/tester/", "docs/html/"],
     "ceo": ["docs/"],
@@ -205,84 +187,239 @@ def check_rm(args: list[str]) -> None:
         block("rm with a wildcard")
 
 
-def check_secret_reads(tokens: list[str], command: str) -> None:
-    """Block secret files, environment dumps and secret-looking variable expansions."""
-    for token in tokens:
-        if token.startswith("-") and "=" not in token:
+SCRIPT_DANGER = [
+    r"\bshutil\.rmtree\b", r"\bos\.(remove|unlink|rmdir|removedirs)\b", r"\bperl\b.*\bunlink\b",
+    r"\bunlink\s*\(", r"\.(unlink|rmdir)\(",
+    r"\burlopen\b", r"\brequests\.(post|put|patch)\b", r"\bhttpx\.(post|put|patch)\b",
+    r"\bDROP\s+(TABLE|DATABASE|SCHEMA)\b", r"\bTRUNCATE\s+TABLE\b",
+]
+SQL_CLIENTS = frozenset({"psql", "mysql", "sqlite3", "mariadb"})
+SHELLS = frozenset({"sh", "bash", "zsh", "dash"})
+WRAPPERS = frozenset(
+    {"env", "nohup", "time", "command", "exec", "nice", "xargs", "stdbuf", "timeout"}
+)
+NET_TOOLS = frozenset({"nc", "ncat", "netcat", "scp", "rsync", "sftp", "ftp"})
+SHELL_OPERATORS = ("||", "&&", ";", "|", "&", "\n")
+
+
+def strip_heredocs(cmd: str) -> str:
+    """Remove here-document bodies (they are data, never commands)."""
+    pattern = re.compile(
+        r"<<-?\s*(['\"]?)(\w+)\1(?P<rest>[^\n]*)\n.*?\n[ \t]*\2[ \t]*(?=\n|\)|$)", re.S
+    )
+    return pattern.sub(lambda m: m.group("rest"), cmd)
+
+
+def scan(cmd: str) -> tuple[list[tuple[str, str]], list[str]]:
+    """Quote-aware pass over a command line.
+
+    Returns (segments, substitutions): the simple commands with the operator that follows each,
+    and the text of every ``$( )`` or backtick substitution (which runs even inside double
+    quotes). Operators inside single or double quotes or inside a substitution do not split.
+    """
+    segments: list[tuple[str, str]] = []
+    subs: list[str] = []
+    buf: list[str] = []
+    quote = ""
+    depth = 0
+    sub_start = 0
+    tick_start = -1
+    i = 0
+    while i < len(cmd):
+        ch = cmd[i]
+        if ch == "\\" and quote != "'" and i + 1 < len(cmd):
+            buf.append(cmd[i : i + 2])
+            i += 2
             continue
-        value = token.split("=", 1)[-1] if token.startswith("-") else token
-        if value and is_secret(value):
-            block(f"secret file: {value}")
-    if re.search(r"\b(printenv|export\s+-p|declare\s+-x)\b", command):
-        block("reading environment variables")
-    if tokens[:1] in (["env"], ["set"]) and len(tokens) == 1:
-        block("reading environment variables")
-    if SECRET_VARIABLE.search(command):
-        block("expanding a secret-looking variable")
+        if quote == "'":
+            quote = "" if ch == "'" else quote
+        elif ch == "'" and not quote:
+            quote = "'"
+        elif ch == '"':
+            quote = "" if quote == '"' else ('"' if not quote else quote)
+        elif ch == "`":
+            if tick_start < 0:
+                tick_start = i + 1
+            else:
+                subs.append(cmd[tick_start:i])
+                tick_start = -1
+        elif cmd.startswith("$(", i):
+            if depth == 0:
+                sub_start = i + 2
+            depth += 1
+        elif ch == ")" and depth:
+            depth -= 1
+            if depth == 0:
+                subs.append(cmd[sub_start:i])
+        elif not quote and depth == 0 and tick_start < 0:
+            op = next((o for o in SHELL_OPERATORS if cmd.startswith(o, i)), "")
+            if op and not (op == "&" and cmd[i - 1 : i] in {">", "<"}) and not (
+                op == "|" and cmd[i - 1 : i] == ">"
+            ):
+                segments.append(("".join(buf), op))
+                buf = []
+                i += len(op)
+                continue
+        buf.append(ch)
+        i += 1
+    segments.append(("".join(buf), ""))
+    return segments, subs
 
 
-def check_protected_writes(tokens: list[str], command: str) -> None:
-    """Block shell writes to .claude/, CLAUDE.md and .git/ (any command that changes files)."""
-    name = os.path.basename(tokens[0])
-    scripting = bool(INTERPRETERS.match(name)) and any(f in tokens for f in ("-c", "-e"))
-    touches = [t for t in tokens if t and not t.startswith("-") and is_protected(t)]
-    if scripting and re.search(r"CLAUDE\.md|\.claude/|\.git/", command):
-        touches.append("a protected path inside an inline script")  # the path is in the code
+def without_single_quotes(text: str) -> str:
+    """The text with single-quoted spans removed (what the shell may still expand)."""
+    return re.sub(r"'[^']*'", "", text)
+
+
+def is_data(token: str) -> bool:
+    """A token with whitespace is a sentence or script argument, not a path."""
+    return any(c.isspace() for c in token)
+
+
+def check_path_token(token: str) -> None:
+    """Judge a path-like token: personal locations, secrets, parent paths, outside the project."""
+    value = token.split("=", 1)[-1] if token.startswith("-") and "=" in token else token
+    value = value.lstrip("<>&")
+    if not value or value.startswith("-") or is_data(value):
+        return
+    for marker in PERSONAL_PATHS:
+        if value.startswith(marker) or f"/{marker.strip('/')}/" in f"/{value}":
+            block(f"command touches personal/system location '{marker}'")
+    if is_secret(value):
+        block(f"secret file: {value}")
+    if ".." in value.replace("\\", "/").split("/"):
+        block("parent-directory paths ('..') are not allowed")
+    if value.startswith("/") and not value.startswith(SAFE_ABSOLUTE) and not inside_project(value):
+        block(f"absolute path outside the project: {value}")
+
+
+def redirect_targets(tokens: list[str]) -> tuple[list[str], list[str]]:
+    """Split tokens into (arguments, redirect targets); ``>file``, ``> file`` and ``2>file``."""
+    args: list[str] = []
+    targets: list[str] = []
+    take_next = False
+    for token in tokens:
+        if take_next:
+            targets.append(token)
+            take_next = False
+            continue
+        match = re.fullmatch(r"\d*(>>?|<)(&?\S*)", token) if not is_data(token) else None
+        if match:
+            if match.group(2):
+                targets.append(match.group(2))
+            else:
+                take_next = True
+        else:
+            args.append(token)
+    cleaned = [t.lstrip("&") for t in targets]
+    return args, [t for t in cleaned if t and not t.isdigit() and t != "-"]
+
+
+def check_script(text: str, label: str) -> None:
+    """Judge inline code (python -c, perl -e, SQL): deletes, sends and writes to the rules."""
+    for pat in SCRIPT_DANGER:
+        if re.search(pat, text, re.IGNORECASE):
+            block(f"{label} contains a destructive or data-sending call ({pat})")
+    if INTERPRETERS.match(label) and re.search(r"CLAUDE\.md|\.claude/|\.git/", text):
+        block("rules and git internals are read-only: named in an inline script")
+
+
+def check_command(tokens: list[str], next_op: str, following: str) -> None:
+    """Judge one simple command (already split into words)."""
+    while tokens and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", tokens[0]):
+        tokens = tokens[1:]  # leading VAR=value assignments
+    args, targets = redirect_targets(tokens)
+    for target in targets:
+        check_path_token(target)
+        if is_protected(target):
+            block(f"rules and git internals are read-only: {target}")
+    if not args:
+        return
+    name = os.path.basename(args[0])
+    rest = args[1:]
+    if name in {"sudo", "doas", "shred"} or name.startswith("mkfs") or name == "truncate":
+        block(f"destructive or approval-required command ({name})")
+    if name == "env" and not rest:
+        block("reading environment variables")
+    if name in WRAPPERS:
+        skip = 0
+        while skip < len(rest) and (rest[skip].startswith("-") or rest[skip].isdigit()):
+            skip += 1
+        check_command(rest[skip:], next_op, following)
+        return
+    if name == "printenv" or (
+        name in {"export", "declare"} and any(a in {"-p", "-x"} for a in rest)
+    ):
+        block("reading environment variables")
+    if name in SHELLS and "-c" in rest and rest.index("-c") + 1 < len(rest):
+        check_bash(rest[rest.index("-c") + 1])
+        return
+    if name == "git":
+        sub, git_args = git_parts(args)
+        check_git(git_args, sub)
+    elif name == "rm":
+        check_rm(rest)
+    elif name == "dd" and any(t.startswith("if=") for t in rest):
+        block("destructive or approval-required command (dd if=)")
+    elif name == "chown" and has_flag(rest, "R", "--recursive"):
+        block("chown -R")
+    elif name == "chmod" and has_flag(rest, "R", "--recursive") and "777" in rest:
+        block("chmod -R 777")
+    elif name == "find" and ("-delete" in rest or any(
+        a == "-exec" and rest[i + 1 : i + 2] == ["rm"] for i, a in enumerate(rest)
+    )):
+        block("find that deletes")
+    elif name in NET_TOOLS:
+        block("sending data out of the project is not allowed")
+    elif name in {"curl", "wget"}:
+        if has_flag(rest, "d", "--data", "--data-raw", "--data-binary", "--data-urlencode") or \
+                has_flag(rest, "F", "--form") or has_flag(rest, "T", "--upload-file") or \
+                any(a.startswith("--post") for a in rest) or re.search(
+                    r"-X\s*(POST|PUT|PATCH)", " ".join(rest), re.IGNORECASE):
+            block("sending data out of the project is not allowed")
+        if next_op == "|" and re.match(r"\s*(ba|z|da)?sh\b", following):
+            block("piping a download into a shell")
+    if "alembic" in args and any(a in {"upgrade", "downgrade"} for a in args):
+        block("migrations need Admin approval")
+    if "manage.py" in " ".join(args) and "migrate" in args:
+        block("migrations need Admin approval")
+    if name in SQL_CLIENTS:
+        check_script(" ".join(rest), name)
+    if INTERPRETERS.match(name) and any(f in rest for f in ("-c", "-e")):
+        check_script(" ".join(rest), name)
+    check_protected_writes(args, name)
+    for token in rest:
+        check_path_token(token)
+
+
+def check_protected_writes(args: list[str], name: str) -> None:
+    """Block commands that change files and name .claude/, CLAUDE.md or .git/ as an argument."""
+    touches = [t for t in args[1:] if not t.startswith("-") and not is_data(t) and is_protected(t)]
     if not touches:
         return
-    redirect = re.search(r">>?\s*\S*(CLAUDE\.md|\.claude/|\.git/)", command)
-    sed_in_place = name == "sed" and any(a == "-i" or a.startswith("-i") or a == "--in-place"
-                                         for a in tokens)
-    if name in WRITERS or sed_in_place or scripting or redirect:
+    sed_in_place = name == "sed" and any(
+        a == "--in-place" or re.fullmatch(r"-[A-Za-z]*i[A-Za-z]*", a) for a in args
+    )
+    if name in WRITERS or sed_in_place:
         block(f"rules and git internals are read-only: {touches[0]}")
 
 
-def check_tokens(tokens: list[str], command: str) -> None:
-    """Judge one simple command."""
-    if not tokens:
-        return
-    name = os.path.basename(tokens[0])
-    if name == "git":
-        sub, args = git_parts(tokens)
-        check_git(args, sub)
-    elif name == "rm":
-        check_rm(tokens[1:])
-    check_secret_reads(tokens, command)
-    check_protected_writes(tokens, command)
-    for token in tokens:
-        parts = token.replace("\\", "/").split("/")
-        if ".." in parts:
-            block("parent-directory paths ('..') are not allowed")
-        candidate = token.split("=", 1)[-1].lstrip("<>")
-        if candidate.startswith("/") and not candidate.startswith(SAFE_ABSOLUTE) \
-                and not inside_project(candidate):
-            block(f"absolute path outside the project: {candidate}")
-
-
 def check_bash(cmd: str) -> None:
-    """Judge a whole Bash command line."""
-    cmd = cmd.replace(str(PROJECT), ".")
-    for pat in DESTRUCTIVE:
-        if re.search(pat, cmd, re.IGNORECASE):
-            block(f"destructive or approval-required command ({pat})")
-    for pat in NETWORK_EXFIL:
-        if re.search(pat, cmd, re.IGNORECASE):
-            block("sending data out of the project is not allowed")
-    for marker in PERSONAL_PATHS:
-        if marker in cmd:
-            block(f"command touches personal/system location '{marker}'")
-    # A redirect target is judged even when it is glued to the operator (``>/etc/x``).
-    for target in re.findall(r">>?\s*([^\s;|&<>]+)", cmd):
-        if target.startswith("/") and not target.startswith(SAFE_ABSOLUTE) \
-                and not inside_project(target):
-            block(f"absolute path outside the project: {target}")
-    for part in SEPARATORS.split(cmd):
+    """Judge a whole Bash command line (quote-aware; here-document bodies are data)."""
+    cmd = strip_heredocs(cmd.replace(str(PROJECT), "."))
+    segments, subs = scan(cmd)
+    for inner in subs:
+        check_bash(inner)
+    if SECRET_VARIABLE.search(without_single_quotes(cmd)):
+        block("expanding a secret-looking variable")
+    for index, (segment, op) in enumerate(segments):
         try:
-            tokens = shlex.split(part, comments=False, posix=True)
+            tokens = shlex.split(segment, comments=False, posix=True)
         except ValueError:
             block("could not parse the command (unbalanced quotes)")
             return
-        check_tokens(tokens, part)
+        following = segments[index + 1][0] if index + 1 < len(segments) else ""
+        check_command(tokens, op, following)
 
 
 def main() -> None:
@@ -306,7 +443,9 @@ def main() -> None:
         check_path(ti.get("path", "") or str(PROJECT), False, agent)
     elif tool == "WebFetch" and re.search(r"[?&](data|token|key|secret)=", ti.get("url", ""), re.I):
         block("URL looks like it carries data out")
-    elif tool in GITHUB_WRITES and str(ti.get("branch", "")).removeprefix("refs/heads/") in MAIN_BRANCHES:
+    elif tool in GITHUB_WRITES and (
+        str(ti.get("branch", "")).removeprefix("refs/heads/") in MAIN_BRANCHES
+    ):
         block("writing to main through the GitHub tools is not allowed")
     sys.exit(0)
 
